@@ -5,10 +5,10 @@ dnl
 dnl Copyright 2018 Tarun Prabhu <tarun.prabhu@gmail.com>
 dnl
 
-m4_define([applet_network_version],[1.0.0])
+m4_define([applet_network_version],[0.9.0])
 
-AC_INIT([xfce4-applet-network], [applet_memory_version],
-	[tarun.prabhu@gmail.org])
+AC_INIT([xfce4-applet-network], [applet_network_version],
+	[tarun.prabhu@gmail.com])
 AM_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
 AC_PREREQ([2.50])
@@ -23,6 +23,8 @@ LT_INIT([disable-static])
 
 dnl Check for basic programs
 AC_PROG_CXX
+AC_PROG_LN_S
+AC_PROG_MKDIR_P
 AC_PROG_INSTALL
 
 dnl Check for standard header files
@@ -32,7 +34,6 @@ dnl Substitute in Makefiles
 AC_SUBST(OS)
 
 AC_HEADER_SYS_WAIT
-AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIZE_T
 
 dnl configure the panel plugin

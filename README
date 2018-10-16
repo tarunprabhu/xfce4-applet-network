@@ -3,3 +3,7 @@ XFCE Network Applet
 
 Displays a dial and icon on the screen showing the current upload and download
 speeds on network interfaces
+
+Credit for the icons goes to:
+   - xfce-applet-network-usb: https://www.deviantart.com/nealyoung
+   - xfce-applet-network-virt: https://www.deviantart.com/medivheldanar
