@@ -1,5 +1,7 @@
 #include "Enums.h"
 
+#include <gtk/gtk.h>
+
 std::string str(NetworkKind kind) {
   switch(kind) {
   case NetworkKind::Cellular:
@@ -20,7 +22,7 @@ std::string str(NetworkKind kind) {
     g_error("Unsupported network kind: %d", static_cast<int>(kind));
     break;
   }
-  return "";
+  return "<unknown>";
 }
 
 std::string str(NetworkStatus status) {
@@ -37,5 +39,37 @@ std::string str(NetworkStatus status) {
     g_error("Unsupported network status: %d", static_cast<int>(status));
     break;
   }
-  return "";
+  return "<unknown>";
+}
+
+std::string str(LabelPosition position) {
+  switch(position) {
+  case LabelPosition::Left:
+    return "left";
+  case LabelPosition::Top:
+    return "top";
+  case LabelPosition::Right:
+    return "bottom";
+  case LabelPosition::Bottom:
+    return "below";
+  default:
+    g_error("Unsupported label position: %d", static_cast<int>(position));
+    break;
+  }
+  return "<unknown>";
+}
+
+std::string str(TooltipVerbosity verbosity) {
+  switch(verbosity) {
+  case TooltipVerbosity::Limited:
+    return "Limited";
+  case TooltipVerbosity::Moderate:
+    return "Moderate";
+  case TooltipVerbosity::Verbose:
+    return "Verbose";
+  default:
+    g_error("Unsupported tooltip verbosity: %d", static_cast<int>(verbosity));
+    break;
+  }
+  return "<unknown>";
 }

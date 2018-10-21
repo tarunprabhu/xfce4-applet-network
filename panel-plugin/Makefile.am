@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS=subdir-objects
+
 plugindir = $(libdir)/xfce4/panel/plugins
 plugin_LTLIBRARIES = libappletnetwork.la
 
@@ -11,17 +13,35 @@ libappletnetwork_la_LIBADD =		\
 	@LIBXFCE4PANEL_LIBS@
 
 libappletnetwork_la_SOURCES =  \
-	ConfigUI.cc \
 	Enums.cc \
 	Network.cc \
+	NetworkConfig.cc \
 	NetworkUI.cc \
-	NetworkStats.cc \
 	PanelPlugin.cc \
 	Plugin.cc \
-	PluginUI.cc
-	Utils.cc \
+	PluginConfig.cc \
+	PluginUI.cc \
+	Stats.cc \
 	XfceUtils.cc \
 	main.c
+if LINUX
+libappletnetwork_la_SOURCES += \
+	sys/linux/Path.cc \
+	sys/linux/StatsImpl.cc \
+	sys/linux/System.cc
+endif
+if BSD
+# TODO: Add support for *BSD
+libappletnetwork_la_SOURCES +=
+endif
+if OSX
+# TODO: Add support for OSX
+libappletnetwork_la_SOURCES +=
+endif
+if WINDOWS
+# TODO: Add support for Windows (this is almost never going to happen)
+libappletnetwork_la_SOURCES +=
+endif 
 
 libappletnetwork_la_LDFLAGS = 																					\
 	-avoid-version 																											\

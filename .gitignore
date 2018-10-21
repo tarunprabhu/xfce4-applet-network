@@ -29,3 +29,4 @@ po/Makefile.in.in
 po/POTFILES
 m4
 stamp-h1
+.dirstamp

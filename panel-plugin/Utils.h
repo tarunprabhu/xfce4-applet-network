@@ -1,5 +1,5 @@
-#ifndef XFCE4_APPLET_NETWORK_UTILS_H
-#define XFCE4_APPLET_NETWORK_UTILS_H
+#ifndef XFCE_APPLET_NETWORK_UTILS_H
+#define XFCE_APPLET_NETWORK_UTILS_H
 
 #include "Enums.h"
 
@@ -8,6 +8,6 @@
 #include <string>
 
 std::string joinPaths(const std::string&, const std::string&);
-GdkPixbuf*  getPixbuf(NetworkKind, NetworkState, GtkIconTheme*, unsigned = 96);
+NetworkKind getNetworkKind(const std::string&);
 
-#endif // XFCE4_APPLET_NETWORK_UTILS_H
+#endif // XFCE_APPLET_NETWORK_UTILS_H

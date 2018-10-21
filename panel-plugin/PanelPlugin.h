@@ -1,5 +1,5 @@
-#ifndef XFCE4_APPLET_NETWORK_NETWORK_MONITOR_H
-#define XFCE4_APPLET_NETWORK_NETWORK_MONITOR_H
+#ifndef XFCE_APPLET_NETWORK_PANEL_PLUGIN_H
+#define XFCE_APPLET_NETWORK_PANEL_PLUGIN_H
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 
@@ -11,6 +11,6 @@ void panel_plugin_construct(XfcePanelPlugin*);
 
 #ifdef __cplusplus
 } // extern "C"
-#endif 
+#endif
 
-#endif // XFCE4_APPLET_NETWORK_NETWORK_MONITOR_H
+#endif // XFCE_APPLET_NETWORK_PANEL_PLUGIN_H

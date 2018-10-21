@@ -1,45 +1,11 @@
-#include "Util.h"
+#include "Utils.h"
 
 #include <sstream>
 
-static const std::map<NetworkStatus> 
+NetworkKind getNetworkKind(const std::string& interface) {
+  g_warning("getNetworkKind() unimplemented");
 
-GdkPixbuf* getPixbuf(NetworkKind   kind,
-                     NetworkStatus status,
-                     GtkIconTheme* theme,
-                     unsigned      size) {
-  std::stringstream ss;
-  GdkPixbuf* pb = nullptr;
-
-  ss << "xfce-applet-network-";
-  if(status == NetworkStatus::Error) {
-    ss << "error";
-  } else {
-
-    switch(status) {
-    case Connected:
-    case Disabled:
-      ss << "connected";
-      break;
-    case Disconnected:
-      ss << "disconnected";
-      break;
-    default:
-      break;
-    }
-  }
-
-  std::string name = ss.str();
-  GtkIconLookupFlags flags = static_cast<GtkIconLookupFlags>(0);
-  if(GtkIconInfo* info =
-         gtk_icon_theme_lookup_icon(theme, name.c_str(), size, flags)) {
-    const gchar* icon = gtk_icon_info_get_filename(info);
-    pb = gdk_pixbuf_new_from_file_at_scale(icon, size, size, TRUE, NULL);
-
-    g_object_unref(G_OBJECT(info));
-  }
-
-  return pb;
+  return NetworkKind::Other;
 }
 
 std::string joinPaths(const std::string& prefix, const std::string& suffix) {

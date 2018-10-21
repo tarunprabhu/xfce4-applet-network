@@ -13,6 +13,7 @@ AM_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
 AC_PREREQ([2.50])
 AC_CANONICAL_TARGET()
+AC_CANONICAL_HOST
 
 AM_INIT_AUTOMAKE([1.8 no-dist-gzip dist-bzip2])
 AM_MAINTAINER_MODE
@@ -21,10 +22,32 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 LT_PREREQ([2.2.6])
 LT_INIT([disable-static])
 
+dnl Identify the operating system
+case "${host_os}" in
+    linux*)
+        build="linux"
+        ;;
+    cygwin*|mingw*)
+        build="windows"
+        ;;
+    darwin*)
+        build="osx"
+        ;;
+    *bsd*)
+        build="bsd"
+        ;;
+    *)
+        AC_MSG_ERROR(["OS $host_os is not supported"])
+        ;;
+esac
+dnl Pass conditionals to automake
+AM_CONDITIONAL([LINUX], [test "$build" = "linux"])
+AM_CONDITIONAL([WINDOWS], [test "$build" = "windows"])
+AM_CONDITIONAL([OSX], [test "$build" = "osx"])
+AM_CONDITIONAL([BSD], [test "$build" = "bsd"])
+
 dnl Check for basic programs
 AC_PROG_CXX
-AC_PROG_LN_S
-AC_PROG_MKDIR_P
 AC_PROG_INSTALL
 
 dnl Check for standard header files
@@ -47,5 +70,7 @@ XDT_FEATURE_DEBUG()
 
 AC_OUTPUT([
 Makefile
+icons/Makefile
+icons/scalable/Makefile
 panel-plugin/Makefile
 ])

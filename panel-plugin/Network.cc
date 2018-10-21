@@ -1,82 +1,70 @@
 #include "Network.h"
 
 #include "Plugin.h"
+#include "Utils.h"
+#include "XfceUtils.h"
 
 #include <fstream>
 #include <sstream>
 
 Network::Network(Plugin& plugin)
-    : plugin(plugin), labelFg(nullptr), labelBg(nullptr) {
-  reset();
+    : plugin(plugin), config(*this), stats(*this), ui(*this) {
+  interface      = Network::Defaults::Interface;
+  kind           = NetworkKind::Other;
+  name           = Network::Defaults::Name;
+  rxMax          = Network::Defaults::RxRateMax;
+  txMax          = Network::Defaults::TxRateMax;
+  alwaysShowDial = Network::Defaults::AlwaysShowDial;
+  showLabel      = Network::Defaults::ShowLabel;
+  label          = Network::Defaults::Label;
+  gdk_rgba_parse(labelFg, Network::Defaults::LabelFgStr);
+  gdk_rgba_parse(labelBg, Network::Defaults::LabelBgStr);
+  labelPos = Network::Defaults::LabelPos;
+  for(NetworkStatus status : NetworkStatus())
+    iconTooltip[static_cast<unsigned>(status)] = nullptr;
+  iconToolbar = nullptr;
+  iconDialog  = nullptr;
 }
 
 Network::~Network() {
-  if(labelFg)
-    gdk_rgba_free(labelFg);
-
-  if(labelBg)
-    gdk_rgba_free(labelBg);
+  gdk_rgba_free(labelFg);
+  gdk_rgba_free(labelBg);
 }
 
-void Network::reset() {
-  stats.reset();
-
-  if(labelFg)
-    gdk_rgba_free(labelFg);
-
-  if(labelBg)
-    gdk_rgba_free(labelBg);
-
-  interface      = Plugin::Defaults::Interface;
-  kind           = Network::Kind::Other;
-  name           = Plugin::Defaults::Name;
-  txMax          = Plugin::Defaults::RateMax;
-  rxMax          = Plugin::Defaults::RateMax;
-  alwaysShowDial = Plugin::Defaults::AlwaysShowDial;
-  showLabel      = Plugin::Defaults::ShowLabel;
-  label          = Plugin::Defaults::Label;
-  labelFg        = gdk_rgba_parse(Plugin::Defaults::LabelFgStr);
-  labelBg        = gdk_rgba_parse(Plugin::Defaults::LabelBgStr);
-  labelPos       = Plugin::Defaults::LabelPosition;
+Plugin& Network::getPlugin() {
+  return plugin;
 }
 
-unsigned long Network::getBytes(const std::string& file) {
-  std::ifstream in;
-  unsigned long bytes = 0;
+const Stats& Network::getStats() const {
+  return stats;
+}
 
-  in.open(file, std::ios::in);
-  if(in.is_open()) {
-    in >> bytes;
-    in.close();
-  } else {
-    state.operState = State::Error;
-  }
+NetworkConfig& Network::getConfig() {
+  return config;
+}
 
-  return bytes;
+NetworkUI& Network::getUI() {
+  return ui;
 }
 
 const std::string& Network::getInterface() const {
   return interface;
 }
 
-const std::string& Network::getName() const {
-  return name;
-}
-
 NetworkKind Network::getKind() const {
   return kind;
 }
 
-unsigned long Network::getMaxTxRate() const {
+const std::string& Network::getName() const {
+  return name;
+}
+
+double Network::getMaxTxRate() const {
   return txMax;
 }
 
-unsigned long Network::getMaxRxRate() const {
+double Network::getMaxRxRate() const {
   return rxMax;
-}
-
-const std::string& Network::getName() const {
-  return name;
 }
 
 bool Network::getAlwaysShowDial() const {
@@ -99,27 +87,30 @@ GdkRGBA* Network::getLabelBgColor() const {
   return labelBg;
 }
 
-NetworkUI Network::getLabelPosition() const {
+LabelPosition Network::getLabelPosition() const {
   return labelPos;
 }
 
 void Network::setInterface(const std::string& interface) {
   this->interface = interface;
+  stats.reset(interface);
+  setKind(System::getNetworkKind(interface));
 }
 
 void Network::setKind(NetworkKind kind) {
   this->kind = kind;
+  updateIcons();
 }
 
 void Network::setName(const std::string& name) {
   this->name = name;
 }
 
-void Network::setMaxTxRate(unsigned long rate) {
+void Network::setMaxTxRate(double rate) {
   this->txMax = rate;
 }
 
-void Network::setMaxRxRate(unsigned long rate) {
+void Network::setMaxRxRate(double rate) {
   this->rxMax = rate;
 }
 
@@ -150,33 +141,82 @@ void Network::setLabelPosition(LabelPosition pos) {
 }
 
 void Network::writeConfig(XfceRc* rc) {
-  xfce_rc_write_entry(rc, "interface", interface);
-  xfce_rc_write_int_entry(rc, "kind", static_cast<int>(kind));
-  xfce_rc_write_entry(rc, "name", name);
-  xfce_rc_write_int_entry(rc, "rx", rxMax);
-  xfce_rc_write_int_entry(rc, "tx", txMax);
+  TRACE("Writing network configuration: %s\n", name.c_str());
+
+  xfce_rc_write_entry(rc, "interface", interface.c_str());
+  xfce_rc_write_enum_entry(rc, "kind", kind);
+  xfce_rc_write_entry(rc, "name", name.c_str());
+  xfce_rc_write_double_entry(rc, "rx", rxMax);
+  xfce_rc_write_double_entry(rc, "tx", txMax);
   xfce_rc_write_bool_entry(rc, "always", alwaysShowDial);
   xfce_rc_write_bool_entry(rc, "show", showLabel);
   xfce_rc_write_entry(rc, "label", label.c_str());
   xfce_rc_write_color_entry(rc, "labelFg", labelFg);
   xfce_rc_write_color_entry(rc, "labelBg", labelBg);
-  xfce_rc_write_int_entry(rc, "labelPos", labelPos);
+  xfce_rc_write_enum_entry(rc, "labelPos", labelPos);
 }
 
 void Network::readConfig(XfceRc* rc) {
+  TRACE("Reading network configuration");
+
   // This will be called after the fields are initialized with default values
   // so we can safely just use them
   //
-  setInterface(xfce_rc_read_entry(rc, "interface", interface));
-  setKind(static_cast<NetworkKind>(xfce_rc_read_int_entry(rc, "kind", kind)));
-  setName(xfce_rc_read_entry(rc, "name", name));
-  setMaxRxRate(xfce_rc_read_int_entry(rc, "rx", rxMax));
-  setMaxTxRate(xfce_rc_read_int_entry(rc, "tx", txMax));
+  setInterface(xfce_rc_read_entry(rc, "interface", interface.c_str()));
+  setKind(xfce_rc_read_enum_entry(rc, "kind", kind));
+  setName(xfce_rc_read_entry(rc, "name", name.c_str()));
+  setMaxRxRate(xfce_rc_read_double_entry(rc, "rx", rxMax));
+  setMaxTxRate(xfce_rc_read_double_entry(rc, "tx", txMax));
   setAlwaysShowDial(xfce_rc_read_bool_entry(rc, "always", alwaysShowDial));
   setShowLabel(xfce_rc_read_bool_entry(rc, "show", showLabel));
-  setLabel(xfce_rc_read_entry(rc, "label", label));
+  setLabel(xfce_rc_read_entry(rc, "label", label.c_str()));
   setLabelFgColor(xfce_rc_read_color_entry(rc, "labelFg", labelFg));
   setLabelBgColor(xfce_rc_read_color_entry(rc, "labelBg", labelBg));
-  setLabelPosition(static_cast<LabelPosition>(
-      xfce_rc_read_int_entry(rc, "labelPos", labelPos)));
+  setLabelPosition(xfce_rc_read_enum_entry(rc, "labelPos", labelPos));
+}
+
+std::string Network::getTooltipMarkup() {
+  // TODO: Implement this
+  DBG("UNIMPLEMENTED: getTooltipMarkup()");
+
+  std::stringstream ss;
+  ss << "Incoming rate: " << 0.0 << " MB/s\n"
+     << "Outgoing rate: " << 0.0 << " MB/s";
+  return ss.str();
+}
+
+GdkPixbuf* Network::getTooltipIcon() {
+  return iconTooltip.at(static_cast<unsigned>(stats.getStatus()));
+}
+
+GdkPixbuf* Network::getToolbarIcon() {
+  return iconToolbar;
+}
+
+GdkPixbuf* Network::getDialogIcon() {
+  return iconDialog;
+}
+
+GdkPixbuf* Network::getMenuIcon() {
+  return iconMenu;
+}
+
+void Network::refresh() {
+  ui.refresh();
+}
+
+void Network::update() {
+  stats.update();
+}
+
+void Network::updateIcons() {
+  for(NetworkStatus status : NetworkStatus())
+    iconTooltip[static_cast<unsigned>(status)] =
+        plugin.getPixbuf(kind, status, Plugin::IconSizeTooltip);
+  iconToolbar =
+      plugin.getPixbuf(kind, NetworkStatus::Connected, Plugin::IconSizeToolbar);
+  iconDialog =
+      plugin.getPixbuf(kind, NetworkStatus::Connected, Plugin::IconSizeDialog);
+  iconMenu =
+      plugin.getPixbuf(kind, NetworkStatus::Connected, Plugin::IconSizeMenu);
 }

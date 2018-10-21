@@ -1,5 +1,7 @@
-#ifndef XFCE4_APPLET_NETWORK_ENUMS_H
-#define XFCE4_APPLET_NETWORK_ENUMS_H
+#ifndef XFCE_APPLET_NETWORK_ENUMS_H
+#define XFCE_APPLET_NETWORK_ENUMS_H
+
+#include <string>
 
 enum class NetworkKind {
   Cellular = 0, // Cellular networks
@@ -24,8 +26,20 @@ enum class NetworkStatus {
 };
 
 enum class LabelPosition {
-  Above = 0,
-  Below,
+  Left = 0,
+  Top,
+  Right,
+  Bottom,
+  Last,
+  First = Left,
+};
+
+enum class TooltipVerbosity {
+  Limited,
+  Moderate,
+  Verbose,
+  Last,
+  First = Limited,
 };
 
 template <typename Enum> Enum operator++(Enum& e) {
@@ -42,10 +56,12 @@ template <typename Enum> Enum begin(Enum) {
 }
 
 template <typename Enum> Enum end(Enum) {
-  return Enum::Last);
+  return Enum::Last;
 }
 
 std::string str(NetworkKind);
 std::string str(NetworkStatus);
+std::string str(LabelPosition);
+std::string str(TooltipVerbosity);
 
-#endif // XFCE4_APPLET_NETWORK_ENUMS_H
+#endif // XFCE_APPLET_NETWORK_ENUMS_H

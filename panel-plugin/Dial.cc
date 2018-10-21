@@ -1,6 +1,7 @@
 #include <glib-object.h>
-#include <gtk/gtk.h>
 #include <librsvg/rsvg.h>
+
+#include <gtk/gtk.h>
 
 #include <cmath>
 
@@ -37,9 +38,9 @@ typedef struct dial_t {
   // anti-clockwise from the positive X-axis which increases to the east.
   const double sweep_begin;
 
-  // The number of stops in the dial. This is 
+  // The number of stops in the dial. This is
   const unsigned stops;
-  
+
   // The current position of dial. This will be in the range [0-100], inclusive
   unsigned current;
 } dial_t;
@@ -64,33 +65,35 @@ static constexpr double sweep_begin = 0;
 // The degrees through which each gradient steps
 static constexpr double step = sweep / stops;
 
-static double radians(double degrees) { return degrees * PI / 180; }
+static double radians(double degrees) {
+  return degrees * PI / 180;
+}
 
-static void draw_dial(cairo_t *cr, unsigned width, unsigned height) {
-  double radius, stroke, step;
-  double dim;
+static void draw_dial(cairo_t* cr, unsigned width, unsigned height) {
+  double   radius, stroke, step;
+  double   dim;
   unsigned i;
   unsigned angle;
 
-  dim = fmin(0.5 * width, 0.5 * height);
+  dim    = fmin(0.5 * width, 0.5 * height);
   stroke = 0.3333 * dim;
   radius = 0.8333 * dim; // radius = dim - stroke / 2
   cairo_set_line_width(cr, stroke);
   step = dial.sweep / dial.stops;
   // Cairo measures angles clockwise, but all my trigonometry and coordinate
   // geometry is done assuming the angles are measured anti-clockwise
-  for (i = 0, angle = 360 - sweep_begin; i < stops; i++, angle += step) {
+  for(i = 0, angle = 360 - sweep_begin; i < stops; i++, angle += step) {
     cairo_set_source_rgb(cr, colors[i].red, colors[i].green, colors[i].blue);
     cairo_arc(cr, 0, 0, radius, radians(angle), radians(angle + step));
     cairo_stroke(cr);
   }
 }
 
-static void draw_knob(cairo_t *cr, unsigned width, unsigned height) {
+static void draw_knob(cairo_t* cr, unsigned width, unsigned height) {
   double dim;
   double radius, stroke;
 
-  dim = fmin(0.5 * width, 0.5 * height);
+  dim    = fmin(0.5 * width, 0.5 * height);
   radius = fmax(0.0695 * dim, 1.5);
   stroke = fmax(0.0521 * dim, 1.0);
 
@@ -100,17 +103,17 @@ static void draw_knob(cairo_t *cr, unsigned width, unsigned height) {
   cairo_stroke(cr);
 }
 
-static void draw_hand(cairo_t *cr, unsigned width, unsigned height,
-                      int magnitude) {
-  double dim;
-  double radius;
-  double theta, thetap, thetam;
-  point_t p, b1, b2;
+static void
+draw_hand(cairo_t* cr, unsigned width, unsigned height, int magnitude) {
+  double       dim;
+  double       radius;
+  double       theta, thetap, thetam;
+  point_t      p, b1, b2;
   const double delta = 6.5;
 
-  dim = fmin(0.5 * width, 0.5 * height);
+  dim    = fmin(0.5 * width, 0.5 * height);
   radius = 0.6667 * dim;
-  theta = sweep_begin - ((sweep / (range.max - range.min)) * magnitude);
+  theta  = sweep_begin - ((sweep / (range.max - range.min)) * magnitude);
   thetap = theta + delta;
   thetam = theta - delta;
 
@@ -137,7 +140,7 @@ static void draw_hand(cairo_t *cr, unsigned width, unsigned height,
   cairo_fill(cr);
 }
 
-static void draw(cairo_t *cr, unsigned width, unsigned height, int magnitude) {
+static void draw(cairo_t* cr, unsigned width, unsigned height, int magnitude) {
   // Move the axes to the center of the canvas so all the calculations can be
   // done with the "conventional" coordinate system
   cairo_translate(cr, 0.5 * width, 0.5 * height);
@@ -146,11 +149,11 @@ static void draw(cairo_t *cr, unsigned width, unsigned height, int magnitude) {
   draw_hand(cr, width, height, magnitude);
 }
 
-static gboolean cb_draw(GtkWidget *canvas, cairo_t *cr, gpointer data) {
+static gboolean cb_draw(GtkWidget* canvas, cairo_t* cr, gpointer data) {
   GtkAllocation allocation;
-  status_t *status;
+  status_t*     status;
 
-  status = (status_t *)data;
+  status = (status_t*)data;
   gtk_widget_get_allocation(canvas, &allocation);
   draw(cr, allocation.width, allocation.height, status->magnitude);
 
@@ -158,16 +161,16 @@ static gboolean cb_draw(GtkWidget *canvas, cairo_t *cr, gpointer data) {
 }
 
 gboolean tick(gpointer data) {
-  status_t *status = (status_t *)data;
+  status_t* status = (status_t*)data;
 
-  if (status->magnitude == range.min) {
-    if (not status->up)
+  if(status->magnitude == range.min) {
+    if(not status->up)
       status->up = true;
-  } else if (status->magnitude == range.max) {
-    if (status->up)
+  } else if(status->magnitude == range.max) {
+    if(status->up)
       status->up = false;
   }
-  if (status->up)
+  if(status->up)
     status->magnitude += 1;
   else
     status->magnitude -= 1;
@@ -177,19 +180,19 @@ gboolean tick(gpointer data) {
   return TRUE;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   GtkWidget *window, *canvas;
-  unsigned width, height, magnitude;
-  status_t *status;
+  unsigned   width, height, magnitude;
+  status_t*  status;
 
-  width = DEFAULT_WIDTH;
-  height = DEFAULT_HEIGHT;
+  width     = DEFAULT_WIDTH;
+  height    = DEFAULT_HEIGHT;
   magnitude = 0;
-  if (argc > 1)
+  if(argc > 1)
     width = atoi(argv[1]);
-  if (argc > 2)
+  if(argc > 2)
     height = atoi(argv[2]);
-  if (argc > 3)
+  if(argc > 3)
     magnitude = atoi(argv[3]);
 
   gtk_init(&argc, &argv);
@@ -200,10 +203,10 @@ int main(int argc, char *argv[]) {
 
   canvas = gtk_drawing_area_new();
   gtk_widget_set_size_request(canvas, width, height);
-  status = g_new(status_t, 1);
-  status->canvas = canvas;
+  status            = g_new(status_t, 1);
+  status->canvas    = canvas;
   status->magnitude = magnitude;
-  status->up = true;
+  status->up        = true;
   g_signal_connect(G_OBJECT(canvas), "draw", G_CALLBACK(cb_draw), status);
 
   g_timeout_add(50, tick, status);

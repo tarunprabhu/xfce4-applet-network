@@ -1,5 +1,7 @@
-#include "NetworkMonitor.h"
+#include "PanelPlugin.h"
 
-XFCE_PANEL_PLUGIN_REGISTER(network_monitor_construct)
+#include <libxfce4panel/xfce-panel-plugin.h>
+
+XFCE_PANEL_PLUGIN_REGISTER(panel_plugin_construct)
 
   
