@@ -1,10 +1,16 @@
 #ifndef XFCE_APPLET_NETWORK_PLUGIN_H
 #define XFCE_APPLET_NETWORK_PLUGIN_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 #include "Enums.h"
 #include "Network.h"
 #include "PluginConfig.h"
 #include "PluginUI.h"
+#include "TooltipUI.h"
+#include "Types.h"
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 #include <libxfce4util/libxfce4util.h>
@@ -12,7 +18,6 @@
 #include <gtk/gtk.h>
 
 #include <list>
-#include <set>
 #include <string>
 
 class Plugin {
@@ -20,14 +25,15 @@ public:
   class Defaults {
   public:
     // Plugin defaults
-    static constexpr double       Period    = 1.0;
-    static const unsigned         Border    = 1;
-    static const unsigned         Padding   = 1;
-    static const unsigned         Spacing   = 1;
-    static constexpr gchar const* Label     = "Speed Monitor";
-    static const bool             ShowLabel = true;
-    static constexpr gchar const* Theme     = "dark";
-    static const TooltipVerbosity Verbosity = TooltipVerbosity::Moderate;
+    static constexpr double Period = 1.0;
+  };
+
+  class Ranges {
+  public:
+    static constexpr Range<double>   Period  = {0.25, 2, 0.25};
+    static constexpr Range<unsigned> Border  = {0, 8, 1};
+    static constexpr Range<unsigned> Padding = {0, 8, 1};
+    static constexpr Range<unsigned> Spacing = {0, 8, 1};
   };
 
 public:
@@ -40,23 +46,12 @@ private:
   XfcePanelPlugin* xfce;
   PluginUI         ui;
   PluginConfig     config;
+  TooltipUI        tooltip;
 
-  // Configurable options
-  double                period;
-  unsigned              border;
-  unsigned              padding;
-  unsigned              spacing;
-  bool                  showLabel;
-  std::string           label;
-  std::string           theme;
-  TooltipVerbosity      verbosity;
-  PangoFontDescription* font;
-  std::list<Network>    networks;
-
-  // Fields that are initialized after the plugin is created
-  unsigned       size;
-  GtkOrientation orientation;
-  GtkIconTheme*  gtkIconTheme;
+  struct {
+    double             period;
+    std::list<Network> networks;
+  } opts;
 
 private:
   void readConfig(XfceRc*);
@@ -66,13 +61,20 @@ public:
   Plugin(XfcePanelPlugin*);
   ~Plugin();
 
-  XfcePanelPlugin*    getXfcePanelPlugin();
-  PluginUI&           getUI();
-  PluginConfig&       getConfig();
-  std::list<Network>& getNetworks();
+  XfcePanelPlugin*          getXfcePanelPlugin();
+  PluginConfig&             getConfig();
+  PluginUI&                 getUI();
+  TooltipUI&                getTooltipUI();
+  std::list<Network>&       getNetworks();
+  const std::list<Network>& getNetworks() const;
 
   GdkPixbuf* getPixbuf(const std::string&, unsigned);
   GdkPixbuf* getPixbuf(NetworkKind, NetworkStatus, unsigned);
+
+  size_t   getNumNetworks() const;
+  Network& getNetworkAt(int);
+  Network& appendNewNetwork();
+  void     removeNetworkAt(int);
 
   void about();
   void configure();
@@ -82,30 +84,15 @@ public:
   void writeConfig();
 
   void setPeriod(double);
-  void setBorder(unsigned);
-  void setPadding(unsigned);
-  void setSpacing(unsigned);
-  void setShowLabel(bool);
-  void setLabel(const std::string&);
-  void setFont(PangoFontDescription*);
-  void setTheme(const std::string&);
-  void setTooltipVerbosity(TooltipVerbosity);
 
-  double                getPeriod() const;
-  unsigned              getBorder() const;
-  unsigned              getPadding() const;
-  unsigned              getSpacing() const;
-  bool                  getShowLabel() const;
-  const std::string&    getLabel() const;
-  PangoFontDescription* getFont() const;
-  const std::string&    getTheme() const;
-  TooltipVerbosity      getTooltipVerbosity() const;
+  double getPeriod() const;
 
-  unsigned       getSize();
-  GtkOrientation getOrientation();
+  size_t populateInterfaces(std::list<std::string>&);
 
-  void populateInterfaces(std::set<std::string>&);
+  // Redraws the entire UI for the plugin and all networks
+  void redraw();
 
+  // Refresh the UI by changing display properties of the UI elements
   void refresh();
 };
 

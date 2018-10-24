@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_NETWORK_SYS_LINUX_STATS_IMPL_H
-#define XFCE_APPLET_NETWORK_SYS_LINUX_STATS_IMPL_H
+#ifndef XFCE_APPLET_NETWORK_SYS_LINUX_NETWORK_STATS_IMPL_H
+#define XFCE_APPLET_NETWORK_SYS_LINUX_NETWORK_STATS_IMPL_H
 
 #include "Path.h"
 
@@ -7,11 +7,11 @@
 
 #include <string>
 
-class Stats;
+class NetworkStats;
 
-class StatsImpl {
+class NetworkStatsImpl {
 private:
-  Stats& stats;
+  NetworkStats& stats;
 
   Path dir;
   Path fileState;
@@ -25,10 +25,10 @@ private:
   guint64 readBytesTransferred(const Path&);
 
 public:
-  StatsImpl(Stats&);
+  NetworkStatsImpl(NetworkStats&);
 
   void reset(const std::string&);
   void update();
 };
 
-#endif // XFCE_APPLET_NETWORK_SYS_LINUX_STATS_IMPL_H
+#endif // XFCE_APPLET_NETWORK_SYS_LINUX_NETWORK_STATS_IMPL_H

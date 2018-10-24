@@ -1,7 +1,6 @@
 #include "PanelPlugin.h"
 
 #include "Plugin.h"
-#include "Utils.h"
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 #include <libxfce4util/libxfce4util.h>
@@ -41,21 +40,21 @@ static gboolean cb_handle_event(XfcePanelPlugin*,
 }
 
 extern "C" void panel_plugin_construct(XfcePanelPlugin* xfce) {
-  Plugin* plugin = new Plugin(xfce);
-  plugin->readConfig();
-  plugin->getUI().create();
+  Plugin& plugin = *new Plugin(xfce);
 
-  gtk_container_add(GTK_CONTAINER(xfce), plugin->getUI().getEventBoxWidget());
+  DBG("Initializing plugin");
+  
+  plugin.readConfig();
 
   xfce_panel_plugin_menu_show_about(xfce);
   xfce_panel_plugin_menu_show_configure(xfce);
 
-  g_signal_connect(xfce, "about", G_CALLBACK(cb_about), plugin);
-  g_signal_connect(xfce, "configure-plugin", G_CALLBACK(cb_configure), plugin);
-  g_signal_connect(xfce, "free-data", G_CALLBACK(cb_free), plugin);
+  g_signal_connect(xfce, "about", G_CALLBACK(cb_about), &plugin);
+  g_signal_connect(xfce, "configure-plugin", G_CALLBACK(cb_configure), &plugin);
+  g_signal_connect(xfce, "free-data", G_CALLBACK(cb_free), &plugin);
   g_signal_connect(xfce, "orientation-changed", G_CALLBACK(cb_reorient),
-                   plugin);
-  g_signal_connect(xfce, "remote-event", G_CALLBACK(cb_handle_event), plugin);
-  g_signal_connect(xfce, "save", G_CALLBACK(cb_save), plugin);
-  g_signal_connect(xfce, "size-changed", G_CALLBACK(cb_resize), plugin);
+                   &plugin);
+  g_signal_connect(xfce, "remote-event", G_CALLBACK(cb_handle_event), &plugin);
+  g_signal_connect(xfce, "save", G_CALLBACK(cb_save), &plugin);
+  g_signal_connect(xfce, "size-changed", G_CALLBACK(cb_resize), &plugin);
 }

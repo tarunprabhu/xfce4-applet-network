@@ -1,21 +1,23 @@
-#include "StatsImpl.h"
+#include "NetworkStatsImpl.h"
 
-#include "../../Stats.h"
+#include "../../NetworkStats.h"
+
+#include <libxfce4util/libxfce4util.h>
 
 #include <fstream>
 
-StatsImpl::StatsImpl(Stats& stats) : stats(stats) {
+NetworkStatsImpl::NetworkStatsImpl(NetworkStats& s) : stats(s) {
   ;
 }
 
-void StatsImpl::reset(const std::string& interface) {
-  dir       = Path(System::NetworkDirectory, interface);
+void NetworkStatsImpl::reset(const std::string& interface) {
+  dir       = Path(System::getNetworkDirectory(), interface);
   fileState = Path(dir, "operstate");
   fileTx    = Path(dir, "statistics", "tx_bytes");
   fileRx    = Path(dir, "statistics", "rx_bytes");
 }
 
-guint64 StatsImpl::readBytesTransferred(const Path& file) {
+guint64 NetworkStatsImpl::readBytesTransferred(const Path& file) {
   std::ifstream in;
 
   in.open(file.get(), std::ios::in);
@@ -35,15 +37,21 @@ guint64 StatsImpl::readBytesTransferred(const Path& file) {
   return 0;
 }
 
-void StatsImpl::updateTxBytes() {
+void NetworkStatsImpl::updateTxBytes() {
+  DBG("Update linux/tx");
+  
   stats.setTxBytes(readBytesTransferred(fileTx));
 }
 
-void StatsImpl::updateRxBytes() {
+void NetworkStatsImpl::updateRxBytes() {
+  DBG("Update linux/rx");
+  
   stats.setRxBytes(readBytesTransferred(fileRx));
 }
 
-void StatsImpl::updateStatus() {
+void NetworkStatsImpl::updateStatus() {
+  DBG("Update linux/status");
+  
   std::ifstream in;
 
   // If the symlink to the directory exists in the /sys/..., then the
@@ -70,7 +78,9 @@ void StatsImpl::updateStatus() {
   stats.setStatus(status);
 }
 
-void StatsImpl::update() {
+void NetworkStatsImpl::update() {
+  DBG("Update linux/stats");
+  
   if(dir.exists()) {
     updateStatus();
     updateTxBytes();

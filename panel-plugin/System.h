@@ -3,7 +3,7 @@
 
 #if defined(__linux__)
 
-#include "sys/linux/StatsImpl.h"
+#include "sys/linux/NetworkStatsImpl.h"
 #include "sys/linux/System.h"
 
 #elif defined(__FreeBSD__)

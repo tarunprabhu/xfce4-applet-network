@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_NETWORK_STATS_H
-#define XFCE_APPLET_NETWORK_STATS_H
+#ifndef XFCE_APPLET_NETWORK_NETWORK_STATS_H
+#define XFCE_APPLET_NETWORK_NETWORK_STATS_H
 
 #include "Enums.h"
 #include "System.h"
@@ -11,12 +11,12 @@
 class Network;
 class Plugin;
 
-class Stats {
+class NetworkStats {
 private:
   Network& network;
   Plugin&  plugin;
 
-  StatsImpl impl;
+  NetworkStatsImpl impl;
 
   NetworkStatus status;
   guint64       tx;
@@ -28,7 +28,7 @@ private:
   void reset();
 
 public:
-  Stats(Network&);
+  NetworkStats(Network&);
 
   void setStatus(NetworkStatus);
   void setRxBytes(guint64);
@@ -44,4 +44,4 @@ public:
   void update();
 };
 
-#endif // XFCE_APPLET_NETWORK_STATS_H
+#endif // XFCE_APPLET_NETWORK_NETWORK_STATS_H

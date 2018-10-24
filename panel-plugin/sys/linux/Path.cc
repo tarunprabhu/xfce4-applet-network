@@ -1,4 +1,5 @@
 #include "Path.h"
+#include "System.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -6,24 +7,19 @@
 #include <cstdlib>
 #include <unistd.h>
 
-Path::Path() : path(""), valid(false) {
+Path::Path() : path(System::getNullDevice()), valid(false) {
   ;
 }
 
-// Path::Path(Path& other) : path(other.path), valid(other.valid) {
-//   ;
-// }
-
-// Path::Path(Path&& other) : path(other.path), valid(other.valid) {
-//   ;
-// }
-
 void Path::finalize(std::stringstream& ss) {
   std::string s    = ss.str();
-  char*       real = realpath(s.c_str(), NULL);
-  path             = real;
-  valid            = true;
-  free(real);
+  // realpath() may return null if the provided path was invalid. This can
+  // happen when a new network is created with a default path
+  if(char* real = realpath(s.c_str(), NULL)) {
+    path  = real;
+    valid = true;
+    free(real);
+  }
 }
 
 bool Path::contains(const std::string& s) const {
@@ -81,12 +77,16 @@ bool Path::contains(const std::string& s) const {
   return false;
 }
 
-void Path::joinImpl(std::stringstream& ss, const std::string& path) {
-  ss << path;
+void Path::joinImpl(std::stringstream& ss, const std::string& s) {
+  ss << s;
 }
 
-void Path::joinImpl(std::stringstream& ss, const Path& path) {
-  ss << path.get();
+void Path::joinImpl(std::stringstream& ss, const char* cstr) {
+  ss << cstr;
+}
+
+void Path::joinImpl(std::stringstream& ss, const Path& p) {
+  ss << p.get();
 }
 
 void Path::joinImpl(std::stringstream&) {

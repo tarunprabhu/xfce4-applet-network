@@ -34,6 +34,13 @@ enum class LabelPosition {
   First = Left,
 };
 
+enum class TooltipTheme {
+  Dark = 0, // Dark background, light icon and text
+  Light,    // Light background, dark icon and text
+  Last,
+  First = Dark,
+};
+
 enum class TooltipVerbosity {
   Limited,
   Moderate,
@@ -59,9 +66,9 @@ template <typename Enum> Enum end(Enum) {
   return Enum::Last;
 }
 
-std::string str(NetworkKind);
-std::string str(NetworkStatus);
-std::string str(LabelPosition);
-std::string str(TooltipVerbosity);
+// We'll have to explicitly instantiate these functions because not all
+// enums will have these functions defined
+template <typename Enum> const std::string& enum_str(Enum);
+template <typename Enum> Enum               enum_parse(const std::string&);
 
 #endif // XFCE_APPLET_NETWORK_ENUMS_H

@@ -7,6 +7,10 @@
 #include <fstream>
 #include <unistd.h>
 
+// Static variables that are exposed by the System class
+static const std::string NetworkDirectory = "/sys/class/net";
+static const std::string NullDevice       = "/dev/null";
+
 bool System::isCellular(const Path&) {
   DBG("UNIMPLEMENTED: isCellular()");
 
@@ -52,7 +56,7 @@ bool System::isWired(const Path& dir) {
 }
 
 NetworkKind System::getNetworkKind(const std::string& interface) {
-  Path dir(System::NetworkDirectory, interface);
+  Path dir(System::getNetworkDirectory(), interface);
 
   if(isUSB(dir))
     return NetworkKind::USB;
@@ -68,14 +72,27 @@ NetworkKind System::getNetworkKind(const std::string& interface) {
   return NetworkKind::Other;
 }
 
-void System::populateInterfaces(std::set<std::string>& interfaces) {
-  if(DIR* dir = opendir(System::NetworkDirectory)) {
-    while(dirent* entry = readdir(dir)) {
-      // All the interfaces in the directory will be symlinks. Nothing else
-      // should appear here anyway, but just in case ...
+size_t System::populateInterfaces(std::list<std::string>& interfaces) {
+  size_t size = interfaces.size();
+  
+  if(DIR* dir = opendir(System::getNetworkDirectory().c_str())) {
+    while(dirent* entry = readdir(dir))
+      // The network interfaces will be symlinks in this directory. It also
+      // ensures that . and .. don't get listed as networks
       if(entry->d_type == DT_LNK)
-        interfaces.insert(entry->d_name);
-    }
+        interfaces.push_back(entry->d_name);
     closedir(dir);
   }
+
+  interfaces.sort();
+  interfaces.unique();
+  return interfaces.size() - size;
+}
+
+const std::string& System::getNetworkDirectory() {
+  return NetworkDirectory;
+}
+
+const std::string& System::getNullDevice() {
+  return NullDevice;
 }

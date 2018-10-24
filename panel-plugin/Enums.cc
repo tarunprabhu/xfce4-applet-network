@@ -2,74 +2,73 @@
 
 #include <gtk/gtk.h>
 
-std::string str(NetworkKind kind) {
-  switch(kind) {
-  case NetworkKind::Cellular:
-    return "cellular";
-  case NetworkKind::PPP:
-    return "ppp";
-  case NetworkKind::Other:
-    return "other";
-  case NetworkKind::USB:
-    return "usb";
-  case NetworkKind::Virtual:
-    return "virtual";
-  case NetworkKind::Wired:
-    return "wired";
-  case NetworkKind::Wireless:
-    return "wireless";
-  default:
-    g_error("Unsupported network kind: %d", static_cast<int>(kind));
-    break;
-  }
-  return "<unknown>";
+#include <map>
+#include <tuple>
+
+template <typename Enum> using EnumMap = std::map<Enum, std::string>;
+
+using LabelPositionMap    = EnumMap<LabelPosition>;
+using NetworkKindMap      = EnumMap<NetworkKind>;
+using NetworkStatusMap    = EnumMap<NetworkStatus>;
+using TooltipThemeMap     = EnumMap<TooltipTheme>;
+using TooltipVerbosityMap = EnumMap<TooltipVerbosity>;
+
+static const auto EnumNames = std::make_tuple<LabelPositionMap,
+                                              NetworkKindMap,
+                                              NetworkStatusMap,
+                                              TooltipThemeMap,
+                                              TooltipVerbosityMap>(
+    // enum LabelPosition
+    {{LabelPosition::Left, "Left"},
+     {LabelPosition::Top, "Top"},
+     {LabelPosition::Right, "Right"},
+     {LabelPosition::Bottom, "Bottom"}},
+    // enum NetworkKind
+    {{NetworkKind::Cellular, "Cellular"},
+     {NetworkKind::PPP, "PPP"},
+     {NetworkKind::Other, "Other"},
+     {NetworkKind::USB, "USB"},
+     {NetworkKind::Virtual, "Virtual"},
+     {NetworkKind::Wired, "Wired"},
+     {NetworkKind::Wireless, "Wireless"}},
+    // enum NetworkStatus
+    {{NetworkStatus::Connected, "Connected"},
+     {NetworkStatus::Disabled, "Disabled"},
+     {NetworkStatus::Disconnected, "Disconnected"},
+     {NetworkStatus::Error, "Error"}},
+    // enum TooltipTheme
+    {{TooltipTheme::Dark, "Dark"}, {TooltipTheme::Light, "Light"}},
+    // enum TooltipVerbosity
+    {{TooltipVerbosity::Limited, "Limited"},
+     {TooltipVerbosity::Moderate, "Moderate"},
+     {TooltipVerbosity::Verbose, "Verbose"}});
+
+static const std::string UnknownEnumName = "<unknown>";
+
+template <typename Enum> const std::string& enum_str(Enum e) {
+  const auto& names = std::get<EnumMap<Enum>>(EnumNames);
+  auto        iter  = names.find(e);
+  if(iter != names.end())
+    return iter->second;
+  return UnknownEnumName;
 }
 
-std::string str(NetworkStatus status) {
-  switch(status) {
-  case NetworkStatus::Connected:
-    return "connected";
-  case NetworkStatus::Disabled:
-    return "disabled";
-  case NetworkStatus::Disconnected:
-    return "disconnected";
-  case NetworkStatus::Error:
-    return "error";
-  default:
-    g_error("Unsupported network status: %d", static_cast<int>(status));
-    break;
-  }
-  return "<unknown>";
+template <typename Enum> Enum enum_parse(const std::string& s) {
+  const auto& names = std::get<EnumMap<Enum>>(EnumNames);
+  for(const auto& p : names)
+    if(s == p.second)
+      return p.first;
+  return Enum::Last;
 }
 
-std::string str(LabelPosition position) {
-  switch(position) {
-  case LabelPosition::Left:
-    return "left";
-  case LabelPosition::Top:
-    return "top";
-  case LabelPosition::Right:
-    return "bottom";
-  case LabelPosition::Bottom:
-    return "below";
-  default:
-    g_error("Unsupported label position: %d", static_cast<int>(position));
-    break;
-  }
-  return "<unknown>";
-}
+template const std::string& enum_str(LabelPosition);
+template const std::string& enum_str(NetworkKind);
+template const std::string& enum_str(NetworkStatus);
+template const std::string& enum_str(TooltipTheme);
+template const std::string& enum_str(TooltipVerbosity);
 
-std::string str(TooltipVerbosity verbosity) {
-  switch(verbosity) {
-  case TooltipVerbosity::Limited:
-    return "Limited";
-  case TooltipVerbosity::Moderate:
-    return "Moderate";
-  case TooltipVerbosity::Verbose:
-    return "Verbose";
-  default:
-    g_error("Unsupported tooltip verbosity: %d", static_cast<int>(verbosity));
-    break;
-  }
-  return "<unknown>";
-}
+template LabelPosition enum_parse(const std::string&);
+template NetworkKind enum_parse(const std::string&);
+template NetworkStatus enum_parse(const std::string&);
+template TooltipTheme enum_parse(const std::string&);
+template TooltipVerbosity enum_parse(const std::string&);

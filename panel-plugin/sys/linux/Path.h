@@ -16,22 +16,24 @@ private:
   // Base cases
   void joinImpl(std::stringstream&);
   void joinImpl(std::stringstream&, const Path&);
+  void joinImpl(std::stringstream&, const char*);
   void joinImpl(std::stringstream&, const std::string&);
 
   template <typename T, typename... Paths>
-  void joinImpl(std::stringstream& ss, const T& path, Paths... paths) {
-    joinImpl(ss, path);
+  void joinImpl(std::stringstream& ss, const T& p1, Paths... ps) {
+    joinImpl(ss, p1);
     ss << Path::Separator;
-    joinImpl(ss, paths...);
+    joinImpl(ss, ps...);
   }
 
   void finalize(std::stringstream&);
 
 public:
   Path();
-  template <typename T, typename... Paths> Path(const T& path, Paths... paths) {
+
+  template <typename T, typename... Paths> Path(const T& p1, Paths... ps) {
     std::stringstream ss;
-    joinImpl(ss, path, paths...);
+    joinImpl(ss, p1, ps...);
     finalize(ss);
   }
 

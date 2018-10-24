@@ -21,13 +21,14 @@ libappletnetwork_la_SOURCES =  \
 	Plugin.cc \
 	PluginConfig.cc \
 	PluginUI.cc \
-	Stats.cc \
+	TooltipUI.cc \
+	NetworkStats.cc \
 	XfceUtils.cc \
 	main.c
 if LINUX
 libappletnetwork_la_SOURCES += \
 	sys/linux/Path.cc \
-	sys/linux/StatsImpl.cc \
+	sys/linux/NetworkStatsImpl.cc \
 	sys/linux/System.cc
 endif
 if BSD
