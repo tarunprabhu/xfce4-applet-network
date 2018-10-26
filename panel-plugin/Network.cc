@@ -1,5 +1,6 @@
 #include "Network.h"
 
+#include "Defaults.h"
 #include "Plugin.h"
 #include "XfceUtils.h"
 
@@ -10,17 +11,17 @@
 
 Network::Network(Plugin& p)
     : plugin(p), config(*this), ui(*this), stats(*this) {
-  DBG("Constructing network");
-  
-  // Set interface will set the network kind, reset stats and setup icons
-  setInterface(Network::Defaults::Interface);
-  setName(Network::Defaults::Name);
+  DBG("Construct network");
 
-  ui.create();
+  // Set interface will set the network kind, reset stats and setup icons
+  setInterface(Defaults::Network::Interface);
+  setName(Defaults::Network::Name);
+
+  ui.createUI();
 }
 
 Network::~Network() {
-  DBG("Destructing network: %s", opts.name.c_str());
+  DBG("Destruct network: %s", opts.name.c_str());
 }
 
 Plugin& Network::getPlugin() {
@@ -41,6 +42,10 @@ NetworkConfig& Network::getConfig() {
 
 NetworkUI& Network::getUI() {
   return ui;
+}
+
+const UniqueID& Network::getUniqueID() const {
+  return id;
 }
 
 const std::string& Network::getInterface() const {
@@ -71,7 +76,7 @@ void Network::setName(const std::string& name) {
 }
 
 void Network::writeConfig(XfceRc* rc) const {
-  DBG("Writing network configuration: %s", opts.name.c_str());
+  DBG("Write network configuration: %s", opts.name.c_str());
 
   xfce_rc_write_entry(rc, "interface", opts.interface.c_str());
   xfce_rc_write_enum_entry(rc, "kind", opts.kind);
@@ -80,7 +85,7 @@ void Network::writeConfig(XfceRc* rc) const {
 }
 
 void Network::readConfig(XfceRc* rc) {
-  DBG("Reading network configuration");
+  DBG("Read network configuration");
 
   // This will be called after the fields are initialized with default values
   // so we can safely just use them
@@ -101,19 +106,15 @@ std::string Network::getTooltipMarkup() const {
 }
 
 GdkPixbuf* Network::getTooltipIcon() const {
-  return icons.tooltip[stats.getStatus()];
+  return icons[getStatus()];
 }
 
-GdkPixbuf* Network::getToolbarIcon() const {
-  return icons.toolbar;
+GdkPixbuf* Network::getIcon(NetworkStatus status, unsigned size) {
+  return plugin.getIcon(getKind(), status, size);
 }
 
-GdkPixbuf* Network::getDialogIcon() const {
-  return icons.dialog;
-}
-
-GdkPixbuf* Network::getMenuIcon() const {
-  return icons.menu;
+GdkPixbuf* Network::getIcon(unsigned size) {
+  return plugin.getIcon(getKind(), getStatus(), size);
 }
 
 NetworkStatus Network::getStatus() const {
@@ -122,24 +123,21 @@ NetworkStatus Network::getStatus() const {
 
 void Network::refresh() {
   DBG("Refresh network: %s", opts.name.c_str());
-  
+
   ui.refresh();
 }
 
 void Network::update() {
   DBG("Update network: %s", opts.name.c_str());
-  
+
   stats.update();
 }
 
 void Network::updateIcons() {
-  for(NetworkStatus status : NetworkStatus())
-    icons.tooltip[status] =
-        plugin.getPixbuf(opts.kind, status, Plugin::IconSizeTooltip);
-  icons.toolbar = plugin.getPixbuf(opts.kind, NetworkStatus::Connected,
-                                   Plugin::IconSizeToolbar);
-  icons.dialog  = plugin.getPixbuf(opts.kind, NetworkStatus::Connected,
-                                  Plugin::IconSizeDialog);
-  icons.menu    = plugin.getPixbuf(opts.kind, NetworkStatus::Connected,
-                                Plugin::IconSizeMenu);
+  DBG("Update network icons: %s", getName().c_str());
+
+  for(NetworkStatus status : NetworkStatus()) {
+    iconNames[status] = plugin.getIconName(getKind(), status);
+    icons[status] = plugin.getIcon(getKind(), status, Plugin::IconSizeTooltip);
+  }
 }

@@ -11,7 +11,7 @@ NetworkStatsImpl::NetworkStatsImpl(NetworkStats& s) : stats(s) {
 }
 
 void NetworkStatsImpl::reset(const std::string& interface) {
-  dir       = Path(System::getNetworkDirectory(), interface);
+  dir       = Path(System::getNetworkInterfacesDir(), interface);
   fileState = Path(dir, "operstate");
   fileTx    = Path(dir, "statistics", "tx_bytes");
   fileRx    = Path(dir, "statistics", "rx_bytes");

@@ -17,19 +17,6 @@
 class Plugin;
 
 class PluginUI {
-public:
-  class Defaults {
-  public:
-    static const unsigned         Border     = 1;
-    static const unsigned         Padding    = 1;
-    static const unsigned         Spacing    = 1;
-    static constexpr gchar const* Label      = "Speed Monitor";
-    static const bool             ShowLabel  = true;
-    static const LabelPosition    LabelPos   = LabelPosition::Bottom;
-    static constexpr gchar const* FontFamily = "Sans";
-    static const gint             FontSize   = 9;
-  };
-
 private:
   Plugin& plugin;
 
@@ -58,14 +45,15 @@ private:
     PangoFontDescription* font;
   } opts;
 
+private:
+  void clearWidgets();
+  
 public:
   PluginUI(Plugin&);
   ~PluginUI();
 
   void readConfig(XfceRc*);
   void writeConfig(XfceRc*) const;
-
-  GdkPixbuf* getPixbuf(const std::string&, unsigned);
 
   void addNetworkWidget(GtkWidget*);
   void removeNetworkWidget(GtkWidget*);
@@ -78,7 +66,7 @@ public:
   void setShowLabel(bool);
   void setLabel(const std::string&);
   void setLabelPosition(LabelPosition);
-  void setFont(PangoFontDescription*);
+  void setFont(const PangoFontDescription*);
 
   unsigned                    getSize() const;
   GtkOrientation              getOrientation() const;
@@ -91,8 +79,8 @@ public:
   LabelPosition               getLabelPosition() const;
   const PangoFontDescription* getFont() const;
 
-  GtkWidget* create();
-  void       destroy();
+  GtkWidget* createUI();
+  void       destroyUI();
   void       refresh();
 };
 

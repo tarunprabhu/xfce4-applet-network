@@ -24,33 +24,17 @@ public:
     return impl.at(static_cast<uint64_t>(pos));
   }
 
-  // constexpr reference at(size_type pos) {
-  //   return impl.at(pos);
-  // }
-
   constexpr const_reference at(Enum pos) const {
     return impl.at(static_cast<uint64_t>(pos));
   }
-
-  // constexpr const_reference at(size_type pos) const {
-  //   return impl.at(pos);
-  // }
 
   constexpr reference operator[](Enum pos) {
     return impl[static_cast<uint64_t>(pos)];
   }
 
-  // constexpr reference operator[](size_type pos) {
-  //   return impl[pos];
-  // }
-
   constexpr const_reference operator[](Enum pos) const {
     return impl[static_cast<uint64_t>(pos)];
   }
-
-  // constexpr const_reference operator[](size_type pos) const {
-  //   return impl[pos];
-  // }
 
   constexpr reference front() {
     return impl.front();
@@ -68,9 +52,75 @@ public:
     return impl.back();
   }
 
-  constexpr size_type size() const {
+  constexpr bool empty() const noexcept {
+    return impl.empty();
+  }
+  
+  constexpr size_type size() const noexcept {
     return impl.size();
   }
+
+  constexpr size_type max_size() const noexcept {
+    return impl.max_size();
+  }
+
+  constexpr iterator begin() noexcept {
+    return impl.begin();
+  }
+
+  constexpr const_iterator begin() const noexcept {
+    return impl.begin();
+  }
+
+  constexpr iterator end() noexcept {
+    return impl.end();
+  }
+
+  constexpr const_iterator end() const noexcept {
+    return impl.end();
+  }
+
+  constexpr iterator rbegin() noexcept {
+    return impl.rbegin();
+  }
+
+  constexpr const_iterator rbegin() const noexcept {
+    return impl.rbegin();
+  }
+
+  constexpr iterator rend() noexcept {
+    return impl.rend();
+  }
+
+  constexpr const_iterator rend() const noexcept {
+    return impl.rend();
+  }
+  
+  constexpr bool operator==(const Array<T, Enum>& o) const {
+    return impl == o.impl;
+  }
+
+  constexpr bool operator!=(const Array<T, Enum>& o) const {
+    return impl != o.impl;
+  }
+
+  constexpr bool operator<(const Array<T, Enum>& o) const {
+    return impl < o.impl;
+  }
+
+  constexpr bool operator<=(const Array<T, Enum>& o) const {
+    return impl <= o.impl;
+  }
+
+  constexpr bool operator>(const Array<T, Enum>& o) const {
+    return impl > o.impl;
+  }
+
+  constexpr bool operator>=(const Array<T, Enum>& o) const {
+    return impl >= o.impl;
+  }
 };
+
+
 
 #endif // XFCE_APPLET_NETWORK_ARRAY_H

@@ -5,6 +5,7 @@
 
 #include "sys/linux/NetworkStatsImpl.h"
 #include "sys/linux/System.h"
+#include "sys/linux/UniqueID.h"
 
 #elif defined(__FreeBSD__)
 

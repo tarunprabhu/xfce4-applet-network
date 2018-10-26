@@ -10,7 +10,7 @@
 #include "NetworkConfig.h"
 #include "NetworkStats.h"
 #include "NetworkUI.h"
-#include "Types.h"
+#include "System.h"
 
 #include <libxfce4util/libxfce4util.h>
 
@@ -21,39 +21,21 @@
 class Plugin;
 
 class Network {
-public:
-  class Defaults {
-  public:
-    static constexpr gchar const* Interface = "<unknown>";
-    static constexpr gchar const* Name      = "<unknown>";
-  };
-
-  class Ranges {
-  public:
-    static constexpr Range<double> RxRate = {0.5, 20.0, 0.5};
-    static constexpr Range<double> TxRate = {0.125, 5, 0.125};
-  };
-
 private:
-  Plugin&       plugin;
-  NetworkConfig config;
-  NetworkUI     ui;
-  NetworkStats  stats;
+  Plugin&                           plugin;
+  NetworkConfig                     config;
+  NetworkUI                         ui;
+  NetworkStats                      stats;
+  UniqueID                          id; // A unique id for this device
+  Array<std::string, NetworkStatus> iconNames;
+  Array<GdkPixbuf*, NetworkStatus>  icons;
 
   // Network options
   struct {
-    std::string interface;
+    std::string interface; // The actual network interface
     NetworkKind kind;
-    std::string name; // User-friendly name that appears in tooltips
+    std::string name; // User-friendly name for the network
   } opts;
-
-  // Icons
-  struct {
-    Array<GdkPixbuf*, NetworkStatus> tooltip;
-    GdkPixbuf*                       toolbar;
-    GdkPixbuf*                       dialog;
-    GdkPixbuf*                       menu;
-  } icons;
 
 public:
   Network(Plugin&);
@@ -67,6 +49,7 @@ public:
   NetworkConfig&      getConfig();
   NetworkUI&          getUI();
   const NetworkStats& getStats() const;
+  const UniqueID&     getUniqueID() const;
 
   const std::string& getInterface() const;
   NetworkKind        getKind() const;
@@ -75,9 +58,8 @@ public:
   NetworkStatus getStatus() const;
   std::string   getTooltipMarkup() const;
   GdkPixbuf*    getTooltipIcon() const;
-  GdkPixbuf*    getToolbarIcon() const;
-  GdkPixbuf*    getDialogIcon() const;
-  GdkPixbuf*    getMenuIcon() const;
+  GdkPixbuf*    getIcon(NetworkStatus, unsigned);
+  GdkPixbuf*    getIcon(unsigned);
 
   void setInterface(const std::string&);
   void setKind(NetworkKind);

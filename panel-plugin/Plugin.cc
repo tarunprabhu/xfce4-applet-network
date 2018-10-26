@@ -1,5 +1,6 @@
 #include "Plugin.h"
 
+#include "Defaults.h"
 #include "XfceUtils.h"
 
 #include <libxfce4panel/xfce-panel-plugin.h>
@@ -7,17 +8,26 @@
 
 #include <gtk/gtk.h>
 
-#include <algorithm>
 #include <sstream>
-#include <vector>
 
 Plugin::Plugin(XfcePanelPlugin* xfcePanelPlugin)
     : xfce(xfcePanelPlugin), ui(*this), config(*this), tooltip(*this) {
   DBG("Constructing plugin");
   
-  opts.period = Plugin::Defaults::Period;
-
-  ui.create();
+  opts.period = Defaults::Plugin::Period;
+  
+  // There are only a limited number of statuses and kinds that need to be
+  // combined. Might as well keep them around
+  for(NetworkKind kind : NetworkKind()) {
+    std::stringstream  ss;
+    ss << "xfce-applet-network-" << enum_str(kind, true);
+    for(NetworkStatus status : NetworkStatus()) {
+      ss << "-" << enum_str(status, true);
+      networkIconNames[kind][status] = ss.str();
+    }
+  }
+  
+  ui.createUI();
 }
 
 Plugin::~Plugin() {
@@ -83,22 +93,17 @@ void Plugin::removeNetworkAt(int pos) {
   opts.networks.erase(iter);
 }
 
-GdkPixbuf*
-Plugin::getPixbuf(NetworkKind kind, NetworkStatus status, unsigned size) {
-  std::stringstream  ss;
-  std::string        strKindLower, strStatusLower;
-  const std::string& strKind   = enum_str(kind);
-  const std::string& strStatus = enum_str(status);
-
-  std::transform(strKind.begin(), strKind.end(), strKindLower.begin(),
-                 ::tolower);
-  std::transform(strStatus.begin(), strStatus.end(), strStatusLower.begin(),
-                 ::tolower);
-  ss << "xfce-applet-network-" << strKindLower << "-" << strStatusLower;
-  return getPixbuf(ss.str(), size);
+const std::string& Plugin::getIconName(NetworkKind   kind,
+                                       NetworkStatus status) const {
+  return networkIconNames[kind][status];
 }
 
-GdkPixbuf* Plugin::getPixbuf(const std::string& name, unsigned size) {
+GdkPixbuf*
+Plugin::getIcon(NetworkKind kind, NetworkStatus status, unsigned size) {
+  return getIcon(getIconName(kind, status), size);
+}
+
+GdkPixbuf* Plugin::getIcon(const std::string& name, unsigned size) {
   GdkPixbuf*         pb    = nullptr;
   GtkIconLookupFlags flags = static_cast<GtkIconLookupFlags>(0);
 
@@ -113,8 +118,12 @@ GdkPixbuf* Plugin::getPixbuf(const std::string& name, unsigned size) {
   return pb;
 }
 
+GdkPixbuf* Plugin::getPluginIcon(unsigned size) {
+  return getIcon("network-idle", size);
+}
+
 void Plugin::about() {
-  GdkPixbuf* icon = getPixbuf("network-idle", 32);
+  GdkPixbuf* icon = getPluginIcon(32);
 
   const gchar* auth[] = {"Tarun Prabhu <tarun.prabhu@gmail.com>", NULL};
   gtk_show_about_dialog(
@@ -130,7 +139,7 @@ void Plugin::about() {
 }
 
 void Plugin::configure() {
-  config.createDialog();
+  config.createUI();
 }
 
 void Plugin::reorient(GtkOrientation orientation) {
@@ -220,7 +229,7 @@ double Plugin::getPeriod() const {
 size_t Plugin::populateInterfaces(std::list<std::string>& interfaces) {
   size_t size = interfaces.size();
 
-  for(const Network& network : opts.networks)
+  for(const Network& network : getNetworks())
     interfaces.push_back(network.getInterface());
   interfaces.sort();
 
@@ -230,13 +239,13 @@ size_t Plugin::populateInterfaces(std::list<std::string>& interfaces) {
 void Plugin::redraw() {
   DBG("Redraw plugin");
   
-  for(Network& network : opts.networks)
-    network.getUI().destroy();
-  ui.destroy();
+  for(Network& network : getNetworks())
+    network.getUI().destroyUI();
+  ui.destroyUI();
 
-  ui.create();
-  for(Network& network : opts.networks)
-    network.getUI().create();
+  ui.createUI();
+  for(Network& network : getNetworks())
+    network.getUI().createUI();
   refresh();
 }
 
@@ -244,6 +253,6 @@ void Plugin::refresh() {
   DBG("Refresh plugin");
 
   ui.refresh();
-  for(Network& network : opts.networks)
+  for(Network& network : getNetworks())
     network.refresh();
 }

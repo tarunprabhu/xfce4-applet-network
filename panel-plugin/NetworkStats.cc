@@ -8,7 +8,10 @@
 
 NetworkStats::NetworkStats(Network& net)
     : network(net), plugin(network.getPlugin()), impl(*this),
-      status(NetworkStatus::Disabled), tx(0), rx(0), txRate(0.0), rxRate(0.0) {
+      status(NetworkStatus::Disconnected), tx(0), rx(0), txRate(0.0),
+      rxRate(0.0) {
+  // FIXME: The default network status should be disabled. It will be something
+  // else during development
   ;
 }
 

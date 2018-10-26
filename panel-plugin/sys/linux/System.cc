@@ -4,12 +4,14 @@
 
 #include <libxfce4util/libxfce4util.h>
 
+#include <algorithm>
 #include <fstream>
 #include <unistd.h>
 
 // Static variables that are exposed by the System class
-static const std::string NetworkDirectory = "/sys/class/net";
-static const std::string NullDevice       = "/dev/null";
+static const std::string NetworkInterfacesDir = "/sys/class/net";
+static const std::string BlockDevicesDir      = "/sys/class/block";
+static const std::string NullDevice           = "/dev/null";
 
 bool System::isCellular(const Path&) {
   DBG("UNIMPLEMENTED: isCellular()");
@@ -56,7 +58,7 @@ bool System::isWired(const Path& dir) {
 }
 
 NetworkKind System::getNetworkKind(const std::string& interface) {
-  Path dir(System::getNetworkDirectory(), interface);
+  Path dir(System::getNetworkInterfacesDir(), interface);
 
   if(isUSB(dir))
     return NetworkKind::USB;
@@ -72,10 +74,10 @@ NetworkKind System::getNetworkKind(const std::string& interface) {
   return NetworkKind::Other;
 }
 
-size_t System::populateInterfaces(std::list<std::string>& interfaces) {
-  size_t size = interfaces.size();
-  
-  if(DIR* dir = opendir(System::getNetworkDirectory().c_str())) {
+std::vector<std::string> System::getNetworkInterfaces() {
+  std::vector<std::string> interfaces;
+
+  if(DIR* dir = opendir(System::getNetworkInterfacesDir().c_str())) {
     while(dirent* entry = readdir(dir))
       // The network interfaces will be symlinks in this directory. It also
       // ensures that . and .. don't get listed as networks
@@ -83,14 +85,25 @@ size_t System::populateInterfaces(std::list<std::string>& interfaces) {
         interfaces.push_back(entry->d_name);
     closedir(dir);
   }
+  std::sort(interfaces.begin(), interfaces.end());
 
-  interfaces.sort();
-  interfaces.unique();
-  return interfaces.size() - size;
+  return interfaces;
 }
 
-const std::string& System::getNetworkDirectory() {
-  return NetworkDirectory;
+std::vector<std::string> System::getBlockDevices() {
+  std::vector<std::string> interfaces;
+
+  // TODO: Implement this
+
+  return interfaces;
+}
+
+const std::string& System::getNetworkInterfacesDir() {
+  return NetworkInterfacesDir;
+}
+
+const std::string& System::getBlockDevicesDir() {
+  return BlockDevicesDir;
 }
 
 const std::string& System::getNullDevice() {

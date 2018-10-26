@@ -5,6 +5,9 @@
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
+#include "Defaults.h"
+#include "Range.h"
+
 #include <gtk/gtk.h>
 
 class Plugin;
@@ -25,23 +28,32 @@ public:
   // The width of each step in a slider in pixels
   static const unsigned SliderStepWidth = 10;
 
+  static constexpr Range<double>   RangePeriod  = {0.25, 2, 0.25,
+                                                Defaults::Plugin::Period};
+  static constexpr Range<unsigned> RangeBorder  = {0, 8, 1,
+                                                  Defaults::Plugin::UI::Border};
+  static constexpr Range<unsigned> RangePadding = {
+      0, 8, 1, Defaults::Plugin::UI::Padding};
+  static constexpr Range<unsigned> RangeSpacing = {
+      0, 8, 1, Defaults::Plugin::UI::Spacing};
+
 private:
-  Plugin& plugin;
-  PluginUI& ui;
+  Plugin&    plugin;
+  PluginUI&  ui;
   TooltipUI& tooltip;
 
   struct UI {
-    GtkWidget* dialog;        // Main config dialog window
-    GtkWidget* entryLabel;    // Textbox to update the plugin label
-    GtkWidget* treeNetworks;  // Tree view showing the networks
-    GtkWidget* toolbarAdd;    // Add network toolbar button
-    GtkWidget* toolbarRemove; // Remove network toolbar button
-    GtkWidget* toolbarUp;     // Move network up toolbar button
-    GtkWidget* toolbarDown;   // Move network down toolbar button
-    GtkWidget* toolbarConfig; // Configure network toolbar button
-    GtkWidget* labelBorder;   // Label showing border width
-    GtkWidget* labelPadding;  // Label showing padding
-    GtkWidget* labelSpacing;  // Label showing padding
+    GtkWidget* dialog;          // Main config dialog window
+    GtkWidget* entryLabel;      // Textbox to update the plugin label
+    GtkWidget* treeNetworks;    // Tree view showing the networks
+    GtkWidget* toolbarAdd;      // Add network toolbar button
+    GtkWidget* toolbarRemove;   // Remove network toolbar button
+    GtkWidget* toolbarMoveUp;   // Move network up toolbar button
+    GtkWidget* toolbarMoveDown; // Move network down toolbar button
+    GtkWidget* toolbarConfig;   // Configure network toolbar button
+    GtkWidget* labelBorder;     // Label showing border width
+    GtkWidget* labelPadding;    // Label showing padding
+    GtkWidget* labelSpacing;    // Label showing padding
   } widgets;
 
 private:
@@ -51,31 +63,33 @@ private:
   GtkWidget* createAppearancePage();
   GtkWidget* createNetworksPage();
 
+  void clearWidgets();
+
 public:
   PluginConfig(Plugin&);
   ~PluginConfig();
 
-  void cbDialogResponse(GtkWidget*, gint);
-  void cbSpinPeriodChanged(GtkWidget*);
-  void cbCheckShowLabelToggled(GtkWidget*);
-  void cbEntryLabelChanged(GtkWidget*);
-  void cbComboLabelPositionChanged(GtkWidget*);
-  void cbFontFontSet(GtkWidget*);
-  void cbScaleBorderChanged(GtkWidget*);
-  void cbScalePaddingChanged(GtkWidget*);
-  void cbScaleSpacingChanged(GtkWidget*);
-  void cbComboTooltipThemeChanged(GtkWidget*);
-  void cbComboTooltipVerbosityChanged(GtkWidget*);
-  void cbTreeCursorChanged(GtkWidget*);
-  void cbTreeRowActivated(GtkWidget*, GtkTreePath*, GtkTreeViewColumn*);
-  void cbToolbarAddClicked(GtkWidget*);
-  void cbToolbarRemoveClicked(GtkWidget*);
-  void cbToolbarUpClicked(GtkWidget*);
-  void cbToolbarDownClicked(GtkWidget*);
-  void cbToolbarConfigClicked(GtkWidget*);
-  
-  GtkWidget* createDialog();
-  void       destroyDialog();
+  void cbDialogResponse(GtkDialog*, gint);
+  void cbSpinPeriodChanged(GtkSpinButton*);
+  void cbCheckShowLabelToggled(GtkToggleButton*);
+  void cbEntryLabelChanged(GtkEntry*);
+  void cbComboLabelPositionChanged(GtkComboBox*);
+  void cbFontFontSet(GtkFontChooser*);
+  void cbScaleBorderChanged(GtkRange*);
+  void cbScalePaddingChanged(GtkRange*);
+  void cbScaleSpacingChanged(GtkRange*);
+  void cbComboTooltipThemeChanged(GtkComboBox*);
+  void cbComboTooltipVerbosityChanged(GtkComboBox*);
+  void cbTreeRowActivated(GtkTreeView*, GtkTreePath*, GtkTreeViewColumn*);
+  void cbTreeCursorChanged(GtkTreeView*);
+  void cbToolbarAddClicked(GtkToolItem*);
+  void cbToolbarRemoveClicked(GtkToolItem*);
+  void cbToolbarMoveUpClicked(GtkToolItem*);
+  void cbToolbarMoveDownClicked(GtkToolItem*);
+  void cbToolbarConfigClicked(GtkToolItem*);
+
+  GtkWidget* createUI();
+  void       destroyUI();
   GtkWidget* getDialogWidget();
 };
 

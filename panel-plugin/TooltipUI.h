@@ -14,13 +14,6 @@
 class Plugin;
 
 class TooltipUI {
-public:
-  class Defaults {
-  public:
-    static const TooltipTheme     Theme     = TooltipTheme::Dark;
-    static const TooltipVerbosity Verbosity = TooltipVerbosity::Moderate;
-  };
-
 private:
   Plugin& plugin;
 

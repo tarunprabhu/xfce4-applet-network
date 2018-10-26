@@ -59,6 +59,9 @@ AC_SUBST(OS)
 AC_HEADER_SYS_WAIT
 AC_TYPE_SIZE_T
 
+dnl Compiler options
+AX_CXX_COMPILE_STDCXX([14], [], [mandatory])
+
 dnl configure the panel plugin
 XDT_CHECK_PACKAGE([LIBXFCE4PANEL], [libxfce4panel-2.0], [4.12.0])
 

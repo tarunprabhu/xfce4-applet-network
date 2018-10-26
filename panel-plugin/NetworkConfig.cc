@@ -5,6 +5,7 @@
 #include "Plugin.h"
 #include "PluginConfig.h"
 #include "System.h"
+#include "Utils.h"
 
 #include <libxfce4ui/libxfce4ui.h>
 #include <libxfce4util/libxfce4util.h>
@@ -14,103 +15,121 @@
 
 // Callbacks for the network page
 static void cb_combo_interface_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbComboInterfaceChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbComboInterfaceChanged(
+      GTK_COMBO_BOX(w));
 }
 
 static void cb_combo_kind_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbComboKindChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbComboKindChanged(GTK_COMBO_BOX(w));
 }
 
 static void cb_entry_name_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbEntryNameChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbEntryNameChanged(GTK_ENTRY(w));
 }
 
 static void cb_scale_rx_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbScaleRxChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbScaleRxChanged(GTK_RANGE(w));
 }
 
 static void cb_scale_tx_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbScaleTxChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbScaleTxChanged(GTK_RANGE(w));
 }
 
-static void cb_check_always_show_toggled(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbCheckAlwaysShowToggled(w);
+static void cb_check_show_when_disabled_toggled(GtkWidget* w, gpointer data) {
+  reinterpret_cast<NetworkConfig*>(data)->cbCheckShowWhenDisabledToggled(
+      GTK_TOGGLE_BUTTON(w));
+}
+
+static void cb_check_show_when_disconnected_toggled(GtkWidget* w,
+                                                    gpointer   data) {
+  reinterpret_cast<NetworkConfig*>(data)->cbCheckShowWhenDisconnectedToggled(
+      GTK_TOGGLE_BUTTON(w));
 }
 
 static void cb_check_show_label_toggled(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbCheckShowLabelToggled(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbCheckShowLabelToggled(
+      GTK_TOGGLE_BUTTON(w));
 }
 
 static void cb_entry_label_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbEntryLabelChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbEntryLabelChanged(GTK_ENTRY(w));
 }
 
 static void cb_color_fg_activated(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbColorFgActivated(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbColorFgActivated(
+      GTK_COLOR_CHOOSER(w));
 }
 
 static void cb_color_bg_activated(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbColorBgActivated(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbColorBgActivated(
+      GTK_COLOR_CHOOSER(w));
 }
 
 static void cb_combo_position_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<NetworkConfig*>(data)->cbComboPositionChanged(w);
+  reinterpret_cast<NetworkConfig*>(data)->cbComboPositionChanged(
+      GTK_COMBO_BOX(w));
 }
 
 NetworkConfig::NetworkConfig(Network& net)
     : network(net), ui(network.getUI()), plugin(network.getPlugin()) {
-  DBG("Constructing network config");
-  
-  widgets.dialog       = nullptr;
-  widgets.imgInterface = nullptr;
-  widgets.entryName    = nullptr;
-  widgets.entryLabel   = nullptr;
+  DBG("Construct network config");
+
+  clearWidgets();
 }
 
 NetworkConfig::~NetworkConfig() {
-  DBG("Destructing network config");
+  DBG("Destruct network config: %s", network.getName().c_str());
+
+  destroyUI();
 }
 
-void NetworkConfig::cbComboInterfaceChanged(GtkWidget* w) {
-  const gchar* interface = gtk_combo_box_get_active_id(GTK_COMBO_BOX(w));
+void NetworkConfig::clearWidgets() {
+  widgets.dialog       = nullptr;
+  widgets.imgInterface = nullptr;
+  widgets.entryName    = nullptr;
+  widgets.labelRxRate  = nullptr;
+  widgets.labelTxRate  = nullptr;
+  widgets.entryLabel   = nullptr;
+}
 
-  DBG("Network interface changed: %s", interface);
+void NetworkConfig::cbComboInterfaceChanged(GtkComboBox* comboInterface) {
+  DBG("Network interface changed: %s", network.getName().c_str());
+
+  const gchar* interface = gtk_combo_box_get_active_id(comboInterface);
 
   network.setInterface(interface);
   network.setName(interface);
   ui.setLabel(interface);
 
   // Update other fields in page
-  GdkPixbuf* iconConfig = plugin.getPixbuf(
-      network.getKind(), NetworkStatus::Connected, NetworkConfig::IconSize);
+  GdkPixbuf*    iconConfig = network.getIcon(Plugin::IconSizeLarge);
   gtk_image_set_from_pixbuf(GTK_IMAGE(widgets.imgInterface), iconConfig);
   gtk_entry_set_text(GTK_ENTRY(widgets.entryName), interface);
   gtk_entry_set_text(GTK_ENTRY(widgets.entryLabel), interface);
 
   GtkWidget* dialog = widgets.dialog;
-  gtk_window_set_icon(GTK_WINDOW(dialog), network.getDialogIcon());
+  GdkPixbuf* iconDialog = network.getIcon(Plugin::IconSizeMenu);
+  gtk_window_set_icon(GTK_WINDOW(dialog), iconDialog);
   xfce_titled_dialog_set_subtitle(XFCE_TITLED_DIALOG(dialog),
                                   network.getName().c_str());
 }
 
-void NetworkConfig::cbComboKindChanged(GtkWidget* w) {
-  auto kind =
-      static_cast<NetworkKind>(gtk_combo_box_get_active(GTK_COMBO_BOX(w)));
+void NetworkConfig::cbComboKindChanged(GtkComboBox* comboKind) {
+  DBG("Network interface kind changed: %s", network.getName().c_str());
 
-  DBG("Network interface kind changed: %s", enum_str(kind).c_str());
+  const gchar* id = gtk_combo_box_get_active_id(comboKind);
 
-  network.setKind(kind);
+  network.setKind(enum_parse<NetworkKind>(id));
 
   // Update other fields in page
-  GdkPixbuf* pixbuf =
-      plugin.getPixbuf(kind, NetworkStatus::Connected, NetworkConfig::IconSize);
+  GdkPixbuf* pixbuf = network.getIcon(Plugin::IconSizeLarge);
   gtk_image_set_from_pixbuf(GTK_IMAGE(widgets.imgInterface), pixbuf);
 }
 
-void NetworkConfig::cbEntryNameChanged(GtkWidget* w) {
-  const gchar* s = gtk_entry_get_text(GTK_ENTRY(w));
+void NetworkConfig::cbEntryNameChanged(GtkEntry* entryName) {
+  DBG("Network name changed: %s", network.getName().c_str());
 
-  DBG("Network name changed: %s", s);
+  const gchar* s = gtk_entry_get_text(entryName);
 
   network.setName(s);
 
@@ -120,98 +139,95 @@ void NetworkConfig::cbEntryNameChanged(GtkWidget* w) {
                                   network.getName().c_str());
 }
 
-void NetworkConfig::cbScaleRxChanged(GtkWidget* w) {
-  gdouble value = gtk_range_get_value(GTK_RANGE(w));
+void NetworkConfig::cbScaleRxChanged(GtkRange* scaleRx) {
+  DBG("Network incoming rate changed: %s", network.getName().c_str());
 
-  DBG("Network incoming rate changed: %.2f", value);
+  gdouble value = gtk_range_get_value(scaleRx);
 
   ui.setMaxRxRate(value);
 }
 
-void NetworkConfig::cbScaleTxChanged(GtkWidget* w) {
-  gdouble value = gtk_range_get_value(GTK_RANGE(w));
+void NetworkConfig::cbScaleTxChanged(GtkRange* scaleTx) {
+  DBG("Network outgoing rate changed: %s", network.getName().c_str());
 
-  DBG("Network outgoing rate changed: %.2f", value);
+  gdouble value = gtk_range_get_value(scaleTx);
 
   ui.setMaxTxRate(value);
 }
 
-void NetworkConfig::cbCheckAlwaysShowToggled(GtkWidget* w) {
-  gboolean show = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+void NetworkConfig::cbCheckShowWhenDisabledToggled(
+    GtkToggleButton* checkShowWhenDisabled) {
+  DBG("Network show dial when disabled changed: %s", network.getName().c_str());
 
-  DBG("Always show dial changed: %d", show);
+  gboolean show = gtk_toggle_button_get_active(checkShowWhenDisabled);
 
-  ui.setAlwaysShowDial(show);
+  ui.setShowWhenDisabled(show);
   network.refresh();
 }
 
-void NetworkConfig::cbCheckShowLabelToggled(GtkWidget* w) {
-  gboolean show = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(w));
+void NetworkConfig::cbCheckShowLabelToggled(
+    GtkToggleButton* checkShowWhenDisconnected) {
+  DBG("Network show label changed: %s", network.getName().c_str());
 
-  DBG("Show label changed: %d", show);
+  gboolean show = gtk_toggle_button_get_active(checkShowWhenDisconnected);
 
   ui.setShowLabel(show);
   network.refresh();
 }
 
-void NetworkConfig::cbEntryLabelChanged(GtkWidget* w) {
-  const gchar* s = gtk_entry_get_text(GTK_ENTRY(w));
+void NetworkConfig::cbEntryLabelChanged(GtkEntry* entryLabel) {
+  DBG("Network label changed: %s", network.getName().c_str());
+
+  const gchar* s = gtk_entry_get_text(entryLabel);
 
   ui.setLabel(s);
   network.refresh();
 }
 
-void NetworkConfig::cbColorFgActivated(GtkWidget* w) {
-  GdkRGBA color;
-  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(w), &color);
+void NetworkConfig::cbColorFgActivated(GtkColorChooser* colorFg) {
+  DBG("Label foreground color changed: %s", network.getName().c_str());
 
-  DBG("Label foreground color changed");
+  GdkRGBA color;
+  gtk_color_chooser_get_rgba(colorFg, &color);
 
   ui.setLabelFgColor(&color);
   network.refresh();
 }
 
-void NetworkConfig::cbColorBgActivated(GtkWidget* w) {
-  GdkRGBA color;
-  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(w), &color);
+void NetworkConfig::cbColorBgActivated(GtkColorChooser* colorBg) {
+  DBG("Label background color changed: %s", network.getName().c_str());
 
-  DBG("Label background color changed");
+  GdkRGBA color;
+  gtk_color_chooser_get_rgba(colorBg, &color);
 
   ui.setLabelBgColor(&color);
   network.refresh();
 }
 
-void NetworkConfig::cbComboPositionChanged(GtkWidget* w) {
-  const gchar* id = gtk_combo_box_get_active_id(GTK_COMBO_BOX(w));
+void NetworkConfig::cbComboPositionChanged(GtkComboBox* comboPosition) {
+  DBG("Label position changed: %s", network.getName().c_str());
 
-  DBG("Label position changed: %s", id);
+  const gchar* id = gtk_combo_box_get_active_id(comboPosition);
 
-  if(id) {
-    switch(id[0]) {
-    case 't':
-      ui.setLabelPosition(LabelPosition::Top);
-      break;
-    case 'b':
-      ui.setLabelPosition(LabelPosition::Bottom);
-      break;
-    default:
-      break;
-    }
-  }
-
+  ui.setLabelPosition(enum_parse<LabelPosition>(id));
   network.refresh();
 }
 
 GtkWidget* NetworkConfig::addNetworkOptions() {
+  DBG("Network config add network options: %s", network.getName().c_str());
+
   int row = -1;
 
   GtkWidget* frame = gtk_frame_new("Network options");
+  gtk_frame_set_label_align(GTK_FRAME(frame), PluginConfig::FrameAlignX,
+                            PluginConfig::FrameAlignY);
   gtk_container_set_border_width(GTK_CONTAINER(frame), PluginConfig::Border);
   gtk_widget_show(frame);
 
   GtkWidget* grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), PluginConfig::Padding);
   gtk_grid_set_column_spacing(GTK_GRID(grid), PluginConfig::Padding);
+  gtk_container_set_border_width(GTK_CONTAINER(grid), PluginConfig::Border);
   gtk_widget_show(grid);
 
   // Interface row
@@ -221,20 +237,28 @@ GtkWidget* NetworkConfig::addNetworkOptions() {
   gtk_grid_attach(GTK_GRID(grid), labelInterface, 0, row, 1, 1);
   gtk_widget_show(labelInterface);
 
-  std::list<std::string> interfaces;
-  plugin.populateInterfaces(interfaces);
-  System::populateInterfaces(interfaces);
-  GtkWidget* comboInterface = gtk_combo_box_text_new_with_entry();
-  for(const std::string& interface : interfaces)
+  GtkWidget* comboInterface = gtk_combo_box_text_new();
+  if(network.getInterface() == Defaults::Network::Interface) {
+    for(const std::string& interface : System::getNetworkInterfaces())
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboInterface),
+                                interface.c_str(), interface.c_str());
+    gtk_widget_set_sensitive(comboInterface, TRUE);
+  } else {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboInterface),
-                              interface.c_str(), interface.c_str());
+                              network.getInterface().c_str(),
+                              network.getInterface().c_str());
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboInterface),
+                                network.getInterface().c_str());
+    gtk_widget_set_sensitive(comboInterface, FALSE);
+  }
   gtk_grid_attach(GTK_GRID(grid), comboInterface, 1, row, 1, 1);
   gtk_widget_show(comboInterface);
   gtk_label_set_mnemonic_widget(GTK_LABEL(labelInterface), comboInterface);
 
-  GdkPixbuf* pixbuf       = network.getDialogIcon();
+  // Interface icon
+  GdkPixbuf* pixbuf       = network.getIcon(Plugin::IconSizeLarge);
   GtkWidget* imgInterface = gtk_image_new_from_pixbuf(pixbuf);
-  gtk_grid_attach(GTK_GRID(grid), imgInterface, 2, row, 1, 2);
+  gtk_grid_attach(GTK_GRID(grid), imgInterface, 2, row, 1, 3);
   gtk_widget_show(imgInterface);
 
   // Interface kind
@@ -243,8 +267,13 @@ GtkWidget* NetworkConfig::addNetworkOptions() {
   for(NetworkKind kind : NetworkKind())
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboKind),
                               enum_str(kind).c_str(), enum_str(kind).c_str());
-  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboKind),
-                              enum_str(network.getKind()).c_str());
+  if(network.getInterface() == Defaults::Network::Interface) {
+    gtk_widget_set_sensitive(comboKind, TRUE);
+  } else {
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboKind),
+                                enum_str(network.getKind()).c_str());
+    gtk_widget_set_sensitive(comboKind, FALSE);
+  }
   gtk_grid_attach(GTK_GRID(grid), comboKind, 1, row, 1, 1);
   gtk_widget_show(comboKind);
 
@@ -278,16 +307,21 @@ GtkWidget* NetworkConfig::addNetworkOptions() {
 }
 
 GtkWidget* NetworkConfig::addDialOptions() {
-  int      row  = -1;
-  unsigned span = 0, steps = 1;
+  DBG("Network config add dial options: %s", network.getName().c_str());
+
+  int row = -1;
 
   GtkWidget* frame = gtk_frame_new("Dial options");
+  gtk_frame_set_label_align(GTK_FRAME(frame), PluginConfig::FrameAlignX,
+                            PluginConfig::FrameAlignY);
   gtk_container_set_border_width(GTK_CONTAINER(frame), PluginConfig::Border);
   gtk_widget_show(frame);
 
   GtkWidget* grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), PluginConfig::Padding);
   gtk_grid_set_column_spacing(GTK_GRID(grid), PluginConfig::Padding);
+  gtk_container_set_border_width(GTK_CONTAINER(grid), PluginConfig::Border);
+  gtk_container_add(GTK_CONTAINER(frame), grid);
   gtk_widget_show(grid);
 
   // Maximum incoming rate
@@ -300,24 +334,26 @@ GtkWidget* NetworkConfig::addDialOptions() {
   // TODO: We might want to have a different range in the scale depending on
   // the network kind - wireless networks will likely be slower than ethernet
   // which might be slower than loopback or virtual networks
-  GtkWidget* scaleRx = gtk_scale_new_with_range(
-      GTK_ORIENTATION_HORIZONTAL, Network::Ranges::RxRate.Min,
-      Network::Ranges::RxRate.Max, Network::Ranges::RxRate.Step);
-  for(gdouble r = Network::Ranges::RxRate.Min; r <= Network::Ranges::RxRate.Max;
-      r += Network::Ranges::RxRate.Step)
-    gtk_scale_add_mark(GTK_SCALE(scaleRx), r, GTK_POS_BOTTOM, NULL);
-  gtk_range_set_increments(GTK_RANGE(scaleRx), Network::Ranges::RxRate.Step,
-                           Network::Ranges::RxRate.Step);
+  double     rxFirst   = NetworkConfig::RangeRxRate.getFirst();
+  double     rxLast    = NetworkConfig::RangeRxRate.getLast();
+  double     rxStep    = NetworkConfig::RangeRxRate.getStep();
+  double     rxDefault = NetworkConfig::RangeRxRate.getDefault();
+  GtkWidget* scaleRx   = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
+                                                rxFirst, rxLast, rxStep);
+  for(double v : NetworkConfig::RangeRxRate)
+    gtk_scale_add_mark(GTK_SCALE(scaleRx), v, GTK_POS_BOTTOM, NULL);
+  gtk_range_set_increments(GTK_RANGE(scaleRx), rxStep, rxStep);
   gtk_scale_set_draw_value(GTK_SCALE(scaleRx), FALSE);
-  gtk_range_set_value(GTK_RANGE(scaleRx), NetworkUI::Defaults::RxRateMax);
-  span  = Network::Ranges::RxRate.Max - Network::Ranges::RxRate.Min;
-  steps = span / Network::Ranges::RxRate.Step;
-  gtk_widget_set_size_request(scaleRx, steps * PluginConfig::SliderStepWidth,
-                              -1);
+  gtk_range_set_value(GTK_RANGE(scaleRx), rxDefault);
+  gtk_widget_set_size_request(
+      scaleRx, ((rxLast - rxFirst) / rxStep) * NetworkConfig::SliderStepWidth,
+      -1);
   gtk_grid_attach(GTK_GRID(grid), scaleRx, 1, row, 1, 1);
   gtk_widget_show(scaleRx);
 
-  GtkWidget* labelRxRate = gtk_label_new("MB/s");
+  std::string rxRateText =
+      getRateString(rxDefault * NetworkConfig::RxRateMultiplier);
+  GtkWidget*  labelRxRate = gtk_label_new(rxRateText.c_str());
   gtk_grid_attach(GTK_GRID(grid), labelRxRate, 2, row, 1, 1);
   gtk_widget_show(labelRxRate);
 
@@ -331,62 +367,76 @@ GtkWidget* NetworkConfig::addDialOptions() {
   // TODO: We might want to have a different range in the scale depending on
   // the network kind - wireless networks will likely be slower than ethernet
   // which might be slower than loopback or virtual networks
-  GtkWidget* scaleTx = gtk_scale_new_with_range(
-      GTK_ORIENTATION_HORIZONTAL, Network::Ranges::TxRate.Min,
-      Network::Ranges::TxRate.Max, Network::Ranges::TxRate.Step);
-  for(gdouble r = Network::Ranges::TxRate.Min; r < Network::Ranges::TxRate.Max;
-      r += Network::Ranges::TxRate.Step)
-    gtk_scale_add_mark(GTK_SCALE(scaleTx), r, GTK_POS_BOTTOM, NULL);
-  gtk_range_set_increments(GTK_RANGE(scaleTx), Network::Ranges::TxRate.Step,
-                           Network::Ranges::TxRate.Step);
+  double     txFirst   = NetworkConfig::RangeTxRate.getFirst();
+  double     txLast    = NetworkConfig::RangeTxRate.getLast();
+  double     txStep    = NetworkConfig::RangeTxRate.getStep();
+  double     txDefault = NetworkConfig::RangeTxRate.getDefault();
+  GtkWidget* scaleTx   = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
+                                                txFirst, txLast, txStep);
+  for(double v : NetworkConfig::RangeTxRate)
+    gtk_scale_add_mark(GTK_SCALE(scaleTx), v, GTK_POS_BOTTOM, NULL);
+  gtk_range_set_increments(GTK_RANGE(scaleTx), txStep, txStep);
   gtk_scale_set_draw_value(GTK_SCALE(scaleTx), FALSE);
-  gtk_range_set_value(GTK_RANGE(scaleTx), NetworkUI::Defaults::TxRateMax);
+  gtk_range_set_value(GTK_RANGE(scaleTx), txDefault);
   gtk_grid_attach(GTK_GRID(grid), scaleTx, 1, row, 1, 1);
-  span  = Network::Ranges::TxRate.Max - Network::Ranges::TxRate.Min;
-  steps = span / Network::Ranges::TxRate.Step;
-  gtk_widget_set_size_request(scaleTx, steps * PluginConfig::SliderStepWidth,
-                              -1);
+  gtk_widget_set_size_request(
+      scaleTx, ((txLast - txFirst) / txStep) * NetworkConfig::SliderStepWidth,
+      -1);
   gtk_widget_show(scaleTx);
 
-  GtkWidget* labelTxRate = gtk_label_new("MB/s");
+  std::string txRateText =
+      getRateString(txDefault * NetworkConfig::TxRateMultiplier);
+  GtkWidget*  labelTxRate = gtk_label_new(rxRateText.c_str());
   gtk_grid_attach(GTK_GRID(grid), labelTxRate, 2, row, 1, 1);
   gtk_widget_show(labelTxRate);
 
-  // Always show dial
+  // Show the dial even when the network is disabled
   row += 1;
-  GtkWidget* labelAlwaysShow = gtk_label_new_with_mnemonic("_Always show dial");
-  gtk_grid_attach(GTK_GRID(grid), labelAlwaysShow, 0, row, 1, 1);
-  gtk_widget_show(labelAlwaysShow);
+  GtkWidget* checkShowWhenDisconnected =
+      gtk_check_button_new_with_mnemonic("Show when dis_connected");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowWhenDisconnected),
+                               ui.getShowWhenDisconnected());
+  gtk_widget_set_tooltip_text(checkShowWhenDisconnected,
+                              "Display the dial and maybe the label even when "
+                              "the network is disconnected");
+  gtk_grid_attach(GTK_GRID(grid), checkShowWhenDisconnected, 0, row, 1, 1);
+  gtk_widget_show(checkShowWhenDisconnected);
 
-  GtkWidget* checkAlwaysShow = gtk_check_button_new();
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkAlwaysShow),
-                               ui.getAlwaysShowDial());
-  gtk_grid_attach(GTK_GRID(grid), checkAlwaysShow, 1, row, 1, 1);
-  gtk_widget_show(checkAlwaysShow);
-  gtk_label_set_mnemonic_widget(GTK_LABEL(labelAlwaysShow), checkAlwaysShow);
-
-  gtk_container_add(GTK_CONTAINER(frame), grid);
+  GtkWidget* checkShowWhenDisabled =
+      gtk_check_button_new_with_mnemonic("Show when dis_abled");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowWhenDisabled),
+                               ui.getShowWhenDisabled());
+  gtk_widget_set_tooltip_text(
+      checkShowWhenDisabled,
+      "Display the dial and maybe the label even when the network is disabled");
+  gtk_grid_attach(GTK_GRID(grid), checkShowWhenDisabled, 1, row, 1, 1);
+  gtk_widget_show(checkShowWhenDisabled);
 
   // Save widgets
+  widgets.labelRxRate = labelRxRate;
+  widgets.labelTxRate = labelTxRate;
 
   // Connect signals
   g_signal_connect(scaleRx, "value-changed", G_CALLBACK(cb_scale_rx_changed),
                    this);
   g_signal_connect(scaleTx, "value-changed", G_CALLBACK(cb_scale_tx_changed),
                    this);
-  g_signal_connect(checkAlwaysShow, "toggled",
-                   G_CALLBACK(cb_check_always_show_toggled), this);
+  g_signal_connect(checkShowWhenDisconnected, "toggled",
+                   G_CALLBACK(cb_check_show_when_disconnected_toggled), this);
+  g_signal_connect(checkShowWhenDisabled, "toggled",
+                   G_CALLBACK(cb_check_show_when_disabled_toggled), this);
 
   return frame;
 }
 
 GtkWidget* NetworkConfig::addLabelOptions() {
+  DBG("Network config add label options: %s", network.getName().c_str());
+
   int row = -1;
 
   // Show the label
   row += 1;
-  GtkWidget* checkShowLabel =
-      gtk_toggle_button_new_with_mnemonic("_Show label");
+  GtkWidget* checkShowLabel = gtk_check_button_new_with_mnemonic("_Show label");
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowLabel),
                                ui.getShowLabel());
   gtk_widget_show(checkShowLabel);
@@ -394,12 +444,18 @@ GtkWidget* NetworkConfig::addLabelOptions() {
   GtkWidget* frame = gtk_frame_new(NULL);
   gtk_container_set_border_width(GTK_CONTAINER(frame), PluginConfig::Border);
   gtk_widget_set_sensitive(frame, ui.getShowLabel());
+  gtk_frame_set_label_align(GTK_FRAME(frame), PluginConfig::FrameAlignX,
+                            PluginConfig::FrameAlignY);
   gtk_frame_set_label_widget(GTK_FRAME(frame), checkShowLabel);
+  gtk_container_set_border_width(GTK_CONTAINER(frame), PluginConfig::Border);
+  gtk_widget_show(frame);
 
   // Label specifications
   GtkWidget* grid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid), PluginConfig::Padding);
   gtk_grid_set_column_spacing(GTK_GRID(grid), PluginConfig::Padding);
+  gtk_container_set_border_width(GTK_CONTAINER(grid), PluginConfig::Border);
+  gtk_container_add(GTK_CONTAINER(frame), grid);
   gtk_widget_show(grid);
 
   // Label name
@@ -458,8 +514,6 @@ GtkWidget* NetworkConfig::addLabelOptions() {
   gtk_widget_show(comboPosition);
   gtk_label_set_mnemonic_widget(GTK_LABEL(labelPosition), comboPosition);
 
-  gtk_container_add(GTK_CONTAINER(frame), grid);
-
   // Save widgets
   widgets.entryLabel = entryLabel;
 
@@ -478,7 +532,9 @@ GtkWidget* NetworkConfig::addLabelOptions() {
   return frame;
 }
 
-GtkWidget* NetworkConfig::createDialog() {
+GtkWidget* NetworkConfig::createUI() {
+  DBG("Network config create ui: %s", network.getName().c_str());
+
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, PluginConfig::Spacing);
   gtk_box_set_homogeneous(GTK_BOX(box), FALSE);
   gtk_container_set_border_width(GTK_CONTAINER(box), PluginConfig::Border);
@@ -499,7 +555,8 @@ GtkWidget* NetworkConfig::createDialog() {
   gtk_button_set_image(
       GTK_BUTTON(buttonClose),
       gtk_image_new_from_icon_name("gtk-close", GTK_ICON_SIZE_MENU));
-  gtk_window_set_icon(GTK_WINDOW(dialog), network.getDialogIcon());
+  gtk_window_set_icon(GTK_WINDOW(dialog),
+                      network.getIcon(Plugin::IconSizeMenu));
   gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(dialog))),
                      box, TRUE, TRUE, 0);
   gtk_widget_show(dialog);
@@ -515,9 +572,13 @@ GtkWidget* NetworkConfig::createDialog() {
   return dialog;
 }
 
-void NetworkConfig::destroyDialog() {
-  gtk_widget_destroy(widgets.dialog);
-  widgets.dialog = nullptr;
+void NetworkConfig::destroyUI() {
+  if(widgets.dialog) {
+    DBG("Network config destroy ui: %s", network.getName().c_str());
+
+    gtk_widget_destroy(widgets.dialog);
+    clearWidgets();
+  }
 }
 
 GtkWidget* NetworkConfig::getDialogWidget() {

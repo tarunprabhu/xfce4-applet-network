@@ -5,12 +5,12 @@
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
+#include "Array.h"
 #include "Enums.h"
 #include "Network.h"
 #include "PluginConfig.h"
 #include "PluginUI.h"
 #include "TooltipUI.h"
-#include "Types.h"
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 #include <libxfce4util/libxfce4util.h>
@@ -22,31 +22,18 @@
 
 class Plugin {
 public:
-  class Defaults {
-  public:
-    // Plugin defaults
-    static constexpr double Period = 1.0;
-  };
-
-  class Ranges {
-  public:
-    static constexpr Range<double>   Period  = {0.25, 2, 0.25};
-    static constexpr Range<unsigned> Border  = {0, 8, 1};
-    static constexpr Range<unsigned> Padding = {0, 8, 1};
-    static constexpr Range<unsigned> Spacing = {0, 8, 1};
-  };
-
-public:
   static const unsigned IconSizeMenu    = 16;
   static const unsigned IconSizeToolbar = 24;
   static const unsigned IconSizeDialog  = 32;
   static const unsigned IconSizeTooltip = 96;
+  static const unsigned IconSizeLarge   = 128;
 
 private:
-  XfcePanelPlugin* xfce;
-  PluginUI         ui;
-  PluginConfig     config;
-  TooltipUI        tooltip;
+  XfcePanelPlugin*                                      xfce;
+  PluginUI                                              ui;
+  PluginConfig                                          config;
+  TooltipUI                                             tooltip;
+  Array<Array<std::string, NetworkStatus>, NetworkKind> networkIconNames;
 
   struct {
     double             period;
@@ -57,6 +44,8 @@ private:
   void readConfig(XfceRc*);
   void writeConfig(XfceRc*);
 
+  GdkPixbuf*         getIcon(const std::string&, unsigned);
+  
 public:
   Plugin(XfcePanelPlugin*);
   ~Plugin();
@@ -68,8 +57,10 @@ public:
   std::list<Network>&       getNetworks();
   const std::list<Network>& getNetworks() const;
 
-  GdkPixbuf* getPixbuf(const std::string&, unsigned);
-  GdkPixbuf* getPixbuf(NetworkKind, NetworkStatus, unsigned);
+  GdkPixbuf*         getPluginIcon(unsigned);
+  GdkPixbuf*         getIcon(NetworkKind, NetworkStatus, unsigned);
+  const std::string& getIconName(NetworkKind, NetworkStatus) const;
+  
 
   size_t   getNumNetworks() const;
   Network& getNetworkAt(int);

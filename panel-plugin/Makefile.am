@@ -13,34 +13,41 @@ libappletnetwork_la_LIBADD =		\
 	@LIBXFCE4PANEL_LIBS@
 
 libappletnetwork_la_SOURCES =  \
+	Defaults.cc \
 	Enums.cc \
 	Network.cc \
 	NetworkConfig.cc \
+	NetworkStats.cc \
 	NetworkUI.cc \
 	PanelPlugin.cc \
 	Plugin.cc \
 	PluginConfig.cc \
 	PluginUI.cc \
 	TooltipUI.cc \
-	NetworkStats.cc \
+	Utils.cc \
 	XfceUtils.cc \
 	main.c
+
 if LINUX
 libappletnetwork_la_SOURCES += \
 	sys/linux/Path.cc \
 	sys/linux/NetworkStatsImpl.cc \
-	sys/linux/System.cc
+	sys/linux/System.cc \
+	sys/linux/UniqueID.cc
 endif
-if BSD
+
 # TODO: Add support for *BSD
+if BSD
 libappletnetwork_la_SOURCES +=
 endif
-if OSX
+
 # TODO: Add support for OSX
+if OSX
 libappletnetwork_la_SOURCES +=
 endif
-if WINDOWS
+
 # TODO: Add support for Windows (this is almost never going to happen)
+if WINDOWS
 libappletnetwork_la_SOURCES +=
 endif 
 

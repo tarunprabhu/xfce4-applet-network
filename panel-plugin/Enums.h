@@ -68,7 +68,7 @@ template <typename Enum> Enum end(Enum) {
 
 // We'll have to explicitly instantiate these functions because not all
 // enums will have these functions defined
-template <typename Enum> const std::string& enum_str(Enum);
+template <typename Enum> const std::string& enum_str(Enum, bool = false);
 template <typename Enum> Enum               enum_parse(const std::string&);
 
 #endif // XFCE_APPLET_NETWORK_ENUMS_H

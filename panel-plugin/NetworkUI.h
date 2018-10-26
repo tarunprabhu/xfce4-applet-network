@@ -15,35 +15,28 @@
 #include <string>
 
 class Network;
+class Plugin;
 class PluginUI;
 
 class NetworkUI {
-public:
-  class Defaults {
-  public:
-    static constexpr double        RxRateMax      = 1.0;  // 1 MB/s
-    static constexpr double        TxRateMax      = 0.25; // 256 KB/s
-    static const bool              AlwaysShowDial = true;
-    static const bool              ShowLabel      = true;
-    static constexpr gchar const*  Label          = "<unknown>";
-    static const GdkRGBA           LabelFg;
-    static const GdkRGBA           LabelBg;
-    static constexpr LabelPosition LabelPos = LabelPosition::Bottom;
-  };
-
 private:
-  Network& network;
-  PluginUI& pluginUI;
+  Network&    network;
+  Plugin&     plugin;
+  PluginUI&   pluginUI;
 
   struct {
-    double      txMax;          // Rate is in MB/s
-    double      rxMax;          // Rate is in MB/s
-    bool        alwaysShowDial; // Show the dial even when interface is disabled
-    bool        showLabel;      // Show a label above/below the dial
-    std::string label;
-    GdkRGBA*    labelFg;
-    GdkRGBA*    labelBg;
-    LabelPosition labelPosition;
+    double txMax;              // Rate is in MB/s
+    double rxMax;              // Rate is in MB/s
+    bool   showWhenDisabled;   // Show the dial and (maybe) label even when
+                               // interface is disabled
+    bool showWhenDisconnected; // Show the dial and (maybe) even when interface
+                               // is disconnected
+    bool                  showLabel; // Show a label above/below the dial
+    std::string           label;     // The label to display with the dial
+    GdkRGBA*              labelFg;   // Label text color
+    GdkRGBA*              labelBg;   // Label background color
+    PangoFontDescription* labelFont; // Label font
+    LabelPosition labelPosition; // Position of the label relative to the dial
   } opts;
 
   struct {
@@ -54,6 +47,9 @@ private:
     GtkWidget*                       dial;      // The canvas showing the dial
     GtkWidget*                       container; // Contains the dial and labels
   } widgets;
+
+private:
+  void clearWidgets();
 
 public:
   NetworkUI(Network&);
@@ -66,24 +62,28 @@ public:
 
   void setMaxTxRate(double);
   void setMaxRxRate(double);
-  void setAlwaysShowDial(bool);
+  void setShowWhenDisabled(bool);
+  void setShowWhenDisconnected(bool);
   void setShowLabel(bool);
   void setLabel(const std::string&);
   void setLabelFgColor(const GdkRGBA*);
   void setLabelBgColor(const GdkRGBA*);
+  void setLabelFont(const PangoFontDescription*);
   void setLabelPosition(LabelPosition);
 
-  double             getMaxTxRate() const;
-  double             getMaxRxRate() const;
-  bool               getAlwaysShowDial() const;
-  bool               getShowLabel() const;
-  const std::string& getLabel() const;
-  const GdkRGBA*     getLabelFgColor() const;
-  const GdkRGBA*     getLabelBgColor() const;
-  LabelPosition      getLabelPosition() const;
-  
-  GtkWidget* create();
-  void       destroy();
+  double                      getMaxTxRate() const;
+  double                      getMaxRxRate() const;
+  bool                        getShowWhenDisabled() const;
+  bool                        getShowWhenDisconnected() const;
+  bool                        getShowLabel() const;
+  const std::string&          getLabel() const;
+  const GdkRGBA*              getLabelFgColor() const;
+  const GdkRGBA*              getLabelBgColor() const;
+  const PangoFontDescription* getLabelFont() const;
+  LabelPosition               getLabelPosition() const;
+
+  GtkWidget* createUI();
+  void       destroyUI();
   void       refresh();
 };
 

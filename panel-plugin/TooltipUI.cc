@@ -6,8 +6,8 @@
 TooltipUI::TooltipUI(Plugin& p) : plugin(p) {
   DBG("Constructing tooltip ui");
   
-  opts.theme     = TooltipUI::Defaults::Theme;
-  opts.verbosity = TooltipUI::Defaults::Verbosity;
+  opts.theme     = Defaults::Tooltip::UI::Theme;
+  opts.verbosity = Defaults::Tooltip::UI::Verbosity;
 }
 
 TooltipUI::~TooltipUI() {

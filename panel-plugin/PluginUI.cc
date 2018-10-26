@@ -1,11 +1,12 @@
 #include "PluginUI.h"
 
+#include "Defaults.h"
 #include "Network.h"
 #include "Plugin.h"
 #include "XfceUtils.h"
 
 PluginUI::PluginUI(Plugin& p) : plugin(p) {
-  DBG("Constructing plugin ui");
+  DBG("Construct plugin ui");
 
   XfcePanelPlugin* xfce   = plugin.getXfcePanelPlugin();
   GdkScreen*       screen = gtk_widget_get_screen(GTK_WIDGET(xfce));
@@ -14,28 +15,33 @@ PluginUI::PluginUI(Plugin& p) : plugin(p) {
   orientation = xfce_panel_plugin_get_orientation(xfce);
   theme       = gtk_icon_theme_get_for_screen(screen);
 
-  opts.border        = PluginUI::Defaults::Border;
-  opts.padding       = PluginUI::Defaults::Padding;
-  opts.spacing       = PluginUI::Defaults::Spacing;
-  opts.showLabel     = PluginUI::Defaults::ShowLabel;
-  opts.label         = PluginUI::Defaults::Label;
-  opts.labelPosition = PluginUI::Defaults::LabelPos;
-  opts.font          = pango_font_description_new();
-  pango_font_description_set_family(opts.font, PluginUI::Defaults::FontFamily);
-  pango_font_description_set_size(opts.font,
-                                  PluginUI::Defaults::FontSize * PANGO_SCALE);
+  opts.border            = Defaults::Plugin::UI::Border;
+  opts.padding           = Defaults::Plugin::UI::Padding;
+  opts.spacing           = Defaults::Plugin::UI::Spacing;
+  opts.showLabel         = Defaults::Plugin::UI::ShowLabel;
+  opts.label             = Defaults::Plugin::UI::Label;
+  opts.labelPosition     = Defaults::Plugin::UI::LabelPos;
+  opts.font              = pango_font_description_new();
+  GtkStyleContext* style = gtk_widget_get_style_context(GTK_WIDGET(xfce));
+  gtk_style_context_get(style, GTK_STATE_FLAG_NORMAL, "font", &opts.font, NULL);
 
-  for(LabelPosition pos : LabelPosition())
-    widgets.labels[pos] = nullptr;
-  widgets.container = nullptr;
-  widgets.grid      = nullptr;
-  widgets.evt       = nullptr;
+  clearWidgets();
 }
 
 PluginUI::~PluginUI() {
-  DBG("Destructing plugin ui");
+  DBG("Destruct plugin ui");
 
   pango_font_description_free(opts.font);
+  destroyUI();
+}
+
+void PluginUI::clearWidgets() {
+  for(LabelPosition pos : LabelPosition())
+    widgets.labels[pos] = nullptr;
+  widgets.container = nullptr;
+  widgets.networks  = nullptr;
+  widgets.grid      = nullptr;
+  widgets.evt       = nullptr;
 }
 
 void PluginUI::setSize(unsigned newSize) {
@@ -70,9 +76,11 @@ void PluginUI::setLabelPosition(LabelPosition position) {
   opts.labelPosition = position;
 }
 
-void PluginUI::setFont(PangoFontDescription* font) {
+void PluginUI::setFont(const PangoFontDescription* font) {
   pango_font_description_free(opts.font);
   opts.font = pango_font_description_copy(font);
+  for(Network& network : plugin.getNetworks())
+    network.getUI().setLabelFont(opts.font);
 }
 
 unsigned PluginUI::getSize() const {
@@ -115,13 +123,9 @@ const PangoFontDescription* PluginUI::getFont() const {
   return opts.font;
 }
 
-GdkPixbuf* PluginUI::getPixbuf(const std::string& name, unsigned iconSize) {
-  return plugin.getPixbuf(name, iconSize);
-}
-
-GtkWidget* PluginUI::create() {
+GtkWidget* PluginUI::createUI() {
   DBG("Create plugin ui");
-  
+
   GtkWidget* pluginBox = gtk_box_new(orientation, 0);
   gtk_box_set_homogeneous(GTK_BOX(pluginBox), FALSE);
   gtk_container_set_border_width(GTK_CONTAINER(pluginBox), opts.border);
@@ -135,8 +139,6 @@ GtkWidget* PluginUI::create() {
   gtk_box_pack_start(GTK_BOX(pluginBox), grid, TRUE, TRUE, 0);
   gtk_widget_show(grid);
 
-  DBG("Networks box: %d", orientation == GTK_ORIENTATION_VERTICAL);
-
   GtkWidget* networksBox = gtk_box_new(orientation, opts.spacing);
   gtk_box_set_homogeneous(GTK_BOX(networksBox), TRUE);
   gtk_grid_attach(GTK_GRID(grid), networksBox, 1, 1, 1, 1);
@@ -147,16 +149,17 @@ GtkWidget* PluginUI::create() {
 
   for(LabelPosition pos : LabelPosition()) {
     GtkWidget* label = gtk_label_new(opts.label.c_str());
+    gtk_widget_set_name(label, "appletSpeedLabelPlugin");
     gtk_widget_hide(label);
     widgets.labels[pos] = label;
   }
-  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Left], 1, 0, 1,
+  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Left], 0, 1, 1,
                   1);
-  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Top], 0, 1, 1,
+  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Top], 1, 0, 1,
                   1);
-  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Right], 1, 2, 1,
+  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Right], 2, 1, 1,
                   1);
-  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Bottom], 2, 1,
+  gtk_grid_attach(GTK_GRID(grid), widgets.labels[LabelPosition::Bottom], 1, 2,
                   1, 1);
 
   if(opts.showLabel)
@@ -178,18 +181,14 @@ GtkWidget* PluginUI::create() {
   return evt;
 }
 
-void PluginUI::destroy() {
-  if(GtkWidget* evt = widgets.evt) {
+void PluginUI::destroyUI() {
+  if(widgets.evt) {
     DBG("Destroy plugin ui");
 
     // Destroying the widget will remove it from the panel plugin container,
     // so we don't need to explicitly remove it
-    gtk_widget_destroy(evt);
-    
-    widgets.container = nullptr;
-    widgets.networks = nullptr;
-    widgets.grid     = nullptr;
-    widgets.evt      = nullptr;
+    gtk_widget_destroy(widgets.evt);
+    clearWidgets();
   }
 }
 
@@ -204,11 +203,16 @@ void PluginUI::refresh() {
   gtk_grid_set_row_spacing(GTK_GRID(widgets.grid), opts.padding);
   gtk_grid_set_column_spacing(GTK_GRID(widgets.grid), opts.padding);
 
-  for(LabelPosition pos : LabelPosition())
-    gtk_widget_hide(widgets.labels[pos]);
+  for(GtkWidget* labelLabel : widgets.labels) {
+    if(labelLabel) {
+      gtk_label_set_text(GTK_LABEL(labelLabel), opts.label.c_str());
+      gtk_widget_hide(labelLabel);
+    }
+  }
 
   if(opts.showLabel)
-    gtk_widget_show(widgets.labels[opts.labelPosition]);
+    if(widgets.labels[opts.labelPosition])
+      gtk_widget_show(widgets.labels[opts.labelPosition]);
 }
 
 void PluginUI::addNetworkWidget(GtkWidget* w) {

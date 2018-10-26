@@ -3,8 +3,8 @@
 
 #include "../../Enums.h"
 
-#include <list>
 #include <string>
+#include <vector>
 
 class Path;
 
@@ -19,11 +19,13 @@ private:
 public:
   System() = delete;
 
-  static NetworkKind getNetworkKind(const std::string&);
-  static size_t      populateInterfaces(std::list<std::string>&);
+  static NetworkKind              getNetworkKind(const std::string&);
+  static std::vector<std::string> getNetworkInterfaces();
+  static std::vector<std::string> getBlockDevices();
 
 public:
-  static const std::string& getNetworkDirectory();
+  static const std::string& getNetworkInterfacesDir();
+  static const std::string& getBlockDevicesDir();
   static const std::string& getNullDevice();
 };
 

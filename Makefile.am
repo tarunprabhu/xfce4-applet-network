@@ -1,12 +1,11 @@
-@SET_MAKE@
+SUBDIRS = \
+	icons \
+	panel-plugin
 
-SUBDIRS = panel-plugin
 ACLOCAL_AMFLAGS=-I m4
 
 distclean-local:
 	rm -rf *.cache *~ config.*
-
-AUTOMAKE_OPTIONS = 1.8 dist-bzip2
 
 .PHONY: ChangeLog
 
@@ -17,7 +16,6 @@ ChangeLog: Makefile
 
 dist-hook: ChangeLog
 
-EXTRA_DIST = 								\
-	README
+EXTRA_DIST = 
 
 DISTCLEANFILES =	
