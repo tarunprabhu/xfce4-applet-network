@@ -48,6 +48,10 @@ const UniqueID& Network::getUniqueID() const {
   return id;
 }
 
+bool Network::hasInterface() const {
+  return opts.interface != Defaults::Network::Interface;
+}
+
 const std::string& Network::getInterface() const {
   return opts.interface;
 }
@@ -109,7 +113,7 @@ GdkPixbuf* Network::getTooltipIcon() const {
   return icons[getStatus()];
 }
 
-GdkPixbuf* Network::getIcon(NetworkStatus status, unsigned size) {
+GdkPixbuf* Network::getIcon(DeviceStatus status, unsigned size) {
   return plugin.getIcon(getKind(), status, size);
 }
 
@@ -117,7 +121,7 @@ GdkPixbuf* Network::getIcon(unsigned size) {
   return plugin.getIcon(getKind(), getStatus(), size);
 }
 
-NetworkStatus Network::getStatus() const {
+DeviceStatus Network::getStatus() const {
   return stats.getStatus();
 }
 
@@ -136,7 +140,7 @@ void Network::update() {
 void Network::updateIcons() {
   DBG("Update network icons: %s", getName().c_str());
 
-  for(NetworkStatus status : NetworkStatus()) {
+  for(DeviceStatus status : DeviceStatus()) {
     iconNames[status] = plugin.getIconName(getKind(), status);
     icons[status] = plugin.getIcon(getKind(), status, Plugin::IconSizeTooltip);
   }

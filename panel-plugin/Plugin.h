@@ -29,11 +29,12 @@ public:
   static const unsigned IconSizeLarge   = 128;
 
 private:
-  XfcePanelPlugin*                                      xfce;
-  PluginUI                                              ui;
-  PluginConfig                                          config;
-  TooltipUI                                             tooltip;
-  Array<Array<std::string, NetworkStatus>, NetworkKind> networkIconNames;
+  XfcePanelPlugin*                                     xfce;
+  PluginUI                                             ui;
+  PluginConfig                                         config;
+  TooltipUI                                            tooltip;
+  Array<Array<std::string, DeviceStatus>, NetworkKind> networkIconNames;
+  guint                                                timer;
 
   struct {
     double             period;
@@ -44,8 +45,8 @@ private:
   void readConfig(XfceRc*);
   void writeConfig(XfceRc*);
 
-  GdkPixbuf*         getIcon(const std::string&, unsigned);
-  
+  GdkPixbuf* getIcon(const std::string&, unsigned);
+
 public:
   Plugin(XfcePanelPlugin*);
   ~Plugin();
@@ -58,14 +59,15 @@ public:
   const std::list<Network>& getNetworks() const;
 
   GdkPixbuf*         getPluginIcon(unsigned);
-  GdkPixbuf*         getIcon(NetworkKind, NetworkStatus, unsigned);
-  const std::string& getIconName(NetworkKind, NetworkStatus) const;
-  
+  GdkPixbuf*         getIcon(NetworkKind, DeviceStatus, unsigned);
+  const std::string& getIconName(NetworkKind, DeviceStatus) const;
 
   size_t   getNumNetworks() const;
   Network& getNetworkAt(int);
   Network& appendNewNetwork();
   void     removeNetworkAt(int);
+  void     moveNetworkUp(unsigned);
+  void     moveNetworkDown(unsigned);
 
   void about();
   void configure();

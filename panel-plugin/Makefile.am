@@ -13,8 +13,10 @@ libappletnetwork_la_LIBADD =		\
 	@LIBXFCE4PANEL_LIBS@
 
 libappletnetwork_la_SOURCES =  \
+	CSSBuilder.cc \
 	Defaults.cc \
 	Enums.cc \
+	GtkUtils.cc \
 	Network.cc \
 	NetworkConfig.cc \
 	NetworkStats.cc \

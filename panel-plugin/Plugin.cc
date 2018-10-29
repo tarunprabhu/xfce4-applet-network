@@ -13,20 +13,20 @@
 Plugin::Plugin(XfcePanelPlugin* xfcePanelPlugin)
     : xfce(xfcePanelPlugin), ui(*this), config(*this), tooltip(*this) {
   DBG("Constructing plugin");
-  
+
   opts.period = Defaults::Plugin::Period;
-  
+
   // There are only a limited number of statuses and kinds that need to be
   // combined. Might as well keep them around
   for(NetworkKind kind : NetworkKind()) {
-    std::stringstream  ss;
-    ss << "xfce-applet-network-" << enum_str(kind, true);
-    for(NetworkStatus status : NetworkStatus()) {
-      ss << "-" << enum_str(status, true);
+    for(DeviceStatus status : DeviceStatus()) {
+      std::stringstream ss;
+      ss << "xfce-applet-network-" << enum_str(kind, true) << "-"
+         << enum_str(status, true);
       networkIconNames[kind][status] = ss.str();
     }
   }
-  
+
   ui.createUI();
 }
 
@@ -74,7 +74,6 @@ Network& Plugin::getNetworkAt(int pos) {
 }
 
 Network& Plugin::appendNewNetwork() {
-  g_message("Emplacing network");
   opts.networks.emplace_back(*this);
   return opts.networks.back();
 }
@@ -93,13 +92,33 @@ void Plugin::removeNetworkAt(int pos) {
   opts.networks.erase(iter);
 }
 
-const std::string& Plugin::getIconName(NetworkKind   kind,
-                                       NetworkStatus status) const {
+void Plugin::moveNetworkUp(unsigned pos) {
+  auto iter = opts.networks.begin();
+  auto prev = iter;
+  for(unsigned i = 0; i < pos; i++) {
+    prev = iter;
+    iter++;
+  }
+  opts.networks.splice(prev, opts.networks, iter);
+}
+
+void Plugin::moveNetworkDown(unsigned pos) {
+  auto next = opts.networks.begin();
+  auto iter = next;
+  for(unsigned i = 0; i <= pos; i++) {
+    iter = next;
+    next++;
+  }
+  opts.networks.splice(iter, opts.networks, next);
+}
+
+const std::string& Plugin::getIconName(NetworkKind  kind,
+                                       DeviceStatus status) const {
   return networkIconNames[kind][status];
 }
 
 GdkPixbuf*
-Plugin::getIcon(NetworkKind kind, NetworkStatus status, unsigned size) {
+Plugin::getIcon(NetworkKind kind, DeviceStatus status, unsigned size) {
   return getIcon(getIconName(kind, status), size);
 }
 
@@ -238,7 +257,7 @@ size_t Plugin::populateInterfaces(std::list<std::string>& interfaces) {
 
 void Plugin::redraw() {
   DBG("Redraw plugin");
-  
+
   for(Network& network : getNetworks())
     network.getUI().destroyUI();
   ui.destroyUI();

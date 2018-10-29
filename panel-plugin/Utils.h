@@ -3,18 +3,33 @@
 
 #include <gtk/gtk.h>
 
-#include <string>
 #include <sstream>
+#include <string>
 
-template <typename Value>
-static std::string getValueLabel(Value value, const std::string& units) {
-  std::stringstream ss;
-  ss << value << " " << units;
-  return ss.str();
+void concatImpl(std::stringstream&, char);
+
+template <typename T> void concatImpl(std::stringstream& ss, const T& s) {
+  ss << s;
 }
 
-std::string getCSSColor(const GdkRGBA*);
-std::string getCSSFont(const PangoFontDescription*);
+template <typename T, typename... Ts>
+void concatImpl(std::stringstream& ss,
+                const std::string& sep,
+                const T&           s1,
+                Ts... s) {
+  concatImpl(ss, s1);
+  ss << sep;
+  concatImpl(ss, sep, s...);
+}
+
+template <typename T, typename... Ts>
+std::string concat(const std::string& sep, const T& s1, Ts... s) {
+  std::stringstream ss;
+
+  concatImpl(ss, sep, s1, s...);
+
+  return ss.str();
+}
 
 std::string getRateString(double);
 

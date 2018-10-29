@@ -12,7 +12,8 @@ Path::Path() : path(System::getNullDevice()), valid(false) {
 }
 
 void Path::finalize(std::stringstream& ss) {
-  std::string s    = ss.str();
+  std::string s = ss.str();
+  
   // realpath() may return null if the provided path was invalid. This can
   // happen when a new network is created with a default path
   if(char* real = realpath(s.c_str(), NULL)) {

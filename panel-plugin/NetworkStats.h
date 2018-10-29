@@ -1,11 +1,10 @@
-#ifndef XFCE_APPLET_NETWORK_NETWORK_STATS_H
-#define XFCE_APPLET_NETWORK_NETWORK_STATS_H
+#ifndef XFCE_APPLET_SPEED_NETWORK_STATS_H
+#define XFCE_APPLET_SPEED_NETWORK_STATS_H
 
 #include "Enums.h"
 #include "System.h"
 
-#include <gtk/gtk.h>
-
+#include <stdint.h>
 #include <string>
 
 class Network;
@@ -18,11 +17,11 @@ private:
 
   NetworkStatsImpl impl;
 
-  NetworkStatus status;
-  guint64       tx;
-  guint64       rx;
-  gdouble       txRate;
-  gdouble       rxRate;
+  DeviceStatus status;
+  guint64      tx;
+  guint64      rx;
+  gdouble      txRate;
+  gdouble      rxRate;
 
 private:
   void reset();
@@ -30,18 +29,18 @@ private:
 public:
   NetworkStats(Network&);
 
-  void setStatus(NetworkStatus);
-  void setRxBytes(guint64);
-  void setTxBytes(guint64);
+  void setStatus(DeviceStatus);
+  void setRxBytes(uint64_t);
+  void setTxBytes(uint64_t);
 
-  NetworkStatus getStatus() const;
-  guint64       getTxBytes() const;
-  guint64       getRxBytes() const;
-  gdouble       getTxRate() const;
-  gdouble       getRxRate() const;
+  DeviceStatus getStatus() const;
+  uint64_t     getTxBytes() const;
+  uint64_t     getRxBytes() const;
+  double       getTxRate() const;
+  double       getRxRate() const;
 
   void reset(const std::string&);
   void update();
 };
 
-#endif // XFCE_APPLET_NETWORK_NETWORK_STATS_H
+#endif // XFCE_APPLET_SPEED_NETWORK_STATS_H

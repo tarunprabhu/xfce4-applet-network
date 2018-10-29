@@ -20,6 +20,19 @@ public:
   using const_iterator  = typename decltype(impl)::const_iterator;
 
 public:
+  Array() { ; }
+
+  Array(std::initializer_list<T> ilist) {
+    *this = ilist;
+  }
+  
+  Array<T, Enum>& operator=(std::initializer_list<T> ilist) {
+    size_type i = 0;
+    for(const T& e : ilist)
+      impl[i++] = e;
+    return *this;
+  }
+  
   constexpr reference at(Enum pos) {
     return impl.at(static_cast<uint64_t>(pos));
   }
@@ -118,6 +131,14 @@ public:
 
   constexpr bool operator>=(const Array<T, Enum>& o) const {
     return impl >= o.impl;
+  }
+
+  constexpr T* data() noexcept {
+    return impl.data();
+  }
+
+  constexpr const T* data() const noexcept {
+    return impl.data();
   }
 };
 

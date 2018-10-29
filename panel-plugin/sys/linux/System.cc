@@ -6,12 +6,32 @@
 
 #include <algorithm>
 #include <fstream>
+#include <stdint.h>
 #include <unistd.h>
 
 // Static variables that are exposed by the System class
 static const std::string NetworkInterfacesDir = "/sys/class/net";
 static const std::string BlockDevicesDir      = "/sys/class/block";
 static const std::string NullDevice           = "/dev/null";
+
+static uint64_t parseHex(const std::string& s) {
+  uint64_t hex = 0;
+  for(char c : s.substr(2)) {
+    int ascii = (int)c;
+    int digit = 0;
+    if((c >= '0') and (c <= '9'))
+      digit = ascii - '0';
+    else if((c >= 'a') and (c <= 'f'))
+      digit = 10 + (ascii - (int)'a');
+    else if((c >= 'A') and (c <= 'F'))
+      digit = 10 + (ascii - (int)'A');
+    else
+      return 0;
+    hex = ((hex << 4) | digit);
+  }
+
+  return hex;
+}
 
 bool System::isCellular(const Path&) {
   DBG("UNIMPLEMENTED: isCellular()");
@@ -48,8 +68,9 @@ bool System::isWired(const Path& dir) {
   Path path(dir, "device", "class");
   in.open(path.get(), std::ios::in);
   if(in.is_open()) {
-    unsigned long contents;
-    in >> contents;
+    std::string line;
+    in >> line;
+    uint64_t contents = parseHex(line);
     if(((contents & 0xff0000) == 0x020000) and
        ((contents & 0x00ff00) == 0x000000))
       return true;

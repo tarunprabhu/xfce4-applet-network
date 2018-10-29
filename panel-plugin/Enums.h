@@ -1,6 +1,8 @@
-#ifndef XFCE_APPLET_NETWORK_ENUMS_H
-#define XFCE_APPLET_NETWORK_ENUMS_H
+#ifndef XFCE_APPLET_SPEED_ENUMS_H
+#define XFCE_APPLET_SPEED_ENUMS_H
 
+#include <array>
+#include <map>
 #include <string>
 
 enum class NetworkKind {
@@ -15,7 +17,16 @@ enum class NetworkKind {
   First = Cellular,
 };
 
-enum class NetworkStatus {
+enum class DiskKind {
+  Internal = 0,   // Internal hard disk
+  MultimediaCard, // Multimedia card
+  Optical,        // Optical device
+  Removable,      // Removable disk
+  Last,
+  First = Internal,
+};
+
+enum class DeviceStatus {
   Connected = 0, // Network is up
   Disabled,      // Network is not enabled or unknown
   Disconnected,  // Network is down
@@ -49,6 +60,50 @@ enum class TooltipVerbosity {
   First = Limited,
 };
 
+// // We'll have to explicitly instantiate these functions because not all
+// // enums will have these functions defined
+// template <typename Enum> const std::string& enum_str(Enum, bool = false);
+// template <typename Enum> Enum               enum_parse(const std::string&);
+
+// Wrap this up in a namespace because ideally, it ought to be private
+namespace EnumImpl {
+
+template <typename Enum>
+using EnumMapTy = std::map<Enum, std::array<std::string, 2>>;
+
+using DictEnumNamesTy = std::tuple<EnumMapTy<DeviceStatus>,
+                                   EnumMapTy<DiskKind>,
+                                   EnumMapTy<LabelPosition>,
+                                   EnumMapTy<NetworkKind>,
+                                   EnumMapTy<TooltipTheme>,
+                                   EnumMapTy<TooltipVerbosity>>;
+
+const DictEnumNamesTy&   getEnumNames();
+const std::string&       getUnknownEnumName();
+
+template <typename Enum> const EnumMapTy<Enum>& getEnumNameMap() {
+  return std::get<EnumMapTy<Enum>>(getEnumNames());
+}
+
+} // namespace EnumImpl
+
+template <typename Enum>
+const std::string& enum_str(Enum e, bool lowercase = false) {
+  const auto& names = EnumImpl::getEnumNameMap<Enum>();
+  auto        iter  = names.find(e);
+  if(iter != names.end())
+    return iter->second[lowercase];
+  return EnumImpl::getUnknownEnumName();
+}
+
+template <typename Enum> Enum enum_parse(const std::string& s) {
+  const auto& names = EnumImpl::getEnumNameMap<Enum>();
+  for(const auto& p : names)
+    if((s == p.second[0]) or (s == p.second[1]))
+      return p.first;
+  return Enum::Last;
+}
+
 template <typename Enum> Enum operator++(Enum& e) {
   e = static_cast<Enum>(static_cast<int>(e) + 1);
   return e;
@@ -66,9 +121,4 @@ template <typename Enum> Enum end(Enum) {
   return Enum::Last;
 }
 
-// We'll have to explicitly instantiate these functions because not all
-// enums will have these functions defined
-template <typename Enum> const std::string& enum_str(Enum, bool = false);
-template <typename Enum> Enum               enum_parse(const std::string&);
-
-#endif // XFCE_APPLET_NETWORK_ENUMS_H
+#endif // XFCE_APPLET_SPEED_ENUMS_H

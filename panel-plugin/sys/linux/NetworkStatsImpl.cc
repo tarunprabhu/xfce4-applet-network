@@ -33,25 +33,25 @@ guint64 NetworkStatsImpl::readBytesTransferred(const Path& file) {
       return bytes;
   }
 
-  stats.setStatus(NetworkStatus::Disabled);
+  stats.setStatus(DeviceStatus::Disabled);
   return 0;
 }
 
 void NetworkStatsImpl::updateTxBytes() {
   DBG("Update linux/tx");
-  
+
   stats.setTxBytes(readBytesTransferred(fileTx));
 }
 
 void NetworkStatsImpl::updateRxBytes() {
   DBG("Update linux/rx");
-  
+
   stats.setRxBytes(readBytesTransferred(fileRx));
 }
 
 void NetworkStatsImpl::updateStatus() {
   DBG("Update linux/status");
-  
+
   std::ifstream in;
 
   // If the symlink to the directory exists in the /sys/..., then the
@@ -62,17 +62,17 @@ void NetworkStatsImpl::updateStatus() {
   // those cases. But if any of the files that are expected are not found,
   // or if any paths do not exist, it is definitely an error
   //
-  NetworkStatus status = NetworkStatus::Disabled;
+  DeviceStatus status = DeviceStatus::Disabled;
   in.open(fileState.get(), std::ios::in);
   if(in.is_open()) {
     std::string s;
     in >> s;
     if(s == "up")
-      status = NetworkStatus::Connected;
+      status = DeviceStatus::Connected;
     else if(s == "down")
-      status = NetworkStatus::Disconnected;
+      status = DeviceStatus::Disconnected;
     else
-      status = NetworkStatus::Error;
+      status = DeviceStatus::Error;
     in.close();
   }
   stats.setStatus(status);
@@ -80,12 +80,12 @@ void NetworkStatsImpl::updateStatus() {
 
 void NetworkStatsImpl::update() {
   DBG("Update linux/stats");
-  
+
   if(dir.exists()) {
     updateStatus();
     updateTxBytes();
     updateRxBytes();
   } else {
-    stats.setStatus(NetworkStatus::Disabled);
+    stats.setStatus(DeviceStatus::Disabled);
   }
 }

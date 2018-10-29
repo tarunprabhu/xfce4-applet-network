@@ -31,7 +31,6 @@ public:
 
   class Tooltip {
   public:
-
     class UI {
     public:
       static const TooltipTheme     Theme     = TooltipTheme::Dark;
@@ -42,8 +41,9 @@ public:
   // Defaults for the network interfaces that are monitored
   class Network {
   public:
-    static constexpr gchar const* Interface = "<unknown>";
-    static constexpr gchar const* Name      = "<unknown>";
+    static constexpr gchar const* Interface     = "<unknown>";
+    static constexpr gchar const* Name          = "<unknown>";
+    static const unsigned         MaxNameLength = 32;
 
     class UI {
     public:
@@ -53,6 +53,7 @@ public:
       static const bool              ShowWhenDisconnected = true;
       static const bool              ShowLabel            = true;
       static constexpr gchar const*  Label                = "<unknown>";
+      static const unsigned          MaxLabelLength       = 32;
       static constexpr LabelPosition LabelPos = LabelPosition::Bottom;
       static const GdkRGBA           LabelFg;
       static const GdkRGBA           LabelBg;

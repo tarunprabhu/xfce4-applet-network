@@ -44,10 +44,12 @@ public:
       : first(pFirst), last(pLast), step(pStep), def(pDef) {
     assert(step != 0, "Non-zero step required for range");
 
-    if(step > 0)
-      last -= step;
-    else if(step < 0)
-      last += step;
+    if(not inclusive) {
+      if(step > 0)
+        last -= step;
+      else if(step < 0)
+        last += step;
+    }
 
     if(step > 0)
       assert((first <= last) and (def >= first) and (def <= last),

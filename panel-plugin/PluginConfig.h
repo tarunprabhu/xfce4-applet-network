@@ -10,6 +10,7 @@
 
 #include <gtk/gtk.h>
 
+class Network;
 class Plugin;
 class PluginUI;
 class TooltipUI;
@@ -26,60 +27,70 @@ public:
   static constexpr gfloat FrameAlignY = 0.5;
 
   // The width of each step in a slider in pixels
-  static const unsigned SliderStepWidth = 10;
+  static const unsigned SliderStepWidth = 12;
 
   static constexpr Range<double>   RangePeriod  = {0.25, 2, 0.25,
                                                 Defaults::Plugin::Period};
-  static constexpr Range<unsigned> RangeBorder  = {0, 8, 1,
+  static constexpr Range<unsigned> RangeBorder  = {0, 16, 1,
                                                   Defaults::Plugin::UI::Border};
   static constexpr Range<unsigned> RangePadding = {
-      0, 8, 1, Defaults::Plugin::UI::Padding};
+      0, 16, 1, Defaults::Plugin::UI::Padding};
   static constexpr Range<unsigned> RangeSpacing = {
-      0, 8, 1, Defaults::Plugin::UI::Spacing};
+      0, 16, 1, Defaults::Plugin::UI::Spacing};
 
 private:
   Plugin&    plugin;
   PluginUI&  ui;
   TooltipUI& tooltip;
 
+  // CSS styles for certain widgets
+  std::string cssFrameLabel;
+  std::string cssLabelPixels;
+
   struct UI {
-    GtkWidget* dialog;          // Main config dialog window
-    GtkWidget* entryLabel;      // Textbox to update the plugin label
-    GtkWidget* treeNetworks;    // Tree view showing the networks
-    GtkWidget* toolbarAdd;      // Add network toolbar button
-    GtkWidget* toolbarRemove;   // Remove network toolbar button
-    GtkWidget* toolbarMoveUp;   // Move network up toolbar button
-    GtkWidget* toolbarMoveDown; // Move network down toolbar button
-    GtkWidget* toolbarConfig;   // Configure network toolbar button
-    GtkWidget* labelBorder;     // Label showing border width
-    GtkWidget* labelPadding;    // Label showing padding
-    GtkWidget* labelSpacing;    // Label showing padding
+    GtkWidget* dialog;           // Main config dialog window
+    GtkWidget* entryLabel;       // Textbox to update the plugin label
+    GtkWidget* treeNetworks;     // Tree view showing the networks
+    GtkWidget* toolbarAdd;       // Add network toolbar button
+    GtkWidget* toolbarRemove;    // Remove network toolbar button
+    GtkWidget* toolbarMoveUp;    // Move network up toolbar button
+    GtkWidget* toolbarMoveDown;  // Move network down toolbar button
+    GtkWidget* toolbarConfig;    // Configure network toolbar button
+    GtkWidget* labelBorderText;  // Label showing border width
+    GtkWidget* labelPaddingText; // Label showing padding
+    GtkWidget* labelSpacingText; // Label showing padding
   } widgets;
 
 private:
   GtkWidget* createPluginAppearanceFrame();
   GtkWidget* createTooltipAppearanceFrame();
+  GtkWidget* createLabelAppearanceFrame();
   GtkWidget* createDisplayPage();
   GtkWidget* createAppearancePage();
   GtkWidget* createNetworksPage();
 
   void clearWidgets();
+  void addDeviceToList(GtkListStore*, Network&, unsigned);
 
 public:
   PluginConfig(Plugin&);
   ~PluginConfig();
+
+  const std::string& getFrameLabelCSS() const;
 
   void cbDialogResponse(GtkDialog*, gint);
   void cbSpinPeriodChanged(GtkSpinButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
   void cbEntryLabelChanged(GtkEntry*);
   void cbComboLabelPositionChanged(GtkComboBox*);
-  void cbFontFontSet(GtkFontChooser*);
   void cbScaleBorderChanged(GtkRange*);
   void cbScalePaddingChanged(GtkRange*);
   void cbScaleSpacingChanged(GtkRange*);
   void cbComboTooltipThemeChanged(GtkComboBox*);
   void cbComboTooltipVerbosityChanged(GtkComboBox*);
+  void cbFontFontSet(GtkFontChooser*);
+  void cbToggleBoldToggled(GtkToggleButton*);
+  void cbToggleSmallcapsToggled(GtkToggleButton*);
   void cbTreeRowActivated(GtkTreeView*, GtkTreePath*, GtkTreeViewColumn*);
   void cbTreeCursorChanged(GtkTreeView*);
   void cbToolbarAddClicked(GtkToolItem*);

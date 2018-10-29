@@ -22,13 +22,13 @@ class Plugin;
 
 class Network {
 private:
-  Plugin&                           plugin;
-  NetworkConfig                     config;
-  NetworkUI                         ui;
-  NetworkStats                      stats;
-  UniqueID                          id; // A unique id for this device
-  Array<std::string, NetworkStatus> iconNames;
-  Array<GdkPixbuf*, NetworkStatus>  icons;
+  Plugin&                          plugin;
+  NetworkConfig                    config;
+  NetworkUI                        ui;
+  NetworkStats                     stats;
+  UniqueID                         id; // A unique id for this device
+  Array<std::string, DeviceStatus> iconNames;
+  Array<GdkPixbuf*, DeviceStatus>  icons;
 
   // Network options
   struct {
@@ -51,15 +51,16 @@ public:
   const NetworkStats& getStats() const;
   const UniqueID&     getUniqueID() const;
 
+  bool               hasInterface() const;
   const std::string& getInterface() const;
   NetworkKind        getKind() const;
   const std::string& getName() const;
 
-  NetworkStatus getStatus() const;
-  std::string   getTooltipMarkup() const;
-  GdkPixbuf*    getTooltipIcon() const;
-  GdkPixbuf*    getIcon(NetworkStatus, unsigned);
-  GdkPixbuf*    getIcon(unsigned);
+  DeviceStatus getStatus() const;
+  std::string  getTooltipMarkup() const;
+  GdkPixbuf*   getTooltipIcon() const;
+  GdkPixbuf*   getIcon(DeviceStatus, unsigned);
+  GdkPixbuf*   getIcon(unsigned);
 
   void setInterface(const std::string&);
   void setKind(NetworkKind);

@@ -197,7 +197,7 @@ void PluginUI::refresh() {
 
   // TODO: Update font
 
-  gtk_box_set_spacing(GTK_BOX(widgets.container), opts.spacing);
+  gtk_box_set_spacing(GTK_BOX(widgets.networks), opts.spacing);
   gtk_container_set_border_width(GTK_CONTAINER(widgets.container), opts.border);
 
   gtk_grid_set_row_spacing(GTK_GRID(widgets.grid), opts.padding);

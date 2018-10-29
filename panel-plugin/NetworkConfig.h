@@ -5,6 +5,7 @@
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
+#include "Constants.h"
 #include "Defaults.h"
 #include "Range.h"
 
@@ -17,14 +18,14 @@ class Plugin;
 class NetworkConfig {
 public:
   // The width of each step in the slider in pixels
-  static const unsigned SliderStepWidth = 8;
+  static const unsigned SliderStepWidth = 12;
 
   static constexpr Range<double> RangeRxRate = {
-      0.5, 20.0, 0.5, Defaults::Network::UI::RxRateMax}; // MB/s
+      0.5, 10.0, 0.5, Defaults::Network::UI::RxRateMax}; // MB/s
   static constexpr Range<double> RangeTxRate = {
-      0.125, 5, 0.125, Defaults::Network::UI::TxRateMax}; // MB/s
-  static constexpr double RxRateMultiplier = 1024 * 1024; // 1 MB
-  static constexpr double TxRateMultiplier = 1024 * 1024; // 1 MB
+      0.125, 2.5, 0.125, Defaults::Network::UI::TxRateMax};       // MB/s
+  static constexpr double RxRateMultiplier = Constants::Megabyte; // 1 MB
+  static constexpr double TxRateMultiplier = Constants::Megabyte; // 1 MB
 
 private:
   Network&   network;
@@ -32,12 +33,17 @@ private:
   Plugin&    plugin;
 
   struct {
-    GtkWidget* dialog;       // Main dialog window
-    GtkWidget* imgInterface; // Icon for the network
-    GtkWidget* entryName;    // Entry for user-friendly network name
-    GtkWidget* labelRxRate;  // Label for the maximum incoming rate on the dial
-    GtkWidget* labelTxRate;  // Label for the maximum outgoing rate on the dial
-    GtkWidget* entryLabel;   // Entry for label to display
+    GtkWidget* dialog;            // Main dialog window
+    GtkWidget* buttonDialogClose; // The close button of the dialog
+    GtkWidget* comboKind;         // Combo box for the network interface kind
+    GtkWidget* imgInterface;      // Icon for the network
+    GtkWidget* entryName;         // Entry for user-friendly network name
+    GtkWidget* labelRxRate;       // The maximum incoming rate on the dial
+    GtkWidget* labelTxRate;       // The maximum outgoing rate on the dial
+    GtkWidget* entryLabel;        // Entry for label to display
+    GtkWidget* checkShowLabel;    // Whether or not to display the label
+    GtkWidget* boxLabelSensitive; // Box containing widgets that should be
+                                  // disabled if show label is set to false
   } widgets;
 
 private:
@@ -61,8 +67,8 @@ public:
   void cbCheckShowWhenDisabledToggled(GtkToggleButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
   void cbEntryLabelChanged(GtkEntry*);
-  void cbColorFgActivated(GtkColorChooser*);
-  void cbColorBgActivated(GtkColorChooser*);
+  void cbColorFgSet(GtkColorChooser*);
+  void cbColorBgSet(GtkColorChooser*);
   void cbComboPositionChanged(GtkComboBox*);
 
   GtkWidget* createUI();

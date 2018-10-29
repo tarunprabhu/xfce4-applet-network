@@ -1,6 +1,8 @@
 #include "NetworkUI.h"
 
+#include "CSSBuilder.h"
 #include "Defaults.h"
+#include "GtkUtils.h"
 #include "Network.h"
 #include "Plugin.h"
 #include "PluginUI.h"
@@ -74,6 +76,10 @@ void NetworkUI::setMaxRxRate(double rate) {
 
 void NetworkUI::setShowWhenDisabled(bool showWhenDisabled) {
   opts.showWhenDisabled = showWhenDisabled;
+}
+
+void NetworkUI::setShowWhenDisconnected(bool showWhenDisconnected) {
+  opts.showWhenDisconnected = showWhenDisconnected;
 }
 
 void NetworkUI::setShowLabel(bool showLabel) {
@@ -189,7 +195,7 @@ GtkWidget* NetworkUI::createUI() {
 
   // TODO: Actually use a dial
   unsigned   size = pluginUI.getSize() - 2 * pluginUI.getBorder();
-  GdkPixbuf* pixbuf = network.getIcon(NetworkStatus::Connected, size);
+  GdkPixbuf* pixbuf = network.getIcon(DeviceStatus::Connected, size);
   GtkWidget* dial = gtk_image_new_from_pixbuf(pixbuf);
   gtk_box_pack_start(GTK_BOX(box), dial, TRUE, TRUE, 0);
   gtk_widget_show(dial);
@@ -240,13 +246,13 @@ void NetworkUI::refresh() {
 
   bool showDial = false;
   switch(network.getStatus()) {
-  case NetworkStatus::Connected:
+  case DeviceStatus::Connected:
     showDial = true;
     break;
-  case NetworkStatus::Disconnected:
+  case DeviceStatus::Disconnected:
     showDial = getShowWhenDisconnected();
     break;
-  case NetworkStatus::Disabled:
+  case DeviceStatus::Disabled:
     showDial = getShowWhenDisabled();
     break;
   default:
@@ -258,31 +264,20 @@ void NetworkUI::refresh() {
     gtk_widget_show(widgets.dial);
 
     if(opts.showLabel) {
-      std::stringstream ss;
+      CSSBuilder css;
+      css.addBeginSelector("label");
+      css.addBgColor(opts.labelBg);
+      css.addFgColor(opts.labelFg);
+      css.addFont(opts.labelFont);
+      css.addEndSelector();
+      css.commit();
 
-      ss << "label {" << std::endl;
-      ss << "\tbackground-color: " << getCSSColor(opts.labelBg) << ";"
-         << std::endl;
-      // ss << "\tcolor: " << getCSSColor(opts.labelFg) << ";" << std::endl;
-      // ss << "\tfont: " << getCSSFont(opts.labelFont) << ";" << std::endl;
-      ss << "}";
-
-      std::string css = ss.str();
+      DBG("css: %s", css.c_str());
 
       GtkWidget* labelLabel = widgets.labels[opts.labelPosition];
-      gtk_widget_reset_style(labelLabel);
-
       gtk_label_set_text(GTK_LABEL(labelLabel), getLabel().c_str());
-      GtkCssProvider* provider = gtk_css_provider_new();
-      gtk_css_provider_load_from_data(provider, css.c_str(), css.length(),
-                                      NULL);
-      gtk_style_context_add_provider(gtk_widget_get_style_context(labelLabel),
-                                     GTK_STYLE_PROVIDER(provider),
-                                     GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+      gtk_widget_set_css(labelLabel, css.str());
       gtk_widget_show(labelLabel);
-
-      // Cleanup
-      g_object_unref(provider);
     }
   }
 }
