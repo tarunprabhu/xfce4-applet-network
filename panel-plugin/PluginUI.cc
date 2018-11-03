@@ -8,12 +8,9 @@
 PluginUI::PluginUI(Plugin& p) : plugin(p) {
   DBG("Construct plugin ui");
 
-  XfcePanelPlugin* xfce   = plugin.getXfcePanelPlugin();
-  GdkScreen*       screen = gtk_widget_get_screen(GTK_WIDGET(xfce));
-
-  size        = xfce_panel_plugin_get_size(xfce);
-  orientation = xfce_panel_plugin_get_orientation(xfce);
-  theme       = gtk_icon_theme_get_for_screen(screen);
+  XfcePanelPlugin* xfce = plugin.getXfcePanelPlugin();
+  size                  = xfce_panel_plugin_get_size(xfce);
+  orientation           = xfce_panel_plugin_get_orientation(xfce);
 
   opts.border            = Defaults::Plugin::UI::Border;
   opts.padding           = Defaults::Plugin::UI::Padding;
@@ -21,6 +18,7 @@ PluginUI::PluginUI(Plugin& p) : plugin(p) {
   opts.showLabel         = Defaults::Plugin::UI::ShowLabel;
   opts.label             = Defaults::Plugin::UI::Label;
   opts.labelPosition     = Defaults::Plugin::UI::LabelPos;
+  opts.verbosity         = Defaults::Plugin::UI::Verbosity;
   opts.font              = pango_font_description_new();
   GtkStyleContext* style = gtk_widget_get_style_context(GTK_WIDGET(xfce));
   gtk_style_context_get(style, GTK_STATE_FLAG_NORMAL, "font", &opts.font, NULL);
@@ -79,8 +77,12 @@ void PluginUI::setLabelPosition(LabelPosition position) {
 void PluginUI::setFont(const PangoFontDescription* font) {
   pango_font_description_free(opts.font);
   opts.font = pango_font_description_copy(font);
-  for(Network& network : plugin.getNetworks())
-    network.getUI().setLabelFont(opts.font);
+  for(auto& device : plugin.getDevices())
+    device->getUI().setLabelFont(opts.font);
+}
+
+void PluginUI::setVerbosity(TooltipVerbosity verbosity) {
+  opts.verbosity = verbosity;
 }
 
 unsigned PluginUI::getSize() const {
@@ -89,10 +91,6 @@ unsigned PluginUI::getSize() const {
 
 GtkOrientation PluginUI::getOrientation() const {
   return orientation;
-}
-
-GtkIconTheme* PluginUI::getIconTheme() const {
-  return theme;
 }
 
 unsigned PluginUI::getBorder() const {
@@ -121,6 +119,10 @@ LabelPosition PluginUI::getLabelPosition() const {
 
 const PangoFontDescription* PluginUI::getFont() const {
   return opts.font;
+}
+
+TooltipVerbosity PluginUI::getVerbosity() const {
+  return opts.verbosity;
 }
 
 GtkWidget* PluginUI::createUI() {
@@ -239,6 +241,7 @@ void PluginUI::readConfig(XfceRc* rc) {
   setShowLabel(xfce_rc_read_bool_entry(rc, "showLabel", opts.showLabel));
   setLabel(xfce_rc_read_entry(rc, "label", opts.label.c_str()));
   setLabelPosition(xfce_rc_read_enum_entry(rc, "labelPos", opts.labelPosition));
+  setVerbosity(xfce_rc_read_enum_entry(rc, "tooltipVerbosity", opts.verbosity));
 }
 
 void PluginUI::writeConfig(XfceRc* rc) const {
@@ -251,4 +254,5 @@ void PluginUI::writeConfig(XfceRc* rc) const {
   xfce_rc_write_bool_entry(rc, "showLabel", opts.showLabel);
   xfce_rc_write_entry(rc, "label", opts.label.c_str());
   xfce_rc_write_enum_entry(rc, "labelPos", opts.labelPosition);
+  xfce_rc_write_enum_entry(rc, "tooltipVerbosity", opts.verbosity);
 }

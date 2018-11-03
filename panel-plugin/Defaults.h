@@ -23,17 +23,9 @@ public:
       static const unsigned         Border    = 1;
       static const unsigned         Padding   = 1;
       static const unsigned         Spacing   = 1;
-      static constexpr gchar const* Label     = "Speed Monitor";
+      static constexpr char const*  Label     = "Speed Monitor";
       static const bool             ShowLabel = true;
       static const LabelPosition    LabelPos  = LabelPosition::Bottom;
-    };
-  };
-
-  class Tooltip {
-  public:
-    class UI {
-    public:
-      static const TooltipTheme     Theme     = TooltipTheme::Dark;
       static const TooltipVerbosity Verbosity = TooltipVerbosity::Moderate;
     };
   };
@@ -41,9 +33,21 @@ public:
   // Defaults for the network interfaces that are monitored
   class Network {
   public:
-    static constexpr gchar const* Interface     = "<unknown>";
-    static constexpr gchar const* Name          = "<unknown>";
-    static const unsigned         MaxNameLength = 32;
+    static constexpr NetworkKind Kind = NetworkKind::Other;
+  };
+
+  // Defaults for the block devices that are monitored
+  class Disk {
+  public:
+    static constexpr DiskKind Kind = DiskKind::Other;
+  };
+
+  // Defauls for all devices that are monitored
+  class Device {
+  public:
+    static constexpr char const* Dev           = "<unknown>";
+    static constexpr char const* Name          = "<unknown>";
+    static const unsigned        MaxNameLength = 32;
 
     class UI {
     public:
@@ -52,17 +56,12 @@ public:
       static const bool              ShowWhenDisabled     = false;
       static const bool              ShowWhenDisconnected = true;
       static const bool              ShowLabel            = true;
-      static constexpr gchar const*  Label                = "<unknown>";
+      static constexpr char const*   Label                = "<unknown>";
       static const unsigned          MaxLabelLength       = 32;
       static constexpr LabelPosition LabelPos = LabelPosition::Bottom;
       static const GdkRGBA           LabelFg;
       static const GdkRGBA           LabelBg;
     };
-  };
-
-  // Defaults for the block devices that are monitored
-  class Device {
-  public:
   };
 };
 

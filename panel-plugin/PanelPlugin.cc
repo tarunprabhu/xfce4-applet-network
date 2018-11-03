@@ -8,16 +8,16 @@
 #include <gtk/gtk.h>
 
 static void cb_about(Plugin* plugin) {
-  plugin->about();
+  plugin->cbAbout();
 }
 
 static void cb_configure(XfcePanelPlugin*, Plugin* plugin) {
-  plugin->configure();
+  plugin->cbConfigure();
 }
 
 static void
 cb_reorient(XfcePanelPlugin*, GtkOrientation orientation, Plugin* plugin) {
-  plugin->reorient(orientation);
+  plugin->cbReorient(orientation);
 }
 
 static void cb_free(XfcePanelPlugin*, Plugin* plugin) {
@@ -25,11 +25,11 @@ static void cb_free(XfcePanelPlugin*, Plugin* plugin) {
 }
 
 static void cb_save(XfcePanelPlugin*, Plugin* plugin) {
-  plugin->writeConfig();
+  plugin->cbSave();
 }
 
 static void cb_resize(XfcePanelPlugin*, int size, Plugin* plugin) {
-  plugin->resize(size);
+  plugin->cbResize(size);
 }
 
 static gboolean cb_handle_event(XfcePanelPlugin*,

@@ -1,13 +1,12 @@
 #include "UniqueID.h"
 
-static const unsigned len = 37;
-
 UniqueID::UniqueID() {
-  char buf[len];
-  
+  const unsigned BufSize = 37;
+  char           buf[BufSize];
+
   uuid_generate(id);
   uuid_unparse(id, buf);
-  for(unsigned i = 0; i < len; i++)
+  for(unsigned i = 0; i < BufSize; i++)
     if(buf[i] == '-')
       buf[i] = '_';
   str = buf;

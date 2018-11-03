@@ -13,27 +13,39 @@ libappletnetwork_la_LIBADD =		\
 	@LIBXFCE4PANEL_LIBS@
 
 libappletnetwork_la_SOURCES =  \
+	Constants.cc \
 	CSSBuilder.cc \
 	Defaults.cc \
-	Enums.cc \
+	Device.cc \
+	DeviceConfig.cc \
+	DeviceTooltip.cc \
+	DeviceUI.cc \
+	DeviceStats.cc \
+	Disk.cc \
+	DiskStats.cc \
+	DiskTooltip.cc \
 	GtkUtils.cc \
+	IconContext.cc \
 	Network.cc \
-	NetworkConfig.cc \
 	NetworkStats.cc \
-	NetworkUI.cc \
+	NetworkTooltip.cc \
 	PanelPlugin.cc \
 	Plugin.cc \
 	PluginConfig.cc \
 	PluginUI.cc \
-	TooltipUI.cc \
 	Utils.cc \
 	XfceUtils.cc \
 	main.c
 
+# Common sys files
+libappletnetwork_la_SOURCES += \
+	sys/common/PathPrivate.cc \
+	sys/common/StatsReaderBase.cc
+
 if LINUX
 libappletnetwork_la_SOURCES += \
-	sys/linux/Path.cc \
-	sys/linux/NetworkStatsImpl.cc \
+	sys/linux/DiskStatsReader.cc \
+	sys/linux/NetworkStatsReader.cc \
 	sys/linux/System.cc \
 	sys/linux/UniqueID.cc
 endif

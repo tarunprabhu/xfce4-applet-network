@@ -1,32 +1,40 @@
-#ifndef XFCE_APPLET_NETWORK_SYS_LINUX_SYSTEM_H
-#define XFCE_APPLET_NETWORK_SYS_LINUX_SYSTEM_H
+#ifndef XFCE_APPLET_SPEED_SYS_LINUX_SYSTEM_H
+#define XFCE_APPLET_SPEED_SYS_LINUX_SYSTEM_H
 
 #include "../../Enums.h"
+#include "Path.h"
 
 #include <string>
 #include <vector>
 
-class Path;
-
 class System {
 private:
-  static bool isCellular(const Path&);
-  static bool isUSB(const Path&);
-  static bool isVirtual(const Path&);
-  static bool isWired(const Path&);
-  static bool isWireless(const Path&);
+  static bool isCellularNetwork(const Path&);
+  static bool isUSBNetwork(const Path&);
+  static bool isVirtualNetwork(const Path&);
+  static bool isWiredNetwork(const Path&);
+  static bool isWirelessNetwork(const Path&);
 
+  static bool isInternalDisk(const Path&);
+  static bool isOpticalDisk(const Path&);
+  static bool isRemovableDisk(const Path&);
+  static bool isMultimediaDisk(const Path&);
+
+  static std::vector<std::string> getNetworkDevices();
+  static std::vector<std::string> getBlockDevices();
+  
 public:
   System() = delete;
 
-  static NetworkKind              getNetworkKind(const std::string&);
-  static std::vector<std::string> getNetworkInterfaces();
-  static std::vector<std::string> getBlockDevices();
+  template <DeviceClass clss>
+  static typename DeviceClassToKind<clss>::Kind
+                                  getDeviceKind(const std::string&);
+  static std::vector<std::string> getDevices(DeviceClass);
 
 public:
-  static const std::string& getNetworkInterfacesDir();
+  static const std::string& getNetworkDevicesDir();
   static const std::string& getBlockDevicesDir();
   static const std::string& getNullDevice();
 };
 
-#endif // XFCE_APPLET_NETWORK_SYS_LINUX_SYSTEM_H
+#endif // XFCE_APPLET_SPEED_SYS_LINUX_SYSTEM_H

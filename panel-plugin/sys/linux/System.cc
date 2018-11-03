@@ -1,5 +1,6 @@
 #include "System.h"
 
+#include "../../Enums.h"
 #include "Path.h"
 
 #include <libxfce4util/libxfce4util.h>
@@ -10,42 +11,23 @@
 #include <unistd.h>
 
 // Static variables that are exposed by the System class
-static const std::string NetworkInterfacesDir = "/sys/class/net";
-static const std::string BlockDevicesDir      = "/sys/class/block";
-static const std::string NullDevice           = "/dev/null";
+static const std::string NetworkDevicesDir = "/sys/class/net";
+static const std::string BlockDevicesDir   = "/sys/class/block";
+static const std::string NullDevice        = "/dev/null";
 
-static uint64_t parseHex(const std::string& s) {
-  uint64_t hex = 0;
-  for(char c : s.substr(2)) {
-    int ascii = (int)c;
-    int digit = 0;
-    if((c >= '0') and (c <= '9'))
-      digit = ascii - '0';
-    else if((c >= 'a') and (c <= 'f'))
-      digit = 10 + (ascii - (int)'a');
-    else if((c >= 'A') and (c <= 'F'))
-      digit = 10 + (ascii - (int)'A');
-    else
-      return 0;
-    hex = ((hex << 4) | digit);
-  }
-
-  return hex;
-}
-
-bool System::isCellular(const Path&) {
+bool System::isCellularNetwork(const Path&) {
   DBG("UNIMPLEMENTED: isCellular()");
 
   return false;
 }
 
-bool System::isUSB(const Path&) {
+bool System::isUSBNetwork(const Path&) {
   DBG("UNIMPLEMENTED: isUSB()");
 
   return false;
 }
 
-bool System::isVirtual(const Path& dir) {
+bool System::isVirtualNetwork(const Path& dir) {
   // If the resulting path has the virtual directory somewhere in it, then
   // it is a virtual network
   if(dir.contains("virtual"))
@@ -53,7 +35,7 @@ bool System::isVirtual(const Path& dir) {
   return false;
 }
 
-bool System::isWireless(const Path& dir) {
+bool System::isWirelessNetwork(const Path& dir) {
   // If there is a directory named wireless in the interface directory,
   // then it must be a wireless network
   Path path(dir, "wireless");
@@ -62,7 +44,7 @@ bool System::isWireless(const Path& dir) {
   return false;
 }
 
-bool System::isWired(const Path& dir) {
+bool System::isWiredNetwork(const Path& dir) {
   std::ifstream in;
 
   Path path(dir, "device", "class");
@@ -70,7 +52,7 @@ bool System::isWired(const Path& dir) {
   if(in.is_open()) {
     std::string line;
     in >> line;
-    uint64_t contents = parseHex(line);
+    uint64_t contents = std::strtoul(line.c_str(), NULL, 16);
     if(((contents & 0xff0000) == 0x020000) and
        ((contents & 0x00ff00) == 0x000000))
       return true;
@@ -78,49 +60,151 @@ bool System::isWired(const Path& dir) {
   return false;
 }
 
-NetworkKind System::getNetworkKind(const std::string& interface) {
-  Path dir(System::getNetworkInterfacesDir(), interface);
+template <>
+NetworkKind
+System::getDeviceKind<DeviceClass::Network>(const std::string& device) {
+  Path dir(System::getNetworkDevicesDir(), device);
 
-  if(isUSB(dir))
-    return NetworkKind::USB;
-  else if(isVirtual(dir))
-    return NetworkKind::Virtual;
-  else if(isWireless(dir))
+  if(isWirelessNetwork(dir))
     return NetworkKind::Wireless;
-  else if(isWired(dir))
+  else if(isWiredNetwork(dir))
     return NetworkKind::Wired;
-  else if(isCellular(dir))
+  else if(isUSBNetwork(dir))
+    return NetworkKind::USB;
+  else if(isVirtualNetwork(dir))
+    return NetworkKind::Virtual;
+  else if(isCellularNetwork(dir))
     return NetworkKind::Cellular;
 
   return NetworkKind::Other;
 }
 
-std::vector<std::string> System::getNetworkInterfaces() {
-  std::vector<std::string> interfaces;
+bool System::isInternalDisk(const Path& dir) {
+  Path          file(dir, "device", "type");
+  std::ifstream in(file.get(), std::ios::in);
 
-  if(DIR* dir = opendir(System::getNetworkInterfacesDir().c_str())) {
+  if(in.is_open()) {
+    std::string type;
+    in >> type;
+    in.close();
+
+    if((type == "0") and
+       (not isRemovableDisk(dir) and not isMultimediaDisk(dir)))
+      return true;
+  }
+
+  return false;
+}
+
+bool System::isOpticalDisk(const Path& dir) {
+  Path          file(dir, "device", "type");
+  std::ifstream in(file.get(), std::ios::in);
+
+  if(in.is_open()) {
+    std::string type;
+    in >> type;
+    in.close();
+
+    if((type == "5") and isRemovableDisk(dir))
+      return true;
+  }
+
+  return false;
+}
+
+bool System::isMultimediaDisk(const Path& dir) {
+  bool csd = Path(dir, "device", "csd").exists();
+  bool cid = Path(dir, "device", "cid").exists();
+
+  if(csd and cid)
+    return true;
+  return false;
+}
+
+bool System::isRemovableDisk(const Path& dir) {
+  Path          file(dir, "removable");
+  std::ifstream in(file.get(), std::ios::in);
+
+  if(in.is_open()) {
+    bool b;
+    in >> b;
+    in.close();
+
+    return b;
+  }
+
+  return false;
+}
+
+template <>
+DiskKind System::getDeviceKind<DeviceClass::Disk>(const std::string& device) {
+  Path dir(System::getBlockDevicesDir(), device);
+
+  if(isInternalDisk(dir))
+    return DiskKind::Internal;
+  else if(isOpticalDisk(dir))
+    return DiskKind::Optical;
+  else if(isRemovableDisk(dir))
+    return DiskKind::Removable;
+  else if(isMultimediaDisk(dir))
+    return DiskKind::Multimedia;
+
+  return DiskKind::Other;
+}
+
+std::vector<std::string> System::getNetworkDevices() {
+  std::vector<std::string> devices;
+
+  if(DIR* dir = opendir(System::getNetworkDevicesDir().c_str())) {
     while(dirent* entry = readdir(dir))
       // The network interfaces will be symlinks in this directory. It also
       // ensures that . and .. don't get listed as networks
       if(entry->d_type == DT_LNK)
-        interfaces.push_back(entry->d_name);
+        devices.push_back(entry->d_name);
     closedir(dir);
   }
-  std::sort(interfaces.begin(), interfaces.end());
+  std::sort(devices.begin(), devices.end());
 
-  return interfaces;
+  return devices;
 }
 
 std::vector<std::string> System::getBlockDevices() {
-  std::vector<std::string> interfaces;
+  std::vector<std::string> devices;
 
-  // TODO: Implement this
+  if(DIR* dir = opendir(System::getBlockDevicesDir().c_str())) {
+    while(dirent* entry = readdir(dir)) {
+      // The block devices will be symlinks in this directory. It also ensures
+      // that . and .. don't get listed as devices
+      if(entry->d_type == DT_LNK) {
+        // We only monitor physical devices. These will always have a device
+        // subdirectory
+        if(Path(System::getBlockDevicesDir(), entry->d_name, "device").exists())
+          devices.push_back(entry->d_name);
+      }
+    }
+    closedir(dir);
+  }
+  std::sort(devices.begin(), devices.end());
 
-  return interfaces;
+  return devices;
 }
 
-const std::string& System::getNetworkInterfacesDir() {
-  return NetworkInterfacesDir;
+std::vector<std::string> System::getDevices(DeviceClass clss) {
+  switch(clss) {
+  case DeviceClass::Disk:
+    return getBlockDevices();
+  case DeviceClass::Network:
+    return getNetworkDevices();
+  default:
+    g_error("Unsupported device class: %s", enum_cstr(clss));
+    break;
+  }
+
+  return {};
+}
+
+const std::string& System::getNetworkDevicesDir() {
+  return NetworkDevicesDir;
 }
 
 const std::string& System::getBlockDevicesDir() {

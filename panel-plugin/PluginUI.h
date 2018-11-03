@@ -22,7 +22,6 @@ private:
 
   unsigned       size;
   GtkOrientation orientation;
-  GtkIconTheme*  theme;
 
   // TODO: The label could be to the left, right, top or bottom of the
   // network monitors
@@ -43,6 +42,7 @@ private:
     std::string           label;
     LabelPosition         labelPosition;
     PangoFontDescription* font;
+    TooltipVerbosity      verbosity;
   } opts;
 
 private:
@@ -67,6 +67,7 @@ public:
   void setLabel(const std::string&);
   void setLabelPosition(LabelPosition);
   void setFont(const PangoFontDescription*);
+  void setVerbosity(TooltipVerbosity);
 
   unsigned                    getSize() const;
   GtkOrientation              getOrientation() const;
@@ -78,6 +79,7 @@ public:
   const std::string&          getLabel() const;
   LabelPosition               getLabelPosition() const;
   const PangoFontDescription* getFont() const;
+  TooltipVerbosity            getVerbosity() const;
 
   GtkWidget* createUI();
   void       destroyUI();

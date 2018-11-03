@@ -1,12 +1,12 @@
-#ifndef XFCE_APPLET_NETWORK_ARRAY_H
-#define XFCE_APPLET_NETWORK_ARRAY_H
+#ifndef XFCE_APPLET_SPEED_ARRAY_H
+#define XFCE_APPLET_SPEED_ARRAY_H
 
 #include <array>
 #include <stdint.h>
 
 template <typename T, typename Enum> class Array {
 private:
-  std::array<T, static_cast<unsigned>(Enum::Last)> impl;
+  std::array<T, static_cast<unsigned>(Enum::Last_)> impl;
 
 public:
   using value_type      = typename decltype(impl)::value_type;
@@ -20,15 +20,28 @@ public:
   using const_iterator  = typename decltype(impl)::const_iterator;
 
 public:
-  Array() { ; }
+  constexpr Array() { ; }
 
-  Array(std::initializer_list<T> ilist) {
+  Array(const Array<T, Enum>& other) {
+    size_type i = 0;
+    for(const T& e : other)
+      impl[i++] = e;
+  }
+  
+  constexpr Array(std::initializer_list<T> ilist) {
     *this = ilist;
   }
   
   Array<T, Enum>& operator=(std::initializer_list<T> ilist) {
     size_type i = 0;
     for(const T& e : ilist)
+      impl[i++] = e;
+    return *this;
+  }
+
+  constexpr Array<T, Enum&> operator=(const Array<T, Enum>& other) {
+    size_type i = 0;
+    for(const T& e : other)
       impl[i++] = e;
     return *this;
   }
@@ -144,4 +157,4 @@ public:
 
 
 
-#endif // XFCE_APPLET_NETWORK_ARRAY_H
+#endif // XFCE_APPLET_SPEED_ARRAY_H

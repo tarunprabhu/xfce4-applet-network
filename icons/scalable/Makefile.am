@@ -1,19 +1,12 @@
 iconsdir = $(datadir)/icons/hicolor/scalable/apps
 
 icons_DATA = \
-    xfce-applet-network-cellular-connected.svg \
-    xfce-applet-network-cellular-disconnected.svg \
-    xfce-applet-network-other-connected.svg \
-    xfce-applet-network-other-disconnected.svg \
-    xfce-applet-network-ppp-connected.svg \
-    xfce-applet-network-ppp-disconnected.svg \
-    xfce-applet-network-usb-connected.svg \
-    xfce-applet-network-usb-disconnected.svg \
-    xfce-applet-network-virtual-connected.svg \
-    xfce-applet-network-virtual-disconnected.svg \
-    xfce-applet-network-wired-connected.svg \
-    xfce-applet-network-wired-disconnected.svg \
-    xfce-applet-network-wireless-connected.svg \
-    xfce-applet-network-wireless-disconnected.svg
+    xfce-applet-speed-cellular.svg \
+    xfce-applet-speed-other.svg \
+    xfce-applet-speed-ppp.svg \
+    xfce-applet-speed-usb.svg \
+    xfce-applet-speed-virtual.svg \
+    xfce-applet-speed-wired.svg \
+    xfce-applet-speed-wireless.svg
 
 EXTRA_DIST = $(icons_DATA)

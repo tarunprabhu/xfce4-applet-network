@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_NETWORK_NETWORK_CONFIG_H
-#define XFCE_APPLET_NETWORK_NETWORK_CONFIG_H
+#ifndef XFCE_APPLET_SPEED_DEVICE_CONFIG_H
+#define XFCE_APPLET_SPEED_DEVICE_CONFIG_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -7,36 +7,40 @@
 
 #include "Constants.h"
 #include "Defaults.h"
+#include "Device.h"
 #include "Range.h"
 
 #include <gtk/gtk.h>
 
-class Network;
-class NetworkUI;
-class Plugin;
+#include <memory>
 
-class NetworkConfig {
+class Plugin;
+class PluginConfig;
+
+class DeviceConfig {
 public:
   // The width of each step in the slider in pixels
   static const unsigned SliderStepWidth = 12;
 
   static constexpr Range<double> RangeRxRate = {
-      0.5, 10.0, 0.5, Defaults::Network::UI::RxRateMax}; // MB/s
+      0.5, 10.0, 0.5, Defaults::Device::UI::RxRateMax}; // MB/s
   static constexpr Range<double> RangeTxRate = {
-      0.125, 2.5, 0.125, Defaults::Network::UI::TxRateMax};       // MB/s
+      0.125, 2.5, 0.125, Defaults::Device::UI::TxRateMax};        // MB/s
   static constexpr double RxRateMultiplier = Constants::Megabyte; // 1 MB
   static constexpr double TxRateMultiplier = Constants::Megabyte; // 1 MB
 
 private:
-  Network&   network;
-  NetworkUI& ui;
-  Plugin&    plugin;
+  Plugin&       plugin;
+  PluginConfig& pluginConfig;
+  Device*       device;
+  DeviceUI*     ui;
 
   struct {
     GtkWidget* dialog;            // Main dialog window
-    GtkWidget* buttonDialogClose; // The close button of the dialog
+    GtkWidget* buttonDialogSave;  // The close button of the dialog
+    GtkWidget* comboDevice;       // Combo box containing the devices
     GtkWidget* comboKind;         // Combo box for the network interface kind
-    GtkWidget* imgInterface;      // Icon for the network
+    GtkWidget* imageDevice;       // Icon for the network
     GtkWidget* entryName;         // Entry for user-friendly network name
     GtkWidget* labelRxRate;       // The maximum incoming rate on the dial
     GtkWidget* labelTxRate;       // The maximum outgoing rate on the dial
@@ -44,21 +48,32 @@ private:
     GtkWidget* checkShowLabel;    // Whether or not to display the label
     GtkWidget* boxLabelSensitive; // Box containing widgets that should be
                                   // disabled if show label is set to false
+    GtkWidget* frameDeviceSelector;
+    GtkWidget* frameDeviceOptions;
+    GtkWidget* frameDialOptions;
+    GtkWidget* frameLabelOptions;
   } widgets;
 
 private:
-  GtkWidget* addNetworkOptions();
+  GtkWidget* addDeviceSelector();
+  GtkWidget* addDeviceOptions();
   GtkWidget* addDialOptions();
   GtkWidget* addLabelOptions();
 
   void clearWidgets();
+  void resetDevice(DeviceClass);
+  bool isNewDevice() const;
 
 public:
-  NetworkConfig(Network&);
-  ~NetworkConfig();
+  DeviceConfig(Plugin&);
+  DeviceConfig(Device&);
+  ~DeviceConfig();
+
+  Device* takeDevice();
 
   void cbDialogResponse(GtkDialog*, int);
-  void cbComboInterfaceChanged(GtkComboBox*);
+  void cbComboDeviceClassChanged(GtkComboBox*);
+  void cbComboDeviceChanged(GtkComboBox*);
   void cbComboKindChanged(GtkComboBox*);
   void cbEntryNameChanged(GtkEntry*);
   void cbScaleRxChanged(GtkRange*);
@@ -76,4 +91,4 @@ public:
   GtkWidget* getDialogWidget();
 };
 
-#endif // XFCE_APPLET_NETWORK_NETWORK_CONFIG_H
+#endif // XFCE_APPLET_SPEED_DEVICE_CONFIG_H

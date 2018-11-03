@@ -1,46 +1,42 @@
-#include "NetworkUI.h"
+#include "DeviceUI.h"
 
 #include "CSSBuilder.h"
 #include "Defaults.h"
+#include "DeviceTooltip.h"
 #include "GtkUtils.h"
-#include "Network.h"
 #include "Plugin.h"
 #include "PluginUI.h"
 #include "Utils.h"
 #include "XfceUtils.h"
 
 // Callbacks
-static gboolean cb_box_query_tooltip(GtkWidget*  w,
-                                     gint        x,
-                                     gint        y,
-                                     gboolean    kbMode,
-                                     GtkTooltip* tooltip,
-                                     NetworkUI*  network) {
-  return network->cbBoxQueryTooltip(w, x, y, kbMode, tooltip);
+static gboolean cb_box_query_tooltip(GtkWidget*     w,
+                                     gint           x,
+                                     gint           y,
+                                     gboolean       kbMode,
+                                     GtkTooltip*    tooltipWidget,
+                                     DeviceTooltip* tooltip) {
+  return tooltip->cbBoxQueryTooltip(w, x, y, kbMode, tooltipWidget);
 }
 
-NetworkUI::NetworkUI(Network& net)
-    : network(net), plugin(network.getPlugin()),
-      pluginUI(network.getPluginUI()) {
-  DBG("Create network ui");
-
-  opts.rxMax                = Defaults::Network::UI::RxRateMax;
-  opts.txMax                = Defaults::Network::UI::TxRateMax;
-  opts.showWhenDisabled     = Defaults::Network::UI::ShowWhenDisabled;
-  opts.showWhenDisconnected = Defaults::Network::UI::ShowWhenDisconnected;
-  opts.showLabel            = Defaults::Network::UI::ShowLabel;
-  opts.label                = Defaults::Network::UI::Label;
-  opts.labelFg              = gdk_rgba_copy(&Defaults::Network::UI::LabelFg);
-  opts.labelBg              = gdk_rgba_copy(&Defaults::Network::UI::LabelBg);
+DeviceUI::DeviceUI(Device& refDevice)
+    : device(refDevice), plugin(device.getPlugin()), pluginUI(plugin.getUI()),
+      tooltip(device.getTooltip()) {
+  opts.rxMax                = Defaults::Device::UI::RxRateMax;
+  opts.txMax                = Defaults::Device::UI::TxRateMax;
+  opts.showWhenDisabled     = Defaults::Device::UI::ShowWhenDisabled;
+  opts.showWhenDisconnected = Defaults::Device::UI::ShowWhenDisconnected;
+  opts.showLabel            = Defaults::Device::UI::ShowLabel;
+  opts.label                = Defaults::Device::UI::Label;
+  opts.labelFg              = gdk_rgba_copy(&Defaults::Device::UI::LabelFg);
+  opts.labelBg              = gdk_rgba_copy(&Defaults::Device::UI::LabelBg);
   opts.labelFont            = pango_font_description_copy(pluginUI.getFont());
-  opts.labelPosition        = Defaults::Network::UI::LabelPos;
+  opts.labelPosition        = Defaults::Device::UI::LabelPos;
 
   clearWidgets();
 }
 
-NetworkUI::~NetworkUI() {
-  DBG("Destruct network ui: %s", network.getName().c_str());
-
+DeviceUI::~DeviceUI() {
   gdk_rgba_free(opts.labelFg);
   gdk_rgba_free(opts.labelBg);
   pango_font_description_free(opts.labelFont);
@@ -48,116 +44,103 @@ NetworkUI::~NetworkUI() {
   destroyUI();
 }
 
-void NetworkUI::clearWidgets() {
+void DeviceUI::clearWidgets() {
   for(LabelPosition pos : LabelPosition())
     widgets.labels[pos] = nullptr;
   widgets.container = nullptr;
   widgets.dial      = nullptr;
 }
 
-gboolean NetworkUI::cbBoxQueryTooltip(
-    GtkWidget* w, gint x, gint y, gboolean kbMode, GtkTooltip* tooltip) {
-  std::string markup = network.getTooltipMarkup();
-  GdkPixbuf*  icon   = network.getTooltipIcon();
-
-  gtk_tooltip_set_icon(tooltip, icon);
-  gtk_tooltip_set_markup(tooltip, markup.c_str());
-
-  return TRUE;
-}
-
-void NetworkUI::setMaxTxRate(double rate) {
+void DeviceUI::setMaxTxRate(double rate) {
   opts.txMax = rate;
 }
 
-void NetworkUI::setMaxRxRate(double rate) {
+void DeviceUI::setMaxRxRate(double rate) {
   opts.rxMax = rate;
 }
 
-void NetworkUI::setShowWhenDisabled(bool showWhenDisabled) {
+void DeviceUI::setShowWhenDisabled(bool showWhenDisabled) {
   opts.showWhenDisabled = showWhenDisabled;
 }
 
-void NetworkUI::setShowWhenDisconnected(bool showWhenDisconnected) {
+void DeviceUI::setShowWhenDisconnected(bool showWhenDisconnected) {
   opts.showWhenDisconnected = showWhenDisconnected;
 }
 
-void NetworkUI::setShowLabel(bool showLabel) {
+void DeviceUI::setShowLabel(bool showLabel) {
   opts.showLabel = showLabel;
 }
 
-void NetworkUI::setLabel(const std::string& label) {
+void DeviceUI::setLabel(const std::string& label) {
   opts.label = label;
 }
 
-void NetworkUI::setLabelFgColor(const GdkRGBA* color) {
+void DeviceUI::setLabelFgColor(const GdkRGBA* color) {
   gdk_rgba_free(opts.labelFg);
   opts.labelFg = gdk_rgba_copy(color);
 }
 
-void NetworkUI::setLabelBgColor(const GdkRGBA* color) {
+void DeviceUI::setLabelBgColor(const GdkRGBA* color) {
   gdk_rgba_free(opts.labelBg);
   opts.labelBg = gdk_rgba_copy(color);
 }
 
-void NetworkUI::setLabelFont(const PangoFontDescription* font) {
+void DeviceUI::setLabelFont(const PangoFontDescription* font) {
   pango_font_description_free(opts.labelFont);
   opts.labelFont = pango_font_description_copy(font);
 }
 
-void NetworkUI::setLabelPosition(LabelPosition pos) {
+void DeviceUI::setLabelPosition(LabelPosition pos) {
   opts.labelPosition = pos;
 }
 
-double NetworkUI::getMaxTxRate() const {
+double DeviceUI::getMaxTxRate() const {
   return opts.txMax;
 }
 
-double NetworkUI::getMaxRxRate() const {
+double DeviceUI::getMaxRxRate() const {
   return opts.rxMax;
 }
 
-bool NetworkUI::getShowWhenDisabled() const {
+bool DeviceUI::getShowWhenDisabled() const {
   return opts.showWhenDisabled;
 }
 
-bool NetworkUI::getShowWhenDisconnected() const {
+bool DeviceUI::getShowWhenDisconnected() const {
   return opts.showWhenDisconnected;
 }
 
-bool NetworkUI::getShowLabel() const {
+bool DeviceUI::getShowLabel() const {
   return opts.showLabel;
 }
 
-const std::string& NetworkUI::getLabel() const {
+const std::string& DeviceUI::getLabel() const {
   return opts.label;
 }
 
-const GdkRGBA* NetworkUI::getLabelFgColor() const {
+const GdkRGBA* DeviceUI::getLabelFgColor() const {
   return opts.labelFg;
 }
 
-const GdkRGBA* NetworkUI::getLabelBgColor() const {
+const GdkRGBA* DeviceUI::getLabelBgColor() const {
   return opts.labelBg;
 }
 
-const PangoFontDescription* NetworkUI::getLabelFont() const {
+const PangoFontDescription* DeviceUI::getLabelFont() const {
   return opts.labelFont;
 }
 
-LabelPosition NetworkUI::getLabelPosition() const {
+LabelPosition DeviceUI::getLabelPosition() const {
   return opts.labelPosition;
 }
 
-void NetworkUI::readConfig(XfceRc* rc) {
-  DBG("Read network ui config");
-
+void DeviceUI::readConfig(XfceRc* rc) {
   setMaxRxRate(xfce_rc_read_double_entry(rc, "rx", opts.rxMax));
   setMaxTxRate(xfce_rc_read_double_entry(rc, "tx", opts.txMax));
   setShowWhenDisabled(
-      xfce_rc_read_bool_entry(rc, "showWhenDisabled", opts.showWhenDisabled));
-  setShowWhenDisconnected(xfce_rc_read_bool_entry(rc, "showWhenDisconnected",
-                                                  opts.showWhenDisconnected));
+      xfce_rc_read_bool_entry(rc, "disabled", opts.showWhenDisabled));
+  setShowWhenDisconnected(
+      xfce_rc_read_bool_entry(rc, "disconnected", opts.showWhenDisconnected));
   setShowLabel(xfce_rc_read_bool_entry(rc, "show", opts.showLabel));
   setLabel(xfce_rc_read_entry(rc, "label", opts.label.c_str()));
   setLabelFgColor(xfce_rc_read_color_entry(rc, "labelFg", opts.labelFg));
@@ -166,14 +149,11 @@ void NetworkUI::readConfig(XfceRc* rc) {
   setLabelPosition(xfce_rc_read_enum_entry(rc, "labelPos", opts.labelPosition));
 }
 
-void NetworkUI::writeConfig(XfceRc* rc) const {
-  DBG("Write network ui config");
-
+void DeviceUI::writeConfig(XfceRc* rc) const {
   xfce_rc_write_double_entry(rc, "rx", opts.rxMax);
   xfce_rc_write_double_entry(rc, "tx", opts.txMax);
-  xfce_rc_write_bool_entry(rc, "showWhenDisabled", opts.showWhenDisabled);
-  xfce_rc_write_bool_entry(rc, "showWhenDisconnected",
-                           opts.showWhenDisconnected);
+  xfce_rc_write_bool_entry(rc, "disabled", opts.showWhenDisabled);
+  xfce_rc_write_bool_entry(rc, "disconnected", opts.showWhenDisconnected);
   xfce_rc_write_bool_entry(rc, "show", opts.showLabel);
   xfce_rc_write_entry(rc, "label", opts.label.c_str());
   xfce_rc_write_color_entry(rc, "labelFg", opts.labelFg);
@@ -182,11 +162,13 @@ void NetworkUI::writeConfig(XfceRc* rc) const {
   xfce_rc_write_enum_entry(rc, "labelPos", opts.labelPosition);
 }
 
-GtkWidget* NetworkUI::createUI() {
-  DBG("Create network ui: %s", network.getName().c_str());
+GtkWidget* DeviceUI::createUI() {
+  // GtkWidget* window = tooltip.createUI();
+  GtkWindow* window = nullptr;
 
   GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, pluginUI.getPadding());
   gtk_container_set_border_width(GTK_CONTAINER(box), 0);
+  gtk_widget_set_tooltip_window(box, GTK_WINDOW(window));
   gtk_widget_show(box);
 
   GtkWidget* labelTop = gtk_label_new(opts.label.c_str());
@@ -194,9 +176,10 @@ GtkWidget* NetworkUI::createUI() {
   gtk_widget_show(labelTop);
 
   // TODO: Actually use a dial
-  unsigned   size = pluginUI.getSize() - 2 * pluginUI.getBorder();
-  GdkPixbuf* pixbuf = network.getIcon(DeviceStatus::Connected, size);
-  GtkWidget* dial = gtk_image_new_from_pixbuf(pixbuf);
+  unsigned size = pluginUI.getSize() - 2 * pluginUI.getBorder();
+  // GdkPixbuf* pixbuf = device->getIcon(DeviceStatus::Connected, size);
+  // GtkWidget* dial = gtk_image_new_from_pixbuf(pixbuf);
+  GtkWidget* dial = gtk_label_new(device.getKind().c_str());
   gtk_box_pack_start(GTK_BOX(box), dial, TRUE, TRUE, 0);
   gtk_widget_show(dial);
 
@@ -215,14 +198,14 @@ GtkWidget* NetworkUI::createUI() {
   // Connect signals
   g_object_set(G_OBJECT(box), "has-tooltip", TRUE, NULL);
   g_signal_connect(G_OBJECT(box), "query-tooltip",
-                   G_CALLBACK(cb_box_query_tooltip), this);
+                   G_CALLBACK(cb_box_query_tooltip), &tooltip);
 
   return box;
 }
 
-void NetworkUI::destroyUI() {
+void DeviceUI::destroyUI() {
   if(widgets.container) {
-    DBG("Destroy network ui: %s", network.getName().c_str());
+    tooltip.destroyUI();
 
     // This will remove the widget from the plugin ui container so we don't
     // need to explicitly remove it
@@ -232,9 +215,7 @@ void NetworkUI::destroyUI() {
   }
 }
 
-void NetworkUI::refresh() {
-  DBG("Refresh network ui: %s", network.getName().c_str());
-
+void DeviceUI::refresh() {
   gtk_box_set_spacing(GTK_BOX(widgets.container), pluginUI.getPadding());
 
   // Hide everything before showing only those widgets that we should
@@ -245,7 +226,7 @@ void NetworkUI::refresh() {
       gtk_widget_hide(labelLabel);
 
   bool showDial = false;
-  switch(network.getStatus()) {
+  switch(device.getStats().getStatus()) {
   case DeviceStatus::Connected:
     showDial = true;
     break;

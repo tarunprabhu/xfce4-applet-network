@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_SPEED_UNIQUE_ID_H
-#define XFCE_APPLET_SPEED_UNIQUE_ID_H
+#ifndef XFCE_APPLET_SPEED_SYS_LINUX_UNIQUE_ID_H
+#define XFCE_APPLET_SPEED_SYS_LINUX_UNIQUE_ID_H
 
 #include <uuid/uuid.h>
 
@@ -15,7 +15,8 @@ public:
 
   bool operator==(const UniqueID&) const noexcept;
   bool operator!=(const UniqueID&) const noexcept;
+
   const std::string& get() const;
 };
 
-#endif // XFCE_APPLET_SPEED_UNIQUE_ID_H
+#endif // XFCE_APPLET_SPEED_SYS_LINUX_UNIQUE_ID_H

@@ -1,76 +1,47 @@
 #include "NetworkStats.h"
 
 #include "Network.h"
-#include "Plugin.h"
-#include "System.h"
 
-NetworkStats::NetworkStats(Network& net)
-    : network(net), plugin(network.getPlugin()), impl(*this),
-      status(DeviceStatus::Disconnected), tx(0), rx(0), txRate(0.0),
-      rxRate(0.0) {
-  // FIXME: The default network status should be disabled. It will be something
-  // else during development
+NetworkStats::NetworkStats(Network& refNetwork)
+    : DeviceStats(refNetwork.getPlugin(), reader), network(refNetwork),
+      reader(*this) {
+  reset();
+}
+
+NetworkStats::~NetworkStats() {
   ;
 }
 
 void NetworkStats::reset() {
-  tx     = 0;
-  rx     = 0;
-  txRate = 0.0;
-  rxRate = 0.0;
+  resetStats(dropped);
+  resetStats(errors);
+  resetStats(packets);
+  DeviceStats::reset();
 }
 
-void NetworkStats::reset(const std::string& interface) {
-  impl.reset(interface);
-  reset();
+uint64_t NetworkStats::getDropped(XferDirection direction,
+                                  StatsRange    range) const {
+  return dropped[direction][range];
 }
 
-void NetworkStats::setStatus(DeviceStatus newStatus) {
-  status = newStatus;
+uint64_t NetworkStats::getErrors(XferDirection direction,
+                                 StatsRange    range) const {
+  return errors[direction][range];
 }
 
-void NetworkStats::setTxBytes(guint64 bytes) {
-  if(status == DeviceStatus::Connected) {
-    if(tx)
-      txRate = (double)(bytes - tx) / plugin.getPeriod();
-    tx = bytes;
-  } else {
-    reset();
-  }
+uint64_t NetworkStats::getPackets(XferDirection direction,
+                                  StatsRange    range) const {
+  return packets[direction][range];
 }
 
-void NetworkStats::setRxBytes(guint64 bytes) {
-  if(status != DeviceStatus::Connected) {
-    if(rx)
-      rxRate = (double)(bytes - rx) / plugin.getPeriod();
-    rx = bytes;
-  } else {
-    reset();
-  }
+void NetworkStats::setDropped(XferDirection direction, uint64_t newDropped) {
+  updateStats(dropped[direction], newDropped);
 }
 
-DeviceStatus NetworkStats::getStatus() const {
-  return status;
+void NetworkStats::setErrors(XferDirection direction, uint64_t newErrors) {
+  updateStats(errors[direction], newErrors);
 }
 
-uint64_t NetworkStats::getTxBytes() const {
-  return tx;
-}
-
-uint64_t NetworkStats::getRxBytes() const {
-  return rx;
-}
-
-double NetworkStats::getTxRate() const {
-  return txRate;
-}
-
-double NetworkStats::getRxRate() const {
-  return rxRate;
-}
-
-void NetworkStats::update() {
-  DBG("Update stats");
-
-  impl.update();
+void NetworkStats::setPackets(XferDirection direction, uint64_t newPackets) {
+  updateStats(packets[direction], newPackets);
 }

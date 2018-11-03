@@ -1,16 +1,16 @@
-#ifndef XFCE_APPLET_NETWORK_PLUGIN_H
-#define XFCE_APPLET_NETWORK_PLUGIN_H
+#ifndef XFCE_APPLET_SPEED_PLUGIN_H
+#define XFCE_APPLET_SPEED_PLUGIN_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
 #include "Array.h"
+#include "Device.h"
 #include "Enums.h"
-#include "Network.h"
+#include "IconContext.h"
 #include "PluginConfig.h"
 #include "PluginUI.h"
-#include "TooltipUI.h"
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 #include <libxfce4util/libxfce4util.h>
@@ -18,69 +18,63 @@
 #include <gtk/gtk.h>
 
 #include <list>
+#include <memory>
 #include <string>
 
 class Plugin {
-public:
-  static const unsigned IconSizeMenu    = 16;
-  static const unsigned IconSizeToolbar = 24;
-  static const unsigned IconSizeDialog  = 32;
-  static const unsigned IconSizeTooltip = 96;
-  static const unsigned IconSizeLarge   = 128;
-
 private:
-  XfcePanelPlugin*                                     xfce;
-  PluginUI                                             ui;
-  PluginConfig                                         config;
-  TooltipUI                                            tooltip;
-  Array<Array<std::string, DeviceStatus>, NetworkKind> networkIconNames;
-  guint                                                timer;
+  XfcePanelPlugin* xfce;
+  PluginConfig     config;
+  PluginUI         ui;
+  IconContext      icons;
+  guint            timer;
 
   struct {
-    double             period;
-    std::list<Network> networks;
+    double                             period;
+    std::list<std::unique_ptr<Device>> devices;
   } opts;
 
 private:
   void readConfig(XfceRc*);
-  void writeConfig(XfceRc*);
+  void writeConfig(XfceRc*) const;
 
   GdkPixbuf* getIcon(const std::string&, unsigned);
+  void       setTimer();
+  void       clearTimer();
 
 public:
   Plugin(XfcePanelPlugin*);
   ~Plugin();
 
-  XfcePanelPlugin*          getXfcePanelPlugin();
-  PluginConfig&             getConfig();
-  PluginUI&                 getUI();
-  TooltipUI&                getTooltipUI();
-  std::list<Network>&       getNetworks();
-  const std::list<Network>& getNetworks() const;
+  XfcePanelPlugin*                          getXfcePanelPlugin();
+  PluginConfig&                             getConfig();
+  PluginUI&                                 getUI();
+  const IconContext&                        getIconContext();
+  std::list<std::unique_ptr<Device>>&       getDevices();
+  const std::list<std::unique_ptr<Device>>& getDevices() const;
 
-  GdkPixbuf*         getPluginIcon(unsigned);
-  GdkPixbuf*         getIcon(NetworkKind, DeviceStatus, unsigned);
-  const std::string& getIconName(NetworkKind, DeviceStatus) const;
-
-  size_t   getNumNetworks() const;
-  Network& getNetworkAt(int);
-  Network& appendNewNetwork();
-  void     removeNetworkAt(int);
-  void     moveNetworkUp(unsigned);
-  void     moveNetworkDown(unsigned);
-
-  void about();
-  void configure();
-  void reorient(GtkOrientation);
-  void resize(unsigned);
   void readConfig();
-  void writeConfig();
+  void writeConfig() const;
+  void resetTimer();
+
+  size_t  getNumDevices() const;
+  Device& getDeviceAt(int);
+  void    appendDevice(Device*);
+  void    removeDeviceAt(int);
+  void    moveDeviceUp(unsigned);
+  void    moveDeviceDown(unsigned);
+
+  void     cbAbout();
+  void     cbConfigure();
+  void     cbReorient(GtkOrientation);
+  void     cbResize(unsigned);
+  void     cbReadConfig();
+  void     cbSave() const;
+  gboolean cbTimerTick();
 
   void setPeriod(double);
 
   double getPeriod() const;
-
-  size_t populateInterfaces(std::list<std::string>&);
 
   // Redraws the entire UI for the plugin and all networks
   void redraw();
@@ -89,4 +83,4 @@ public:
   void refresh();
 };
 
-#endif // XFCE_APPLET_NETWORK_PLUGIN_H
+#endif // XFCE_APPLET_SPEED_PLUGIN_H

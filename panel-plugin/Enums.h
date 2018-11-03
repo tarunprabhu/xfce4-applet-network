@@ -1,124 +1,68 @@
 #ifndef XFCE_APPLET_SPEED_ENUMS_H
 #define XFCE_APPLET_SPEED_ENUMS_H
 
-#include <array>
-#include <map>
-#include <string>
+#include "EnumImpl.h"
 
-enum class NetworkKind {
-  Cellular = 0, // Cellular networks
-  Other,        // Other network kinds that we may not yet know about
-  PPP,          // Old-school internet over a modem
-  USB,          // USB Ethernet
-  Virtual,      // Virtual networks include loopbacks and VM networks
-  Wired,        // Ethernet and other wired networks
-  Wireless,     // WLAN networks
-  Last,
-  First = Cellular,
+ENUM_CREATE(XferDirection,
+            Rx, // Incoming data from the network or device
+            Tx  // Data sent on the network or written to the device
+);
+
+// Indicates whether the value of the statistic is over the sampling interval
+// or since the device came up
+ENUM_CREATE(StatsRange, Interval, Total);
+
+ENUM_CREATE(IconKind, Dialog, Menu, Toolbar, Tooltip);
+
+ENUM_CREATE(LabelPosition, Left, Top, Right, Bottom);
+
+ENUM_CREATE(TooltipVerbosity, Limited, Moderate, Verbose);
+
+ENUM_CREATE(DeviceStatus,
+            Connected,    // The device is connected and operational
+            Disabled,     // The device is not connected
+            Disconnected, // In the case of networks, the network is down
+            Error // This occurs when the device stats cannot be obtained even
+                  // though the device is determined to be available
+);
+
+ENUM_CREATE(DiskKind,
+            Internal,   // Internal hard disk (SSD, SATA etc.)
+            Multimedia, // Multimedia card (SD, MMC etc.)
+            Optical,    // Optical device
+            Other,      // Unknown device kind
+            Removable   // Removable disk (USB, Firewire etc.)
+);
+
+ENUM_CREATE(NetworkKind,
+            Cellular, // Cellular networks
+            Other,    // Other network kinds that we may not yet know about
+            PPP,      // Old-school internet over a modem
+            USB,      // USB Ethernet
+            Virtual,  // Virtual networks include loopbacks and VM networks
+            Wired,    // Ethernet and other wired networks
+            Wireless  // WLAN networks
+);
+
+ENUM_CREATE(DeviceClass,
+            Disk, // The device is a block device (hard disk, optical device,
+            // multimedia card etc.)
+            Network // The device is a network interface
+);
+
+// Since the disk kind and the network kind enums are different
+// Given the device type, we need to find a way to find the right enum for
+// its kind. We also want this to be indepdendent of the value itself so
+// clients do not need to be changed if the order of values in enum DeviceClass
+// change
+template <DeviceClass clss> struct DeviceClassToKind;
+
+template <> struct DeviceClassToKind<DeviceClass::Disk> {
+  using Kind = DiskKind;
 };
 
-enum class DiskKind {
-  Internal = 0,   // Internal hard disk
-  MultimediaCard, // Multimedia card
-  Optical,        // Optical device
-  Removable,      // Removable disk
-  Last,
-  First = Internal,
+template <> struct DeviceClassToKind<DeviceClass::Network> {
+  using Kind = NetworkKind;
 };
-
-enum class DeviceStatus {
-  Connected = 0, // Network is up
-  Disabled,      // Network is not enabled or unknown
-  Disconnected,  // Network is down
-  Error,         // This occurs when the network is known but parameters of the
-                 // network could not be read
-  Last,
-  First = Connected,
-};
-
-enum class LabelPosition {
-  Left = 0,
-  Top,
-  Right,
-  Bottom,
-  Last,
-  First = Left,
-};
-
-enum class TooltipTheme {
-  Dark = 0, // Dark background, light icon and text
-  Light,    // Light background, dark icon and text
-  Last,
-  First = Dark,
-};
-
-enum class TooltipVerbosity {
-  Limited,
-  Moderate,
-  Verbose,
-  Last,
-  First = Limited,
-};
-
-// // We'll have to explicitly instantiate these functions because not all
-// // enums will have these functions defined
-// template <typename Enum> const std::string& enum_str(Enum, bool = false);
-// template <typename Enum> Enum               enum_parse(const std::string&);
-
-// Wrap this up in a namespace because ideally, it ought to be private
-namespace EnumImpl {
-
-template <typename Enum>
-using EnumMapTy = std::map<Enum, std::array<std::string, 2>>;
-
-using DictEnumNamesTy = std::tuple<EnumMapTy<DeviceStatus>,
-                                   EnumMapTy<DiskKind>,
-                                   EnumMapTy<LabelPosition>,
-                                   EnumMapTy<NetworkKind>,
-                                   EnumMapTy<TooltipTheme>,
-                                   EnumMapTy<TooltipVerbosity>>;
-
-const DictEnumNamesTy&   getEnumNames();
-const std::string&       getUnknownEnumName();
-
-template <typename Enum> const EnumMapTy<Enum>& getEnumNameMap() {
-  return std::get<EnumMapTy<Enum>>(getEnumNames());
-}
-
-} // namespace EnumImpl
-
-template <typename Enum>
-const std::string& enum_str(Enum e, bool lowercase = false) {
-  const auto& names = EnumImpl::getEnumNameMap<Enum>();
-  auto        iter  = names.find(e);
-  if(iter != names.end())
-    return iter->second[lowercase];
-  return EnumImpl::getUnknownEnumName();
-}
-
-template <typename Enum> Enum enum_parse(const std::string& s) {
-  const auto& names = EnumImpl::getEnumNameMap<Enum>();
-  for(const auto& p : names)
-    if((s == p.second[0]) or (s == p.second[1]))
-      return p.first;
-  return Enum::Last;
-}
-
-template <typename Enum> Enum operator++(Enum& e) {
-  e = static_cast<Enum>(static_cast<int>(e) + 1);
-  return e;
-}
-
-template <typename Enum> Enum operator*(Enum e) {
-  return e;
-}
-
-template <typename Enum> Enum begin(Enum) {
-  return Enum::First;
-}
-
-template <typename Enum> Enum end(Enum) {
-  return Enum::Last;
-}
 
 #endif // XFCE_APPLET_SPEED_ENUMS_H

@@ -1,75 +1,53 @@
-#ifndef XFCE_APPLET_NETWORK_NETWORK_H
-#define XFCE_APPLET_NETWORK_NETWORK_H
+#ifndef XFCE_APPLET_SPEED_NETWORK_H
+#define XFCE_APPLET_SPEED_NETWORK_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
-#include "Array.h"
+#include "Device.h"
 #include "Enums.h"
-#include "NetworkConfig.h"
 #include "NetworkStats.h"
-#include "NetworkUI.h"
-#include "System.h"
+#include "NetworkTooltip.h"
 
 #include <libxfce4util/libxfce4util.h>
-
-#include <gtk/gtk.h>
 
 #include <string>
 
 class Plugin;
 
-class Network {
-private:
-  Plugin&                          plugin;
-  NetworkConfig                    config;
-  NetworkUI                        ui;
-  NetworkStats                     stats;
-  UniqueID                         id; // A unique id for this device
-  Array<std::string, DeviceStatus> iconNames;
-  Array<GdkPixbuf*, DeviceStatus>  icons;
+class Network : public Device {
+protected:
+  NetworkStats   stats;
+  NetworkTooltip tooltip;
 
-  // Network options
   struct {
-    std::string interface; // The actual network interface
     NetworkKind kind;
-    std::string name; // User-friendly name for the network
   } opts;
+
+protected:
+  void setKind(NetworkKind);
 
 public:
   Network(Plugin&);
-  ~Network();
+  virtual ~Network();
 
-  void readConfig(XfceRc*);
-  void writeConfig(XfceRc*) const;
+  virtual void setDevice(const std::string&) override;
+  virtual void setKind(const std::string&) override;
 
-  Plugin&             getPlugin();
-  PluginUI&           getPluginUI();
-  NetworkConfig&      getConfig();
-  NetworkUI&          getUI();
-  const NetworkStats& getStats() const;
-  const UniqueID&     getUniqueID() const;
+  using Device::getDevice;
+  using Device::getDeviceClass;
+  using Device::getKind;
+  using Device::getName;
+  virtual NetworkStats&   getStats() override;
+  virtual NetworkTooltip& getTooltip() override;
+  virtual GdkPixbuf*      getIcon(IconKind) override;
 
-  bool               hasInterface() const;
-  const std::string& getInterface() const;
-  NetworkKind        getKind() const;
-  const std::string& getName() const;
+  virtual void readConfig(XfceRc*);
+  virtual void writeConfig(XfceRc*) const;
 
-  DeviceStatus getStatus() const;
-  std::string  getTooltipMarkup() const;
-  GdkPixbuf*   getTooltipIcon() const;
-  GdkPixbuf*   getIcon(DeviceStatus, unsigned);
-  GdkPixbuf*   getIcon(unsigned);
-
-  void setInterface(const std::string&);
-  void setKind(NetworkKind);
-  void setName(const std::string&);
-
-  void reset();
-  void update();
-  void updateIcons();
-  void refresh();
+public:
+  bool classof(const Device*);
 };
 
-#endif // XFCE_APPLET_NETWORK_NETWORK_H
+#endif // XFCE_APPLET_SPEED_NETWORK_H

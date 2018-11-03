@@ -1,33 +1,25 @@
 #include "Plugin.h"
 
 #include "Defaults.h"
+#include "Devices.h"
 #include "XfceUtils.h"
-
-#include <libxfce4panel/xfce-panel-plugin.h>
-#include <libxfce4util/libxfce4util.h>
 
 #include <gtk/gtk.h>
 
 #include <sstream>
 
+static gboolean cb_timer_tick(gpointer data) {
+  return reinterpret_cast<Plugin*>(data)->cbTimerTick();
+}
+
 Plugin::Plugin(XfcePanelPlugin* xfcePanelPlugin)
-    : xfce(xfcePanelPlugin), ui(*this), config(*this), tooltip(*this) {
+    : xfce(xfcePanelPlugin), config(*this), ui(*this), icons(*this), timer(0) {
   DBG("Constructing plugin");
 
   opts.period = Defaults::Plugin::Period;
 
-  // There are only a limited number of statuses and kinds that need to be
-  // combined. Might as well keep them around
-  for(NetworkKind kind : NetworkKind()) {
-    for(DeviceStatus status : DeviceStatus()) {
-      std::stringstream ss;
-      ss << "xfce-applet-network-" << enum_str(kind, true) << "-"
-         << enum_str(status, true);
-      networkIconNames[kind][status] = ss.str();
-    }
-  }
-
   ui.createUI();
+  setTimer();
 }
 
 Plugin::~Plugin() {
@@ -46,103 +38,74 @@ PluginConfig& Plugin::getConfig() {
   return config;
 }
 
-TooltipUI& Plugin::getTooltipUI() {
-  return tooltip;
+const IconContext& Plugin::getIconContext() {
+  return icons;
 }
 
-std::list<Network>& Plugin::getNetworks() {
-  return opts.networks;
+std::list<std::unique_ptr<Device>>& Plugin::getDevices() {
+  return opts.devices;
 }
 
-const std::list<Network>& Plugin::getNetworks() const {
-  return opts.networks;
+const std::list<std::unique_ptr<Device>>& Plugin::getDevices() const {
+  return opts.devices;
 }
 
-size_t Plugin::getNumNetworks() const {
-  return opts.networks.size();
+size_t Plugin::getNumDevices() const {
+  return opts.devices.size();
 }
 
-Network& Plugin::getNetworkAt(int pos) {
+Device& Plugin::getDeviceAt(int pos) {
   int steps = pos;
   if(pos < 0)
-    steps = opts.networks.size() + pos;
+    steps = getNumDevices() + pos;
 
-  auto iter = opts.networks.begin();
+  auto iter = opts.devices.begin();
   while(steps--)
     iter++;
-  return *iter;
+  return *iter->get();
 }
 
-Network& Plugin::appendNewNetwork() {
-  opts.networks.emplace_back(*this);
-  return opts.networks.back();
+void Plugin::appendDevice(Device* device) {
+  opts.devices.emplace_back();
+  opts.devices.back().reset(device);
 }
 
-void Plugin::removeNetworkAt(int pos) {
+void Plugin::removeDeviceAt(int pos) {
   int steps = pos;
   if(pos < 0)
-    steps = opts.networks.size() + pos;
+    steps = getNumDevices() + pos;
 
-  auto iter = opts.networks.begin();
+  auto iter = opts.devices.begin();
   while(steps--)
     iter++;
 
   // iter is guaranteed to be valid because this function will always be
   // called with a valid value for pos
-  opts.networks.erase(iter);
+  opts.devices.erase(iter);
 }
 
-void Plugin::moveNetworkUp(unsigned pos) {
-  auto iter = opts.networks.begin();
+void Plugin::moveDeviceUp(unsigned pos) {
+  auto iter = opts.devices.begin();
   auto prev = iter;
   for(unsigned i = 0; i < pos; i++) {
     prev = iter;
     iter++;
   }
-  opts.networks.splice(prev, opts.networks, iter);
+  prev->swap(*iter);
 }
 
-void Plugin::moveNetworkDown(unsigned pos) {
-  auto next = opts.networks.begin();
+void Plugin::moveDeviceDown(unsigned pos) {
+  auto next = opts.devices.begin();
   auto iter = next;
   for(unsigned i = 0; i <= pos; i++) {
     iter = next;
     next++;
   }
-  opts.networks.splice(iter, opts.networks, next);
+  iter->swap(*next);
 }
 
-const std::string& Plugin::getIconName(NetworkKind  kind,
-                                       DeviceStatus status) const {
-  return networkIconNames[kind][status];
-}
-
-GdkPixbuf*
-Plugin::getIcon(NetworkKind kind, DeviceStatus status, unsigned size) {
-  return getIcon(getIconName(kind, status), size);
-}
-
-GdkPixbuf* Plugin::getIcon(const std::string& name, unsigned size) {
-  GdkPixbuf*         pb    = nullptr;
-  GtkIconLookupFlags flags = static_cast<GtkIconLookupFlags>(0);
-
-  if(GtkIconInfo* info = gtk_icon_theme_lookup_icon(
-         ui.getIconTheme(), name.c_str(), size, flags)) {
-    const gchar* icon = gtk_icon_info_get_filename(info);
-    pb = gdk_pixbuf_new_from_file_at_scale(icon, size, size, TRUE, NULL);
-
-    g_object_unref(G_OBJECT(info));
-  }
-
-  return pb;
-}
-
-GdkPixbuf* Plugin::getPluginIcon(unsigned size) {
-  return getIcon("network-idle", size);
-}
-
-void Plugin::about() {
-  GdkPixbuf* icon = getPluginIcon(32);
+void Plugin::cbAbout() {
+  GdkPixbuf* icon = icons.getIcon();
 
   const gchar* auth[] = {"Tarun Prabhu <tarun.prabhu@gmail.com>", NULL};
   gtk_show_about_dialog(
@@ -157,21 +120,32 @@ void Plugin::about() {
     g_object_unref(G_OBJECT(icon));
 }
 
-void Plugin::configure() {
+void Plugin::cbConfigure() {
   config.createUI();
 }
 
-void Plugin::reorient(GtkOrientation orientation) {
+void Plugin::cbReorient(GtkOrientation orientation) {
   ui.setOrientation(orientation);
   redraw();
 }
 
-void Plugin::resize(unsigned size) {
+void Plugin::cbResize(unsigned size) {
   ui.setSize(size);
   redraw();
 }
 
-void Plugin::writeConfig() {
+void Plugin::cbSave() const {
+  writeConfig();
+}
+
+gboolean Plugin::cbTimerTick() {
+  for(auto& device : getDevices())
+    device->updateStats();
+
+  return TRUE;
+}
+
+void Plugin::writeConfig() const {
   DBG("Writing config");
 
   if(gchar* file = xfce_panel_plugin_save_location(xfce, TRUE)) {
@@ -183,21 +157,21 @@ void Plugin::writeConfig() {
   }
 }
 
-void Plugin::writeConfig(XfceRc* rc) {
+void Plugin::writeConfig(XfceRc* rc) const {
   DBG("Found config file to write");
 
   xfce_rc_set_group(rc, NULL);
   xfce_rc_write_double_entry(rc, "period", opts.period);
   ui.writeConfig(rc);
-  tooltip.writeConfig(rc);
-  xfce_rc_write_int_entry(rc, "networks", opts.networks.size());
+  xfce_rc_write_int_entry(rc, "devices", opts.devices.size());
   unsigned i = 0;
-  for(const Network& network : opts.networks) {
+  for(const auto& device : getDevices()) {
     std::stringstream ss;
     ss << i;
     std::string group = ss.str();
     xfce_rc_set_group(rc, group.c_str());
-    network.writeConfig(rc);
+    xfce_rc_write_enum_entry(rc, "class", device->getDeviceClass());
+    device->writeConfig(rc);
     i += 1;
   }
 }
@@ -223,18 +197,28 @@ void Plugin::readConfig(XfceRc* rc) {
   xfce_rc_set_group(rc, NULL);
   setPeriod(xfce_rc_read_double_entry(rc, "period", opts.period));
   ui.readConfig(rc);
-  tooltip.readConfig(rc);
-  unsigned numNetworks = xfce_rc_read_int_entry(rc, "networks", 0);
+  unsigned numNetworks = xfce_rc_read_int_entry(rc, "devices", 0);
   for(unsigned i = 0; i < numNetworks; i++) {
     std::stringstream ss;
     ss << i;
     std::string group = ss.str();
     xfce_rc_set_group(rc, group.c_str());
-    opts.networks.emplace_back(*this);
-    Network& network = opts.networks.back();
-    network.readConfig(rc);
+    DeviceClass clss = xfce_rc_read_enum_entry(rc, "class", DeviceClass::Last_);
+    switch(clss) {
+    case DeviceClass::Disk:
+      opts.devices.emplace_back(new Disk(*this));
+      break;
+    case DeviceClass::Network:
+      opts.devices.emplace_back(new Network(*this));
+      break;
+    default:
+      g_error("Unsupported device class: %s", enum_cstr(clss));
+      break;
+    }
+    auto& device = opts.devices.back();
+    device->readConfig(rc);
   }
-  refresh();
+  redraw();
 }
 
 void Plugin::setPeriod(double period) {
@@ -245,33 +229,46 @@ double Plugin::getPeriod() const {
   return opts.period;
 }
 
-size_t Plugin::populateInterfaces(std::list<std::string>& interfaces) {
-  size_t size = interfaces.size();
+void Plugin::setTimer() {
+  if(timer == 0)
+    timer = g_timeout_add(opts.period * 1000, cb_timer_tick, this);
+}
 
-  for(const Network& network : getNetworks())
-    interfaces.push_back(network.getInterface());
-  interfaces.sort();
+void Plugin::clearTimer() {
+  if(timer) {
+    g_source_remove(timer);
+    timer = 0;
+  }
+}
 
-  return interfaces.size() - size;
+void Plugin::resetTimer() {
+  clearTimer();
+  setTimer();
 }
 
 void Plugin::redraw() {
   DBG("Redraw plugin");
 
-  for(Network& network : getNetworks())
-    network.getUI().destroyUI();
+  clearTimer();
+  
+  for(auto& device : getDevices())
+    device->destroyUI();
   ui.destroyUI();
 
   ui.createUI();
-  for(Network& network : getNetworks())
-    network.getUI().createUI();
+  for(auto& device : getDevices())
+    device->createUI();
   refresh();
 }
 
 void Plugin::refresh() {
   DBG("Refresh plugin");
 
+  clearTimer();
+  
   ui.refresh();
-  for(Network& network : getNetworks())
-    network.refresh();
+  for(auto& device : getDevices())
+    device->refresh();
+
+  setTimer();
 }

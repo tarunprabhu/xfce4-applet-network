@@ -8,6 +8,9 @@
 namespace EnumImpl {
 
 static const DictEnumNamesTy EnumNames(
+    // enum DeviceClass
+    {{DeviceClass::Disk, {"Disk", "disk"}},
+     {DeviceClass::Network, {"Network", "network"}}},
     // enum DeviceStatus
     {{DeviceStatus::Connected, {"Connected", "connected"}},
      {DeviceStatus::Disabled, {"Disabled", "disabled"}},
@@ -15,8 +18,9 @@ static const DictEnumNamesTy EnumNames(
      {DeviceStatus::Error, {"Error", "error"}}},
     // enum DiskKind
     {{DiskKind::Internal, {"Internal", "internal"}},
-     {DiskKind::MultimediaCard, {"Card", "card"}},
+     {DiskKind::Multimedia, {"Multimedia", "multimedia"}},
      {DiskKind::Optical, {"Optical", "optical"}},
+     {DiskKind::Other, {"Other", "other"}},
      {DiskKind::Removable, {"Removable", "removable"}}},
     // enum LabelPosition
     {{LabelPosition::Left, {"Left", "left"}},
@@ -31,13 +35,12 @@ static const DictEnumNamesTy EnumNames(
      {NetworkKind::Virtual, {"Virtual", "virtual"}},
      {NetworkKind::Wired, {"Wired", "wired"}},
      {NetworkKind::Wireless, {"Wireless", "wireless"}}},
-    // enum TooltipTheme
-    {{TooltipTheme::Dark, {"Dark", "dark"}},
-     {TooltipTheme::Light, {"Light", "light"}}},
     // enum TooltipVerbosity
     {{TooltipVerbosity::Limited, {"Limited", "limited"}},
      {TooltipVerbosity::Moderate, {"Moderate", "moderate"}},
-     {TooltipVerbosity::Verbose, {"Verbose", "verbose"}}});
+     {TooltipVerbosity::Verbose, {"Verbose", "verbose"}}},
+    // enum XferDirection
+    {{XferDirection::Rx, {"Rx", "rx"}}, {XferDirection::Tx, {"Tx", "tx"}}});
 
 static const std::string UnknownEnumName = "<unknown>";
 

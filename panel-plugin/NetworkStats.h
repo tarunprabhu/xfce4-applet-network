@@ -1,46 +1,45 @@
 #ifndef XFCE_APPLET_SPEED_NETWORK_STATS_H
 #define XFCE_APPLET_SPEED_NETWORK_STATS_H
 
+#include "Array.h"
+#include "DeviceStats.h"
 #include "Enums.h"
-#include "System.h"
+#include "NetworkStatsReader.h"
 
 #include <stdint.h>
-#include <string>
 
 class Network;
-class Plugin;
 
-class NetworkStats {
-private:
-  Network& network;
-  Plugin&  plugin;
+class NetworkStats : public DeviceStats {
+protected:
+  Network&           network;
+  NetworkStatsReader reader;
 
-  NetworkStatsImpl impl;
-
-  DeviceStatus status;
-  guint64      tx;
-  guint64      rx;
-  gdouble      txRate;
-  gdouble      rxRate;
-
-private:
-  void reset();
+  Stats2<uint64_t> dropped;
+  Stats2<uint64_t> errors;
+  Stats2<uint64_t> packets;
 
 public:
   NetworkStats(Network&);
+  virtual ~NetworkStats();
 
-  void setStatus(DeviceStatus);
-  void setRxBytes(uint64_t);
-  void setTxBytes(uint64_t);
+  using DeviceStats::getBytes;
+  using DeviceStats::getRate;
+  using DeviceStats::getStatus;
+  uint64_t getDropped(XferDirection, StatsRange) const;
+  uint64_t getErrors(XferDirection, StatsRange) const;
+  uint64_t getPackets(XferDirection, StatsRange) const;
 
-  DeviceStatus getStatus() const;
-  uint64_t     getTxBytes() const;
-  uint64_t     getRxBytes() const;
-  double       getTxRate() const;
-  double       getRxRate() const;
+  using DeviceStats::setBytes;
+  using DeviceStats::setRate;
+  using DeviceStats::setStatus;
+  void setDropped(XferDirection, uint64_t);
+  void setErrors(XferDirection, uint64_t);
+  void setPackets(XferDirection, uint64_t);
 
-  void reset(const std::string&);
-  void update();
+  using DeviceStats::reset;
+  
+  virtual void reset();
 };
 
 #endif // XFCE_APPLET_SPEED_NETWORK_STATS_H

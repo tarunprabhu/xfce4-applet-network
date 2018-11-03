@@ -10,10 +10,10 @@
 
 #include <gtk/gtk.h>
 
-class Network;
+class Device;
+class IconContext;
 class Plugin;
 class PluginUI;
-class TooltipUI;
 
 class PluginConfig {
 public:
@@ -39,9 +39,9 @@ public:
       0, 16, 1, Defaults::Plugin::UI::Spacing};
 
 private:
-  Plugin&    plugin;
-  PluginUI&  ui;
-  TooltipUI& tooltip;
+  Plugin&            plugin;
+  PluginUI&          ui;
+  const IconContext& icons;
 
   // CSS styles for certain widgets
   std::string cssFrameLabel;
@@ -70,7 +70,7 @@ private:
   GtkWidget* createNetworksPage();
 
   void clearWidgets();
-  void addDeviceToList(GtkListStore*, Network&, unsigned);
+  void addDeviceToList(GtkListStore*, Device&, unsigned);
 
 public:
   PluginConfig(Plugin&);
@@ -86,7 +86,6 @@ public:
   void cbScaleBorderChanged(GtkRange*);
   void cbScalePaddingChanged(GtkRange*);
   void cbScaleSpacingChanged(GtkRange*);
-  void cbComboTooltipThemeChanged(GtkComboBox*);
   void cbComboTooltipVerbosityChanged(GtkComboBox*);
   void cbFontFontSet(GtkFontChooser*);
   void cbToggleBoldToggled(GtkToggleButton*);

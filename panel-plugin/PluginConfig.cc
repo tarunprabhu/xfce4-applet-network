@@ -2,11 +2,12 @@
 
 #include "Array.h"
 #include "CSSBuilder.h"
+#include "Device.h"
+#include "DeviceConfig.h"
 #include "GtkUtils.h"
-#include "Network.h"
+#include "IconContext.h"
 #include "Plugin.h"
 #include "PluginUI.h"
-#include "TooltipUI.h"
 #include "Utils.h"
 
 #include <libxfce4ui/libxfce4ui.h>
@@ -15,14 +16,7 @@
 #include <sstream>
 
 // Local types
-enum class DeviceListColumn {
-  Index = 0,
-  Icon,
-  Name,
-  StatusText,
-  Last,
-  First = Index,
-};
+ENUM_CREATE(DeviceListColumn, Index, Icon, Name, StatusText);
 
 static Array<GType, DeviceListColumn> DeviceListColumnTypes(
     {G_TYPE_UINT, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_STRING});
@@ -75,12 +69,6 @@ static void cb_scale_padding_changed(GtkWidget* w, gpointer data) {
 
 static void cb_scale_spacing_changed(GtkWidget* w, gpointer data) {
   reinterpret_cast<PluginConfig*>(data)->cbScaleSpacingChanged(GTK_RANGE(w));
-}
-
-// Callbacks for tooltips
-static void cb_combo_tooltip_theme_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<PluginConfig*>(data)->cbComboTooltipThemeChanged(
-      GTK_COMBO_BOX(w));
 }
 
 static void cb_combo_tooltip_verbosity_changed(GtkWidget* w, gpointer data) {
@@ -141,7 +129,7 @@ static void cb_toolbar_config_clicked(GtkWidget* w, gpointer data) {
 }
 
 PluginConfig::PluginConfig(Plugin& p)
-    : plugin(p), ui(plugin.getUI()), tooltip(plugin.getTooltipUI()) {
+    : plugin(p), ui(plugin.getUI()), icons(plugin.getIconContext()) {
   DBG("Construct plugin config");
 
   CSSBuilder css;
@@ -185,16 +173,15 @@ void PluginConfig::clearWidgets() {
 }
 
 void PluginConfig::addDeviceToList(GtkListStore* list,
-                                   Network&      network,
+                                   Device&       device,
                                    unsigned      idx) {
   GtkTreeIter iter;
-  GdkPixbuf*  pixbuf =
-      network.getIcon(DeviceStatus::Connected, Plugin::IconSizeToolbar);
+  GdkPixbuf*  pixbuf = device.getIcon(IconKind::Toolbar);
   gtk_list_store_append(list, &iter);
   gtk_list_store_set(list, &iter, DeviceListColumn::Index, idx,
                      DeviceListColumn::Icon, pixbuf, DeviceListColumn::Name,
-                     network.getName().c_str(), DeviceListColumn::StatusText,
-                     enum_str(network.getStatus()).c_str(), -1);
+                     device.getName().c_str(), DeviceListColumn::StatusText,
+                     enum_cstr(device.getStats().getStatus()), -1);
 }
 
 const std::string& PluginConfig::getFrameLabelCSS() const {
@@ -222,6 +209,7 @@ void PluginConfig::cbSpinPeriodChanged(GtkSpinButton* spinPeriod) {
   gdouble period = gtk_spin_button_get_value(spinPeriod);
 
   plugin.setPeriod(period);
+  plugin.resetTimer();
 }
 
 void PluginConfig::cbCheckShowLabelToggled(GtkToggleButton* toggleShowLabel) {
@@ -256,15 +244,6 @@ void PluginConfig::cbComboLabelPositionChanged(
   plugin.refresh();
 }
 
-void PluginConfig::cbComboTooltipThemeChanged(GtkComboBox* comboTooltipTheme) {
-  DBG("Icon theme changed");
-
-  const gchar* s     = gtk_combo_box_get_active_id(comboTooltipTheme);
-  auto         theme = enum_parse<TooltipTheme>(s);
-
-  tooltip.setTheme(theme);
-}
-
 void PluginConfig::cbComboTooltipVerbosityChanged(
     GtkComboBox* comboTooltipVerbosity) {
   DBG("Tooltip verbosity changed");
@@ -272,7 +251,7 @@ void PluginConfig::cbComboTooltipVerbosityChanged(
   const gchar* s         = gtk_combo_box_get_active_id(comboTooltipVerbosity);
   auto         verbosity = enum_parse<TooltipVerbosity>(s);
 
-  tooltip.setVerbosity(verbosity);
+  ui.setVerbosity(verbosity);
 }
 
 void PluginConfig::cbScaleBorderChanged(GtkRange* scaleBorder) {
@@ -360,20 +339,20 @@ void PluginConfig::cbTreeRowActivated(GtkTreeView*       tree,
                                       GtkTreeViewColumn* column) {
   DBG("Device tree row activated");
 
-  gint*    indices = gtk_tree_path_get_indices(path);
-  guint    row     = indices[0];
-  Network& network = plugin.getNetworkAt(row);
-  if(network.getStatus() != DeviceStatus::Disabled) {
-    NetworkConfig& netConfig = network.getConfig();
-    GtkWidget*     dialog    = netConfig.createUI();
-    gint           response  = gtk_dialog_run(GTK_DIALOG(dialog));
+  gint*   indices = gtk_tree_path_get_indices(path);
+  guint   row     = indices[0];
+  Device& device  = plugin.getDeviceAt(row);
+  if(device.getStats().getStatus() != DeviceStatus::Disabled) {
+    DeviceConfig config(device);
+    GtkWidget*   dialog   = config.createUI();
+    gint         response = gtk_dialog_run(GTK_DIALOG(dialog));
     switch(response) {
     case GTK_RESPONSE_OK:
     case GTK_RESPONSE_NONE:
       plugin.writeConfig();
       break;
     }
-    netConfig.destroyUI();
+    config.destroyUI();
     plugin.refresh();
   }
 }
@@ -392,19 +371,19 @@ void PluginConfig::cbTreeCursorChanged(GtkTreeView* tree) {
     GtkTreePath* path    = (GtkTreePath*)g_list_nth_data(selected, 0);
     gint*        indices = gtk_tree_path_get_indices(path);
     guint        row     = indices[0];
-    Network&     network = plugin.getNetworkAt(0);
+    Device&      device  = plugin.getDeviceAt(0);
 
     gtk_widget_set_sensitive(widgets.toolbarRemove, TRUE);
 
     if(row != 0)
       gtk_widget_set_sensitive(widgets.toolbarMoveUp, TRUE);
 
-    if(row != plugin.getNumNetworks() - 1)
+    if(row != plugin.getNumDevices() - 1)
       gtk_widget_set_sensitive(widgets.toolbarMoveDown, TRUE);
 
     // A disabled network cannot be modified. It can only be removed from the
     // list
-    if(network.getStatus() == DeviceStatus::Disabled) {
+    if(device.getStats().getStatus() == DeviceStatus::Disabled) {
       gtk_widget_set_tooltip_text(widgets.toolbarConfig,
                                   "Cannot configure disabled network");
     } else {
@@ -423,20 +402,25 @@ void PluginConfig::cbToolbarAddClicked(GtkToolItem* toolbarAdd) {
 
   gtk_widget_set_sensitive(GTK_WIDGET(toolbarAdd), FALSE);
 
-  GtkTreeView*   tree      = GTK_TREE_VIEW(widgets.treeNetworks);
-  GtkListStore*  list      = GTK_LIST_STORE(gtk_tree_view_get_model(tree));
-  Network&       network   = plugin.appendNewNetwork();
-  NetworkConfig& netConfig = network.getConfig();
-  GtkWidget*     dialog    = netConfig.createUI();
-  gint           response  = gtk_dialog_run(GTK_DIALOG(dialog));
+  DeviceConfig  config(plugin);
+  Device*       device   = nullptr;
+  GtkTreeView*  tree     = GTK_TREE_VIEW(widgets.treeNetworks);
+  GtkListStore* list     = GTK_LIST_STORE(gtk_tree_view_get_model(tree));
+  GtkWidget*    dialog   = config.createUI();
+  gint          response = gtk_dialog_run(GTK_DIALOG(dialog));
   switch(response) {
   case GTK_RESPONSE_OK:
+    device = config.takeDevice();
+    addDeviceToList(list, *device, plugin.getNumDevices() - 1);
+    plugin.appendDevice(device);
+    break;
+  case GTK_RESPONSE_CANCEL:
   case GTK_RESPONSE_NONE:
-    addDeviceToList(list, network, plugin.getNumNetworks() - 1);
+    // Discard changes and the object
     break;
   }
   gtk_window_close(GTK_WINDOW(dialog));
-  netConfig.destroyUI();
+  config.destroyUI();
 
   gtk_widget_set_sensitive(GTK_WIDGET(toolbarAdd), TRUE);
   plugin.refresh();
@@ -455,7 +439,7 @@ void PluginConfig::cbToolbarRemoveClicked(GtkToolItem* toolbarRemove) {
   gtk_tree_model_get(model, &iter, DeviceListColumn::Index, &idx);
   gtk_list_store_remove(GTK_LIST_STORE(model), &iter);
 
-  plugin.removeNetworkAt(idx);
+  plugin.removeDeviceAt(idx);
 }
 
 void PluginConfig::cbToolbarMoveUpClicked(GtkToolItem* toolbarMoveUp) {
@@ -476,7 +460,7 @@ void PluginConfig::cbToolbarMoveUpClicked(GtkToolItem* toolbarMoveUp) {
   gtk_list_store_set(list, &prev, DeviceListColumn::Index, row, -1);
   gtk_list_store_move_before(list, &curr, &prev);
 
-  plugin.moveNetworkUp(row);
+  plugin.moveDeviceUp(row);
   plugin.redraw();
 
   // Update gui
@@ -504,12 +488,12 @@ void PluginConfig::cbToolbarMoveDownClicked(GtkToolItem* toolbarMoveDown) {
   gtk_list_store_set(list, &next, DeviceListColumn::Index, row, -1);
   gtk_list_store_move_after(list, &curr, &next);
 
-  plugin.moveNetworkDown(row);
+  plugin.moveDeviceDown(row);
   plugin.redraw();
 
   // Update gui
   g_message("row: %d", row);
-  if(row == plugin.getNumNetworks() - 2)
+  if(row == plugin.getNumDevices() - 2)
     gtk_widget_set_sensitive(widgets.toolbarMoveDown, FALSE);
   gtk_widget_set_sensitive(widgets.toolbarMoveUp, TRUE);
 }
@@ -526,17 +510,17 @@ void PluginConfig::cbToolbarConfigClicked(GtkToolItem* toolbarConfig) {
   gtk_tree_selection_get_selected(selection, &model, &iter);
   gtk_tree_model_get(model, &iter, DeviceListColumn::Index, &idx);
 
-  Network&       network   = plugin.getNetworkAt(idx);
-  NetworkConfig& netConfig = network.getConfig();
-  GtkWidget*     dialog    = netConfig.createUI();
-  gint           response  = gtk_dialog_run(GTK_DIALOG(dialog));
+  Device&      device = plugin.getDeviceAt(idx);
+  DeviceConfig config(device);
+  GtkWidget*   dialog   = config.createUI();
+  gint         response = gtk_dialog_run(GTK_DIALOG(dialog));
   switch(response) {
   case GTK_RESPONSE_OK:
   case GTK_RESPONSE_NONE:
     plugin.writeConfig();
     break;
   }
-  netConfig.destroyUI();
+  config.destroyUI();
   plugin.refresh();
 }
 
@@ -787,23 +771,6 @@ GtkWidget* PluginConfig::createTooltipAppearanceFrame() {
   gtk_container_set_border_width(GTK_CONTAINER(grid), PluginConfig::Border);
   gtk_widget_show(grid);
 
-  // Theme
-  row += 1;
-  GtkWidget* labelTheme = gtk_label_new_with_mnemonic("Icon _theme");
-  gtk_grid_attach(GTK_GRID(grid), labelTheme, 0, row, 1, 1);
-  gtk_widget_set_tooltip_text(labelTheme, "The theme for tooltip icons");
-  gtk_widget_show(labelTheme);
-
-  GtkWidget* comboTheme = gtk_combo_box_text_new();
-  gtk_grid_attach(GTK_GRID(grid), comboTheme, 1, row, 1, 1);
-  for(TooltipTheme theme : TooltipTheme())
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboTheme),
-                              enum_str(theme).c_str(), enum_str(theme).c_str());
-  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboTheme),
-                              enum_str(tooltip.getTheme()).c_str());
-  gtk_label_set_mnemonic_widget(GTK_LABEL(labelTheme), comboTheme);
-  gtk_widget_show(comboTheme);
-
   // Verbosity
   row += 1;
   GtkWidget* labelVerbosity = gtk_label_new_with_mnemonic("Verbosity");
@@ -815,16 +782,13 @@ GtkWidget* PluginConfig::createTooltipAppearanceFrame() {
   gtk_grid_attach(GTK_GRID(grid), comboVerbosity, 1, row, 1, 1);
   for(TooltipVerbosity verbosity : TooltipVerbosity())
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboVerbosity),
-                              enum_str(verbosity).c_str(),
-                              enum_str(verbosity).c_str());
+                              enum_cstr(verbosity), enum_cstr(verbosity));
   gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboVerbosity),
-                              enum_str(tooltip.getVerbosity()).c_str());
+                              enum_cstr(ui.getVerbosity()));
   gtk_label_set_mnemonic_widget(GTK_LABEL(labelVerbosity), comboVerbosity);
   gtk_widget_show(comboVerbosity);
 
   // Connect signals
-  g_signal_connect(comboTheme, "changed",
-                   G_CALLBACK(cb_combo_tooltip_theme_changed), this);
   g_signal_connect(comboVerbosity, "changed",
                    G_CALLBACK(cb_combo_tooltip_verbosity_changed), this);
 
@@ -933,14 +897,15 @@ GtkWidget* PluginConfig::createNetworksPage() {
 
   GtkListStore* list = gtk_list_store_newv(DeviceListColumnTypes.size(),
                                            DeviceListColumnTypes.data());
-  for(unsigned i = 0; i < plugin.getNumNetworks(); i++)
-    addDeviceToList(list, plugin.getNetworkAt(i), i);
+  for(unsigned i = 0; i < plugin.getNumDevices(); i++)
+    addDeviceToList(list, plugin.getDeviceAt(i), i);
 
   GtkCellRenderer*   rendererIcon = gtk_cell_renderer_pixbuf_new();
   GtkTreeViewColumn* columnIcon   = gtk_tree_view_column_new_with_attributes(
       "Icon", rendererIcon, "pixbuf", DeviceListColumn::Icon, NULL);
   gtk_tree_view_column_set_sizing(columnIcon, GTK_TREE_VIEW_COLUMN_FIXED);
-  gtk_tree_view_column_set_fixed_width(columnIcon, Plugin::IconSizeToolbar + 4);
+  gtk_tree_view_column_set_fixed_width(
+      columnIcon, icons.getIconSize(IconKind::Toolbar) + 8);
 
   GtkCellRenderer*   rendererName = gtk_cell_renderer_text_new();
   GtkTreeViewColumn* columnName   = gtk_tree_view_column_new_with_attributes(
@@ -1023,7 +988,8 @@ GtkWidget* PluginConfig::createNetworksPage() {
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolbarMoveUp, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolbarMoveDown, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolbarConfig, -1);
-  gtk_widget_set_size_request(toolbar, Plugin::IconSizeToolbar + 8, -1);
+  gtk_widget_set_size_request(toolbar, icons.getIconSize(IconKind::Toolbar) + 8,
+                              -1);
   gtk_widget_show(toolbar);
 
   // Save widgets

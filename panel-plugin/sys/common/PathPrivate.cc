@@ -1,5 +1,4 @@
-#include "Path.h"
-#include "System.h"
+#include "PathImpl.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -7,13 +6,29 @@
 #include <cstdlib>
 #include <unistd.h>
 
-Path::Path() : path(System::getNullDevice()), valid(false) {
+PathPrivate::PathPrivate(char sep) : path(""), valid(false), separator(sep) {
   ;
 }
 
-void Path::finalize(std::stringstream& ss) {
+void PathPrivate::joinImpl(std::stringstream& ss, const std::string& s) {
+  ss << s;
+}
+
+void PathPrivate::joinImpl(std::stringstream& ss, const char* cstr) {
+  ss << cstr;
+}
+
+void PathPrivate::joinImpl(std::stringstream& ss, const PathPrivate& p) {
+  ss << p.get();
+}
+
+void PathPrivate::joinImpl(std::stringstream&) {
+  ;
+}
+
+void PathPrivate::finalize(std::stringstream& ss) {
   std::string s = ss.str();
-  
+
   // realpath() may return null if the provided path was invalid. This can
   // happen when a new network is created with a default path
   if(char* real = realpath(s.c_str(), NULL)) {
@@ -23,18 +38,18 @@ void Path::finalize(std::stringstream& ss) {
   }
 }
 
-bool Path::contains(const std::string& s) const {
+bool PathPrivate::contains(const std::string& s) const {
   if((not isValid()) or (s.length() == 0))
     return false;
 
   // If the path has a trailing backlash, it must *not* match at the end of
   // the string.
-  bool atEnd = (s.back() != Path::Separator);
+  bool atEnd = (s.back() != separator);
 
   // Canonicalize the string to be searched. This means that all
   // leading and trailing backslashes should be removed.
   std::string::size_type begin = 0;
-  for(; (begin < s.length()) and (s[begin] == Path::Separator); begin++)
+  for(; (begin < s.length()) and (s[begin] == separator); begin++)
     ;
   // If we reach the end of the string, then the search key was only made up
   // of '/'
@@ -43,7 +58,7 @@ bool Path::contains(const std::string& s) const {
 
   // We definitely have at least 1 non '/' character in the search key
   std::string::size_type end = s.length() - 1;
-  for(; s[end] == Path::Separator; end--)
+  for(; s[end] == separator; end--)
     ;
 
   std::string sub = s.substr(begin, end - begin + 1);
@@ -60,13 +75,13 @@ bool Path::contains(const std::string& s) const {
       // The first character before the search term must be a '/'
       // This can never match at pos = 0 because all leading '/' have been
       // removed from the search key
-      if(path[pos - 1] == Path::Separator) {
+      if(path[pos - 1] == separator) {
         // If the string is at the end, check if this is allowed
         if(pos == (path.length() - sub.length()))
           return atEnd;
         // If not, check if this is a proper subpath which will be true only
         // if the first character after the search key is a '/'
-        else if(path[pos + sub.length()] == Path::Separator)
+        else if(path[pos + sub.length()] == separator)
           return true;
       }
       // Move the start position to one after the current position or else
@@ -78,23 +93,7 @@ bool Path::contains(const std::string& s) const {
   return false;
 }
 
-void Path::joinImpl(std::stringstream& ss, const std::string& s) {
-  ss << s;
-}
-
-void Path::joinImpl(std::stringstream& ss, const char* cstr) {
-  ss << cstr;
-}
-
-void Path::joinImpl(std::stringstream& ss, const Path& p) {
-  ss << p.get();
-}
-
-void Path::joinImpl(std::stringstream&) {
-  ;
-}
-
-bool Path::exists() const {
+bool PathPrivate::exists() const {
   if(isValid()) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
@@ -111,7 +110,7 @@ bool Path::exists() const {
   return false;
 }
 
-bool Path::isDevice() const {
+bool PathPrivate::isDevice() const {
   if(isValid()) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
@@ -124,7 +123,7 @@ bool Path::isDevice() const {
   return false;
 }
 
-bool Path::isDirectory() const {
+bool PathPrivate::isDirectory() const {
   if(isValid()) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
@@ -136,7 +135,7 @@ bool Path::isDirectory() const {
   return false;
 }
 
-bool Path::isFile() const {
+bool PathPrivate::isFile() const {
   if(isValid()) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
@@ -148,10 +147,10 @@ bool Path::isFile() const {
   return false;
 }
 
-bool Path::isValid() const {
+bool PathPrivate::isValid() const {
   return valid;
 }
 
-const std::string& Path::get() const {
+const std::string& PathPrivate::get() const {
   return path;
 }

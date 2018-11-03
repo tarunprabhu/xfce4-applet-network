@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_NETWORK_NETWORK_UI_H
-#define XFCE_APPLET_NETWORK_NETWORK_UI_H
+#ifndef XFCE_APPLET_SPEED_DEVICE_UI_H
+#define XFCE_APPLET_SPEED_DEVICE_UI_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -14,15 +14,17 @@
 
 #include <string>
 
-class Network;
+class Device;
 class Plugin;
 class PluginUI;
+class DeviceTooltip;
 
-class NetworkUI {
+class DeviceUI {
 private:
-  Network&    network;
-  Plugin&     plugin;
-  PluginUI&   pluginUI;
+  Device&        device;
+  Plugin&        plugin;
+  PluginUI&      pluginUI;
+  DeviceTooltip& tooltip;
 
   struct {
     double txMax;              // Rate is in MB/s
@@ -52,13 +54,11 @@ private:
   void clearWidgets();
 
 public:
-  NetworkUI(Network&);
-  ~NetworkUI();
+  DeviceUI(Device&);
+  ~DeviceUI();
 
   void readConfig(XfceRc*);
   void writeConfig(XfceRc*) const;
-
-  gboolean cbBoxQueryTooltip(GtkWidget*, gint, gint, gboolean, GtkTooltip*);
 
   void setMaxTxRate(double);
   void setMaxRxRate(double);
@@ -87,4 +87,4 @@ public:
   void       refresh();
 };
 
-#endif // XFCE_APPLET_NETWORK_NETWORK_UI_H
+#endif // XFCE_APPLET_SPEED_DEVICE_UI_H
