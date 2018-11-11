@@ -1,6 +1,5 @@
 #include "System.h"
 
-#include "../../Enums.h"
 #include "Path.h"
 
 #include <libxfce4util/libxfce4util.h>
@@ -16,13 +15,13 @@ static const std::string BlockDevicesDir   = "/sys/class/block";
 static const std::string NullDevice        = "/dev/null";
 
 bool System::isCellularNetwork(const Path&) {
-  DBG("UNIMPLEMENTED: isCellular()");
+  g_warning("UNIMPLEMENTED: isCellular()");
 
   return false;
 }
 
 bool System::isUSBNetwork(const Path&) {
-  DBG("UNIMPLEMENTED: isUSB()");
+  g_warning("UNIMPLEMENTED: isUSB()");
 
   return false;
 }
@@ -178,7 +177,8 @@ std::vector<std::string> System::getBlockDevices() {
       if(entry->d_type == DT_LNK) {
         // We only monitor physical devices. These will always have a device
         // subdirectory
-        if(Path(System::getBlockDevicesDir(), entry->d_name, "device").exists())
+        Path path(System::getBlockDevicesDir(), entry->d_name, "device");
+        if(path.exists())
           devices.push_back(entry->d_name);
       }
     }

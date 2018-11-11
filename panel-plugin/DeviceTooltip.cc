@@ -1,15 +1,30 @@
 #include "DeviceTooltip.h"
 
-#include "Device.h"
+#include "Debug.h"
+#include "Plugin.h"
 #include "PluginConfig.h"
 
-DeviceTooltip::DeviceTooltip(Device& refDevice)
-    : icons(refDevice.getIconContext()), icon(nullptr) {
-  ;
+#include <sstream>
+
+DeviceTooltip::DeviceTooltip(const Device& refDevice)
+    : device(refDevice), plugin(device.getPlugin()), icons(plugin.getIcons()),
+      icon(nullptr) {
+  TRACE_FUNC_ENTER;
+
+  window      = nullptr;
+  imageDevice = nullptr;
+  labelTitle  = nullptr;
+  boxText     = nullptr;
+
+  TRACE_FUNC_EXIT;
 }
 
 DeviceTooltip::~DeviceTooltip() {
-  DBG("Destructing tooltip ui");
+  TRACE_FUNC_ENTER;
+  
+  destroyUI();
+
+  TRACE_FUNC_EXIT;
 }
 
 gboolean DeviceTooltip::cbBoxQueryTooltip(
@@ -19,24 +34,14 @@ gboolean DeviceTooltip::cbBoxQueryTooltip(
   return TRUE;
 }
 
-void DeviceTooltip::clearWidgets() {
-  widgets.window      = nullptr;
-  widgets.imageDevice = nullptr;
-  widgets.labelTitle  = nullptr;
-  widgets.boxText     = nullptr;
-}
-
 void DeviceTooltip::update(bool force) {
-  if(gtk_widget_get_visible(widgets.window) or force) {
+  if(gtk_widget_get_visible(window) or force) {
     updateIcon();
     updateText();
-    // Set the icon here because this will be common to all devices and
-    // we don't want to make the device widget visible to subclasses
-    gtk_image_set_from_pixbuf(GTK_IMAGE(widgets.imageDevice), icon);
   }
 }
 
-GtkWidget* DeviceTooltip::createUI() {
+void DeviceTooltip::createUI() {
   GtkWidget* window = gtk_window_new(GTK_WINDOW_POPUP);
 
   GtkWidget* box =
@@ -59,17 +64,23 @@ GtkWidget* DeviceTooltip::createUI() {
   gtk_widget_show(labelTitle);
 
   // Save widgets
-  widgets.window      = window;
-  widgets.imageDevice = imageDevice;
-  widgets.labelTitle  = labelTitle;
-  widgets.boxText     = boxText;
-
-  return window;
+  this->window      = window;
+  this->imageDevice = imageDevice;
+  this->labelTitle  = labelTitle;
+  this->boxText     = boxText;
 }
 
 void DeviceTooltip::destroyUI() {
-  if(widgets.window) {
-    gtk_widget_destroy(GTK_WIDGET(widgets.window));
-    clearWidgets();
-  }
+  if(window)
+    gtk_widget_destroy(window);
+}
+
+void DeviceTooltip::refresh() {
+  gchar* markup = g_markup_printf_escaped("<b>%s</b> (%s)",           //
+                                          device.getDevice().c_str(), //
+                                          device.getName().c_str());
+
+  gtk_label_set_text(GTK_LABEL(labelTitle), markup);
+
+  g_free(markup);
 }

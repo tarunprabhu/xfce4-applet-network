@@ -2,13 +2,13 @@
 #define XFCE_APPLET_SPEED_SYS_LINUX_NETWORK_STATS_READER_H
 
 #include "../../Array.h"
-#include "../../Enums.h"
-#include "../common/StatsReaderBase.h"
+#include "../../Types.h"
+#include "../common/StatsReader.h"
 #include "Path.h"
 
 class NetworkStats;
 
-class NetworkStatsReader : public StatsReaderBase {
+class NetworkStatsReader : public StatsReader {
 private:
   struct Files {
     Path bytes;
@@ -35,7 +35,7 @@ private:
 public:
   NetworkStatsReader(NetworkStats&);
   virtual ~NetworkStatsReader();
-  
+
   virtual void reset(const std::string&) override;
   virtual bool update(double) override;
 };

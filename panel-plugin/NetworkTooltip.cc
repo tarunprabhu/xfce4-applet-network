@@ -1,38 +1,34 @@
 #include "NetworkTooltip.h"
 
-#include "IconContext.h"
+#include "Debug.h"
+#include "Icons.h"
 #include "Network.h"
 #include "NetworkStats.h"
 
-NetworkTooltip::NetworkTooltip(Network& refNetwork)
+NetworkTooltip::NetworkTooltip(const Network& refNetwork)
     : DeviceTooltip(refNetwork), network(refNetwork),
       stats(network.getStats()) {
-  ;
+  TRACE_FUNC_ENTER;
+
+  createUI();
+  
+  TRACE_FUNC_EXIT;
 }
 
-NetworkTooltip::~NetworkTooltip() {
-  ;
-}
-
-void NetworkTooltip::clearWidgets() {
-  DeviceTooltip::clearWidgets();
+void NetworkTooltip::createUI() {
+  DeviceTooltip::createUI();
 
   // TODO: Implement this
-}
-
-GtkWidget* NetworkTooltip::createUI() {
-  GtkWidget* window = DeviceTooltip::createUI();
-
-  // TODO: Implement this
-
-  return window;
 }
 
 void NetworkTooltip::updateIcon() {
-  GdkPixbuf* pixbuf = icons.getIcon(enum_parse<NetworkKind>(network.getKind()),
-                                    stats.getStatus());
-  if(pixbuf != icon)
+  GdkPixbuf* pixbuf = icons.getIcon(network.getKind(), stats.getStatus());
+  if(pixbuf != icon) {
     icon = pixbuf;
+    // Set the icon here because this will be common to all devices and
+    // we don't want to make the device widget visible to subclasses
+    gtk_image_set_from_pixbuf(GTK_IMAGE(imageDevice), icon);
+  }
 }
 
 void NetworkTooltip::updateText() {

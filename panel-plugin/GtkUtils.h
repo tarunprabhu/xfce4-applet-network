@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_SPEED_CSS_H
-#define XFCE_APPLET_SPEED_CSS_H
+#ifndef XFCE_APPLET_SPEED_GTK_UTILS_H
+#define XFCE_APPLET_SPEED_GTK_UTILS_H
 
 #include <gtk/gtk.h>
 
@@ -11,4 +11,10 @@
 
 void gtk_widget_set_css(GtkWidget*, const std::string&);
 
-#endif // XFCE_APPLET_SPEED_CSS_H
+gint gtk_tree_view_get_selected_row(GtkTreeView*);
+GtkTreeIter gtk_tree_view_get_selected_iter(GtkTreeView*);
+
+// Gets the number of top-level rows in the tree view
+gint gtk_tree_view_get_num_rows(GtkTreeView*);
+
+#endif // XFCE_APPLET_SPEED_GTK_UTILS_H

@@ -23,11 +23,12 @@ private:
   
 public:
   CSSBuilder();
+  CSSBuilder(const std::string&);
 
-  CSSBuilder& addBeginSelector(const std::string&);
-  CSSBuilder& addEndSelector();
+  CSSBuilder& beginSelector(const std::string&);
+  CSSBuilder& endSelector();
   CSSBuilder& init();
-  CSSBuilder& commit();
+  const std::string& commit();
 
   CSSBuilder& addFont(const PangoFontDescription*);
   CSSBuilder& addFontFamily(const std::string&);

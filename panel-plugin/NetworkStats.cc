@@ -1,22 +1,37 @@
 #include "NetworkStats.h"
 
+#include "Debug.h"
+#include "Functional.h"
 #include "Network.h"
+#include "Utils.h"
 
 NetworkStats::NetworkStats(Network& refNetwork)
-    : DeviceStats(refNetwork.getPlugin(), reader), network(refNetwork),
-      reader(*this) {
-  reset();
+    : DeviceStats(refNetwork), network(refNetwork) {
+  TRACE_FUNC_ENTER;
+
+  functional::Functor<uint64_t> func(nullify<uint64_t>);
+  functional::map(func, dropped);
+  functional::map(func, errors);
+  functional::map(func, packets);
+  
+  TRACE_FUNC_EXIT;
 }
 
 NetworkStats::~NetworkStats() {
-  ;
+  TRACE_FUNC_ENTER;
+  TRACE_FUNC_EXIT;
 }
 
 void NetworkStats::reset() {
-  resetStats(dropped);
-  resetStats(errors);
-  resetStats(packets);
+  TRACE_FUNC_ENTER;
+
+  functional::Functor<uint64_t> func(nullify<uint64_t>);
+  functional::map(func, dropped);
+  functional::map(func, errors);
+  functional::map(func, packets);
   DeviceStats::reset();
+
+  TRACE_FUNC_EXIT;
 }
 
 uint64_t NetworkStats::getDropped(XferDirection direction,
@@ -35,13 +50,13 @@ uint64_t NetworkStats::getPackets(XferDirection direction,
 }
 
 void NetworkStats::setDropped(XferDirection direction, uint64_t newDropped) {
-  updateStats(dropped[direction], newDropped);
+  update(dropped[direction], newDropped);
 }
 
 void NetworkStats::setErrors(XferDirection direction, uint64_t newErrors) {
-  updateStats(errors[direction], newErrors);
+  update(errors[direction], newErrors);
 }
 
 void NetworkStats::setPackets(XferDirection direction, uint64_t newPackets) {
-  updateStats(packets[direction], newPackets);
+  update(packets[direction], newPackets);
 }

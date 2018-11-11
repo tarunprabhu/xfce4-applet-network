@@ -10,25 +10,22 @@ class NetworkStats;
 
 class NetworkTooltip : public DeviceTooltip {
 protected:
-  Network& network;
-  NetworkStats& stats;
-
-  struct {
-    // TODO: Add widgets
-  } widgets;
+  const Network&      network;
+  const NetworkStats& stats;
 
 protected:
-  virtual void clearWidgets() override;
   virtual void updateIcon() override;
   virtual void updateText() override;
 
-public:
-  NetworkTooltip(Network&);
-  virtual ~NetworkTooltip();
+  virtual void createUI() override;
 
-  virtual GtkWidget* createUI() override;
-  using DeviceTooltip::destroyUI;
-  using DeviceTooltip::update;
+public:
+  NetworkTooltip(const Network&);
+  NetworkTooltip(const NetworkTooltip&)  = delete;
+  NetworkTooltip(const NetworkTooltip&&) = delete;
+  virtual ~NetworkTooltip()              = default;
+
+  NetworkTooltip& operator=(const NetworkTooltip&) = delete;
 };
 
 #endif // XFCE_APPLET_SPEED_NETWORK_TOOLTIP_H

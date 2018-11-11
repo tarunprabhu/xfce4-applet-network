@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_SPEED_RANGE_H
 #define XFCE_APPLET_SPEED_RANGE_H
 
-#include "assert.h"
+#include "Debug.h"
 
 template <typename T> class Range {
 public:
@@ -33,16 +33,17 @@ private:
   T first;
   T last;
   T step;
-  T def;
+  T defalt;
 
 public:
   constexpr Range() : Range(0, 0, 0, 0, true) {
     ;
   }
 
-  constexpr Range(T pFirst, T pLast, T pStep, T pDef, bool inclusive = true)
-      : first(pFirst), last(pLast), step(pStep), def(pDef) {
-    assert(step != 0, "Non-zero step required for range");
+  constexpr Range(
+      T initFirst, T initLast, T initStep, T initDefault, bool inclusive = true)
+      : first(initFirst), last(initLast), step(initStep), defalt(initDefault) {
+    ASSERT(step != 0, "Non-zero step required for range");
 
     if(not inclusive) {
       if(step > 0)
@@ -52,11 +53,11 @@ public:
     }
 
     if(step > 0)
-      assert((first <= last) and (def >= first) and (def <= last),
-             "For step > 0, condition 'first <= def <= last' is violated");
-    else 
-      assert((first >= last) and (def <= first) and (def >= last),
-             "For step < 0, condition 'first >= def >= last' is violated");
+      ASSERT((first <= last) and (defalt >= first) and (defalt <= last),
+             "For step > 0, condition 'first <= default <= last' is violated");
+    else
+      ASSERT((first >= last) and (defalt <= first) and (defalt >= last),
+             "For step < 0, condition 'first >= default >= last' is violated");
   }
 
   T getFirst() const {
@@ -72,7 +73,7 @@ public:
   }
 
   T getDefault() const {
-    return def;
+    return defalt;
   }
 
   Iterator begin() const {

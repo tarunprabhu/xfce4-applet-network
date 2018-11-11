@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_SPEED_SYS_LINUX_SYSTEM_H
 #define XFCE_APPLET_SPEED_SYS_LINUX_SYSTEM_H
 
-#include "../../Enums.h"
+#include "../../Types.h"
 #include "Path.h"
 
 #include <string>
@@ -27,8 +27,7 @@ public:
   System() = delete;
 
   template <DeviceClass clss>
-  static typename DeviceClassToKind<clss>::Kind
-                                  getDeviceKind(const std::string&);
+  static typename DeviceClassKind<clss>::type getDeviceKind(const std::string&);
   static std::vector<std::string> getDevices(DeviceClass);
 
 public:

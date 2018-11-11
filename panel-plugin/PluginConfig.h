@@ -1,21 +1,18 @@
-#ifndef XFCE_APPLET_NETWORK_PLUGIN_CONFIG_H
-#define XFCE_APPLET_NETWORK_PLUGIN_CONFIG_H
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif // HAVE_CONFIG_H
+#ifndef XFCE_APPLET_SPEED_PLUGIN_CONFIG_H
+#define XFCE_APPLET_SPEED_PLUGIN_CONFIG_H
 
 #include "Defaults.h"
+#include "IDialog.h"
 #include "Range.h"
 
 #include <gtk/gtk.h>
 
+class CSS;
 class Device;
-class IconContext;
+class Icons;
 class Plugin;
-class PluginUI;
 
-class PluginConfig {
+class PluginConfig : public IDialog {
 public:
   // Style parameters for the dialog window
   static const unsigned Border  = 8;  // Border around the containers
@@ -32,34 +29,29 @@ public:
   static constexpr Range<double>   RangePeriod  = {0.25, 2, 0.25,
                                                 Defaults::Plugin::Period};
   static constexpr Range<unsigned> RangeBorder  = {0, 16, 1,
-                                                  Defaults::Plugin::UI::Border};
-  static constexpr Range<unsigned> RangePadding = {
-      0, 16, 1, Defaults::Plugin::UI::Padding};
-  static constexpr Range<unsigned> RangeSpacing = {
-      0, 16, 1, Defaults::Plugin::UI::Spacing};
+                                                  Defaults::Plugin::Border};
+  static constexpr Range<unsigned> RangePadding = {0, 16, 1,
+                                                   Defaults::Plugin::Padding};
+  static constexpr Range<unsigned> RangeSpacing = {0, 16, 1,
+                                                   Defaults::Plugin::Spacing};
 
 private:
-  Plugin&            plugin;
-  PluginUI&          ui;
-  const IconContext& icons;
+  Plugin&      plugin;
+  const CSS&   css;
+  const Icons& icons;
 
-  // CSS styles for certain widgets
-  std::string cssFrameLabel;
-  std::string cssLabelPixels;
-
-  struct UI {
-    GtkWidget* dialog;           // Main config dialog window
-    GtkWidget* entryLabel;       // Textbox to update the plugin label
-    GtkWidget* treeNetworks;     // Tree view showing the networks
-    GtkWidget* toolbarAdd;       // Add network toolbar button
-    GtkWidget* toolbarRemove;    // Remove network toolbar button
-    GtkWidget* toolbarMoveUp;    // Move network up toolbar button
-    GtkWidget* toolbarMoveDown;  // Move network down toolbar button
-    GtkWidget* toolbarConfig;    // Configure network toolbar button
-    GtkWidget* labelBorderText;  // Label showing border width
-    GtkWidget* labelPaddingText; // Label showing padding
-    GtkWidget* labelSpacingText; // Label showing padding
-  } widgets;
+  GtkWidget* dialog;           // Main config dialog window
+  GtkWidget* entryLabel;       // Textbox to update the plugin label
+  GtkWidget* treeDevices;      // Tree view showing the networks
+  GtkWidget* toolitemAdd;      // Add network toolbar button
+  GtkWidget* toolitemRemove;   // Remove network toolbar button
+  GtkWidget* toolitemMoveUp;   // Move network up toolbar button
+  GtkWidget* toolitemMoveDown; // Move network down toolbar button
+  GtkWidget* toolitemConfig;   // Configure network toolbar button
+  GtkWidget* labelBorderText;  // Label showing border width
+  GtkWidget* labelPaddingText; // Label showing padding
+  GtkWidget* labelSpacingText; // Label showing padding
+  Array<GtkWidget*, DeviceClass> menuItems; // Device classes to add
 
 private:
   GtkWidget* createPluginAppearanceFrame();
@@ -67,18 +59,23 @@ private:
   GtkWidget* createLabelAppearanceFrame();
   GtkWidget* createDisplayPage();
   GtkWidget* createAppearancePage();
-  GtkWidget* createNetworksPage();
+  GtkWidget* createDevicesPage();
 
-  void clearWidgets();
-  void addDeviceToList(GtkListStore*, Device&, unsigned);
+  void appendDevice(const Device&);
+
+  virtual GtkWidget* createDialog() override;
+  virtual void       clearDialog() override;
 
 public:
   PluginConfig(Plugin&);
-  ~PluginConfig();
+  PluginConfig(const PluginConfig&)  = delete;
+  PluginConfig(const PluginConfig&&) = delete;
+  virtual ~PluginConfig()            = default;
 
-  const std::string& getFrameLabelCSS() const;
+  PluginConfig& operator=(const PluginConfig&) = delete;
 
-  void cbDialogResponse(GtkDialog*, gint);
+  int cbDialogResponse(GtkDialog*, gint);
+
   void cbSpinPeriodChanged(GtkSpinButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
   void cbEntryLabelChanged(GtkEntry*);
@@ -92,15 +89,11 @@ public:
   void cbToggleSmallcapsToggled(GtkToggleButton*);
   void cbTreeRowActivated(GtkTreeView*, GtkTreePath*, GtkTreeViewColumn*);
   void cbTreeCursorChanged(GtkTreeView*);
-  void cbToolbarAddClicked(GtkToolItem*);
-  void cbToolbarRemoveClicked(GtkToolItem*);
-  void cbToolbarMoveUpClicked(GtkToolItem*);
-  void cbToolbarMoveDownClicked(GtkToolItem*);
-  void cbToolbarConfigClicked(GtkToolItem*);
-
-  GtkWidget* createUI();
-  void       destroyUI();
-  GtkWidget* getDialogWidget();
+  void cbToolItemAddClicked(GtkToolItem*);
+  void cbToolItemRemoveClicked(GtkToolItem*);
+  void cbToolItemMoveUpClicked(GtkToolItem*);
+  void cbToolItemMoveDownClicked(GtkToolItem*);
+  void cbToolItemConfigClicked(GtkToolItem*);
 };
 
-#endif // XFCE_APPLET_NETWORK_PLUGIN_CONFIG_H
+#endif // XFCE_APPLET_SPEED_PLUGIN_CONFIG_H

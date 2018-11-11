@@ -1,12 +1,12 @@
 #include "NetworkStatsReader.h"
 
-#include "System.h"
 #include "../../NetworkStats.h"
+#include "System.h"
 
 #include <fstream>
 
 NetworkStatsReader::NetworkStatsReader(NetworkStats& refStats)
-    : StatsReaderBase(), stats(refStats) {
+    : StatsReader(), stats(refStats) {
   ;
 }
 
@@ -111,7 +111,11 @@ bool NetworkStatsReader::update(double period) {
     }
   }
 
-  if(stats.getStatus() != DeviceStatus::Connected)
+  bool changed = false;
+  if(stats.getStatus() != status)
+    changed = true;
+  
+  if(changed)
     stats.reset();
-  return stats.getStatus() != status;
+  return changed;
 }

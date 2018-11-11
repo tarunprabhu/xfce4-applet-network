@@ -2,48 +2,42 @@
 #define XFCE_APPLET_SPEED_DEVICE_STATS_H
 
 #include "Array.h"
-#include "Enums.h"
 #include "Types.h"
-#include "sys/common/StatsReaderBase.h"
 
-#include <cstring>
 #include <stdint.h>
 #include <string>
 
+class Device;
 class Plugin;
+class StatsReader;
 
 class DeviceStats {
-public:
+protected:
   template <typename T> using Stats1 = Array1<T, XferDirection>;
   template <typename T> using Stats2 = Array2<T, XferDirection, StatsRange>;
 
 protected:
-  Plugin& plugin;
-  StatsReaderBase& reader;
-  
+  const Device& device;
+  const Plugin& plugin;
+
   DeviceStatus     status;
   Stats1<double>   rate;
   Stats2<uint64_t> bytes;
-  
+
 protected:
-  DeviceStats(Plugin&, StatsReaderBase&);
-  
-  template <typename T, typename E> void resetStats(Array<T, E>& arr) {
-    std::memset(arr.data(), 0, arr.size());
-  }
+  DeviceStats(const Device&);
 
-  template <typename T> void resetStats(Stats2<T>& stats) {
-    for(auto& arr : stats)
-      resetStats(arr);
-  }
-
-  template <typename T> void updateStats(Array<T, StatsRange>& arr, T newVal) {
+  template <typename T> void update(Array<T, StatsRange>& arr, T newVal) {
     arr[StatsRange::Interval] = newVal - arr[StatsRange::Total];
     arr[StatsRange::Total]    = newVal;
   }
 
 public:
-  virtual ~DeviceStats();
+  DeviceStats(const DeviceStats&)  = delete;
+  DeviceStats(const DeviceStats&&) = delete;
+  virtual ~DeviceStats()           = default;
+
+  DeviceStats& operator=(const DeviceStats&) = delete;
 
   DeviceStatus getStatus() const;
   double       getRate(XferDirection) const;
@@ -53,9 +47,8 @@ public:
   void setRate(XferDirection, double);
   void setBytes(XferDirection, uint64_t);
 
-  void reset(const std::string&);
-  bool update();
-  
+  virtual bool update(StatsReader&);
+
   virtual void reset();
 };
 

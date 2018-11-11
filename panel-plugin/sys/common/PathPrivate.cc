@@ -1,45 +1,59 @@
-#include "PathImpl.h"
+#include "PathPrivate.h"
 
+#include "Debug.h"
+#include "PathImpl.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <gtk/gtk.h>
 
 #include <cstdlib>
 #include <unistd.h>
 
-PathPrivate::PathPrivate(char sep) : path(""), valid(false), separator(sep) {
+PathPrivate::PathPrivate(char sep) : separator(sep), committed(false) {
   ;
 }
 
-void PathPrivate::joinImpl(std::stringstream& ss, const std::string& s) {
-  ss << s;
+PathPrivate::PathPrivate(const PathPrivate& other)
+    : separator(other.separator), committed(other.committed), path(other.path) {
+  ASSERT(committed, "Cannot copy construct uncommitted path");
 }
 
-void PathPrivate::joinImpl(std::stringstream& ss, const char* cstr) {
-  ss << cstr;
+void PathPrivate::add(const std::string& s) {
+  ss << separator << s;
 }
 
-void PathPrivate::joinImpl(std::stringstream& ss, const PathPrivate& p) {
-  ss << p.get();
+void PathPrivate::add(const char* cstr) {
+  ss << separator << cstr;
 }
 
-void PathPrivate::joinImpl(std::stringstream&) {
-  ;
-}
+// void PathPrivate::add(char* cstr) {
+//   ss << separator << cstr;
+// }
 
-void PathPrivate::finalize(std::stringstream& ss) {
+void PathPrivate::finalize() {
   std::string s = ss.str();
+  ss.str("");
 
   // realpath() may return null if the provided path was invalid. This can
   // happen when a new network is created with a default path
   if(char* real = realpath(s.c_str(), NULL)) {
-    path  = real;
-    valid = true;
+    path      = real;
+    committed = true;
     free(real);
   }
 }
 
+PathPrivate& PathPrivate::operator=(const PathPrivate& other) {
+  separator = other.separator;
+  committed = other.committed;
+  path      = other.path;
+
+  return *this;
+}
+
 bool PathPrivate::contains(const std::string& s) const {
-  if((not isValid()) or (s.length() == 0))
+  if((not committed) or (s.length() == 0))
     return false;
 
   // If the path has a trailing backlash, it must *not* match at the end of
@@ -94,9 +108,9 @@ bool PathPrivate::contains(const std::string& s) const {
 }
 
 bool PathPrivate::exists() const {
-  if(isValid()) {
+  if(committed) {
     struct stat sb;
-    if(lstat(path.c_str(), &sb) == 0)
+    if(lstat(path.c_str(), &sb) == 0) {
       switch(sb.st_mode & S_IFMT) {
       case S_IFDIR:
       case S_IFREG:
@@ -106,12 +120,13 @@ bool PathPrivate::exists() const {
       default:
         break;
       }
+    }
   }
   return false;
 }
 
 bool PathPrivate::isDevice() const {
-  if(isValid()) {
+  if(committed) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
       switch(sb.st_mode & S_IFMT) {
@@ -124,7 +139,7 @@ bool PathPrivate::isDevice() const {
 }
 
 bool PathPrivate::isDirectory() const {
-  if(isValid()) {
+  if(committed) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
       switch(sb.st_mode & S_IFMT) {
@@ -136,7 +151,7 @@ bool PathPrivate::isDirectory() const {
 }
 
 bool PathPrivate::isFile() const {
-  if(isValid()) {
+  if(committed) {
     struct stat sb;
     if(lstat(path.c_str(), &sb) == 0)
       switch(sb.st_mode & S_IFMT) {
@@ -145,10 +160,6 @@ bool PathPrivate::isFile() const {
       }
   }
   return false;
-}
-
-bool PathPrivate::isValid() const {
-  return valid;
 }
 
 const std::string& PathPrivate::get() const {

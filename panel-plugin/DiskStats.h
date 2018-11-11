@@ -2,22 +2,27 @@
 #define XFCE_APPLET_SPEED_DISK_STATS_H
 
 #include "DeviceStats.h"
-#include "DiskStatsReader.h"
+#include "Types.h"
+
+#include <stdint.h>
 
 class Disk;
 
 class DiskStats : public DeviceStats {
-protected:
-  Disk&           disk;
-  DiskStatsReader reader;
+private:
+  const Disk& disk;
 
   uint64_t         upTime;
   Stats2<uint64_t> waitTime;
 
 public:
   DiskStats(Disk&);
+  DiskStats(const DiskStats&) = delete;
+  DiskStats(const DiskStats&&) = delete;
   virtual ~DiskStats();
 
+  DiskStats& operator=(const DiskStats&) = delete;
+  
   using DeviceStats::getBytes;
   using DeviceStats::getRate;
   using DeviceStats::getStatus;
@@ -30,9 +35,7 @@ public:
   void setUpTime(uint64_t);
   void setWaitTime(XferDirection, uint64_t);
 
-  using DeviceStats::reset;
-
-  virtual void reset();
+  virtual void reset() override;
 };
 
 #endif // XFCE_APPLET_SPEED_DISK_STATS_H

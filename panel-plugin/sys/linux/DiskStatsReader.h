@@ -1,14 +1,14 @@
 #ifndef XFCE_APPLET_SPEED_SYS_LINUX_DISK_STATS_READER_H
 #define XFCE_APPLET_SPEED_SYS_LINUX_DISK_STATS_READER_H
 
-#include "../common/StatsReaderBase.h"
+#include "../common/StatsReader.h"
 #include "Path.h"
 
 #include <string>
 
 class DiskStats;
 
-class DiskStatsReader : public StatsReaderBase {
+class DiskStatsReader : public StatsReader {
 private:
   DiskStats& stats;
   Path       dir;

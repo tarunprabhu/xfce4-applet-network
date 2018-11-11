@@ -1,10 +1,8 @@
 #ifndef XFCE_APPLET_SPEED_NETWORK_STATS_H
 #define XFCE_APPLET_SPEED_NETWORK_STATS_H
 
-#include "Array.h"
 #include "DeviceStats.h"
-#include "Enums.h"
-#include "NetworkStatsReader.h"
+#include "Types.h"
 
 #include <stdint.h>
 
@@ -13,7 +11,6 @@ class Network;
 class NetworkStats : public DeviceStats {
 protected:
   Network&           network;
-  NetworkStatsReader reader;
 
   Stats2<uint64_t> dropped;
   Stats2<uint64_t> errors;
@@ -21,8 +18,12 @@ protected:
 
 public:
   NetworkStats(Network&);
+  NetworkStats(const NetworkStats&) = delete;
+  NetworkStats(const NetworkStats&&) = delete;
   virtual ~NetworkStats();
 
+  NetworkStats& operator=(const NetworkStats&) = delete;
+  
   using DeviceStats::getBytes;
   using DeviceStats::getRate;
   using DeviceStats::getStatus;
@@ -37,9 +38,7 @@ public:
   void setErrors(XferDirection, uint64_t);
   void setPackets(XferDirection, uint64_t);
 
-  using DeviceStats::reset;
-  
-  virtual void reset();
+  virtual void reset() override;
 };
 
 #endif // XFCE_APPLET_SPEED_NETWORK_STATS_H

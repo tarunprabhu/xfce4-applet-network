@@ -1,94 +1,113 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_CONFIG_H
 #define XFCE_APPLET_SPEED_DEVICE_CONFIG_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif // HAVE_CONFIG_H
-
 #include "Constants.h"
 #include "Defaults.h"
-#include "Device.h"
+#include "IDialog.h"
 #include "Range.h"
 
 #include <gtk/gtk.h>
 
 #include <memory>
 
+class CSS;
+class Device;
+class DeviceOptions;
+class DiskOptions;
+class NetworkOptions;
+class DeviceUI;
+class Icons;
 class Plugin;
-class PluginConfig;
+class PluginUI;
 
-class DeviceConfig {
+class DeviceConfig : public IDialog {
+public:
+  enum class Mode {
+    Add,  // Adding a new device to the list
+    Edit, // Edit an existing device in the list
+  };
+
 public:
   // The width of each step in the slider in pixels
   static const unsigned SliderStepWidth = 12;
 
   static constexpr Range<double> RangeRxRate = {
-      0.5, 10.0, 0.5, Defaults::Device::UI::RxRateMax}; // MB/s
+      0.5, 10.0, 0.5, Defaults::Device::RxMax}; // MB/s
   static constexpr Range<double> RangeTxRate = {
-      0.125, 2.5, 0.125, Defaults::Device::UI::TxRateMax};        // MB/s
+      0.125, 2.5, 0.125, Defaults::Device::TxMax};                // MB/s
   static constexpr double RxRateMultiplier = Constants::Megabyte; // 1 MB
   static constexpr double TxRateMultiplier = Constants::Megabyte; // 1 MB
 
 private:
-  Plugin&       plugin;
-  PluginConfig& pluginConfig;
-  Device*       device;
-  DeviceUI*     ui;
+  Device&      device;
+  Plugin&      plugin;
+  const CSS&   css;
+  const Icons& icons;
+  Mode         mode;
 
-  struct {
-    GtkWidget* dialog;            // Main dialog window
-    GtkWidget* buttonDialogSave;  // The close button of the dialog
-    GtkWidget* comboDevice;       // Combo box containing the devices
-    GtkWidget* comboKind;         // Combo box for the network interface kind
-    GtkWidget* imageDevice;       // Icon for the network
-    GtkWidget* entryName;         // Entry for user-friendly network name
-    GtkWidget* labelRxRate;       // The maximum incoming rate on the dial
-    GtkWidget* labelTxRate;       // The maximum outgoing rate on the dial
-    GtkWidget* entryLabel;        // Entry for label to display
-    GtkWidget* checkShowLabel;    // Whether or not to display the label
-    GtkWidget* boxLabelSensitive; // Box containing widgets that should be
-                                  // disabled if show label is set to false
-    GtkWidget* frameDeviceSelector;
-    GtkWidget* frameDeviceOptions;
-    GtkWidget* frameDialOptions;
-    GtkWidget* frameLabelOptions;
-  } widgets;
+  GtkWidget* dialog;            // Main dialog window
+  GtkWidget* buttonSave;        // Dialog save button
+  GtkWidget* buttonCancel;      // Dialog close button
+  GtkWidget* comboDevice;       // Select the device
+  GtkWidget* comboKind;         // Select the device kind
+  GtkWidget* imageDevice;       // Device icon
+  GtkWidget* entryName;         // User-friendly device name
+  GtkWidget* scaleRx;           // Choose maximum incoming rate on the dial
+  GtkWidget* labelRx;           // DIsplay maximum incoming rate on the dial
+  GtkWidget* scaleTx;           // Choose maximum outgoing rate on the dial
+  GtkWidget* labelTx;           // Display maximum outgoing rate on the dial
+  GtkWidget* checkShowDisabled; // Show the dial and (maybe) label when the
+                                // device is disabled
+  GtkWidget* entryLabel;        // Entry for label to display
+  GtkWidget* colorFg;           // Label foreground color
+  GtkWidget* colorBg;           // Label background color
+  GtkWidget* checkShowLabel;    // Whether or not to display the label
+  GtkWidget* comboPosition;     // Position of the label relative to the dial
+  GtkWidget* boxLabelSensitive; // Box containing widgets that should be
+                                // disabled if show label is set to false
+
+  // Widgets exclusively for disks
+
+  // Widgets exclusively for networks
+  GtkWidget* checkShowDisconnected; // Show the dial and (maybe) label when
+                                    // the network is disconnected. Only
+                                    // applies to networks
+
+  // Frames
+  GtkWidget* frameDeviceOptions;
+  GtkWidget* frameDialOptions;
+  GtkWidget* frameLabelOptions;
 
 private:
-  GtkWidget* addDeviceSelector();
   GtkWidget* addDeviceOptions();
   GtkWidget* addDialOptions();
   GtkWidget* addLabelOptions();
 
-  void clearWidgets();
-  void resetDevice(DeviceClass);
-  bool isNewDevice() const;
+  virtual GtkWidget* createDialog() override;
+  virtual void       clearDialog() override;
 
 public:
-  DeviceConfig(Plugin&);
-  DeviceConfig(Device&);
-  ~DeviceConfig();
+  DeviceConfig(Device&, DeviceConfig::Mode);
+  DeviceConfig(const DeviceConfig&)  = delete;
+  DeviceConfig(const DeviceConfig&&) = delete;
+  virtual ~DeviceConfig()            = default;
 
-  Device* takeDevice();
+  DeviceConfig& operator=(const DeviceConfig&) = delete;
 
-  void cbDialogResponse(GtkDialog*, int);
-  void cbComboDeviceClassChanged(GtkComboBox*);
+  int cbDialogResponse(GtkDialog*, int);
+
   void cbComboDeviceChanged(GtkComboBox*);
   void cbComboKindChanged(GtkComboBox*);
   void cbEntryNameChanged(GtkEntry*);
   void cbScaleRxChanged(GtkRange*);
   void cbScaleTxChanged(GtkRange*);
-  void cbCheckShowWhenDisconnectedToggled(GtkToggleButton*);
-  void cbCheckShowWhenDisabledToggled(GtkToggleButton*);
+  void cbCheckShowDisconnectedToggled(GtkToggleButton*);
+  void cbCheckShowDisabledToggled(GtkToggleButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
   void cbEntryLabelChanged(GtkEntry*);
   void cbColorFgSet(GtkColorChooser*);
   void cbColorBgSet(GtkColorChooser*);
   void cbComboPositionChanged(GtkComboBox*);
-
-  GtkWidget* createUI();
-  void       destroyUI();
-  GtkWidget* getDialogWidget();
 };
 
 #endif // XFCE_APPLET_SPEED_DEVICE_CONFIG_H

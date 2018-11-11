@@ -1,36 +1,33 @@
 #include "DiskTooltip.h"
 
+#include "Debug.h"
 #include "Disk.h"
 #include "DiskStats.h"
-#include "IconContext.h"
+#include "Icons.h"
 
-DiskTooltip::DiskTooltip(Disk& refDisk)
+DiskTooltip::DiskTooltip(const Disk& refDisk)
     : DeviceTooltip(refDisk), disk(refDisk), stats(disk.getStats()) {
-  clearWidgets();
+  TRACE_FUNC_ENTER;
+
+  createUI();
+  
+  TRACE_FUNC_EXIT;
 }
 
-DiskTooltip::~DiskTooltip() {
-  ;
-}
-
-void DiskTooltip::clearWidgets() {
-  DeviceTooltip::clearWidgets();
-  // TODO: Implement this
-}
-
-GtkWidget* DiskTooltip::createUI() {
-  GtkWidget* window = DeviceTooltip::createUI();
+void DiskTooltip::createUI() {
+  DeviceTooltip::createUI();
 
   // TODO: Implement  this
-
-  return window;
 }
 
 void DiskTooltip::updateIcon() {
-  GdkPixbuf* pixbuf =
-      icons.getIcon(enum_parse<DiskKind>(disk.getKind()), stats.getStatus());
-  if(pixbuf != icon)
+  GdkPixbuf* pixbuf = icons.getIcon(disk.getKind(), stats.getStatus());
+  if(pixbuf != icon) {
     icon = pixbuf;
+    // Set the icon here because this will be common to all devices and
+    // we don't want to make the device widget visible to subclasses
+    gtk_image_set_from_pixbuf(GTK_IMAGE(imageDevice), icon);
+  }
 }
 
 void DiskTooltip::updateText() {

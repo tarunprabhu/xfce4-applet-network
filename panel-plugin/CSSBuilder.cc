@@ -1,16 +1,36 @@
 #include "CSSBuilder.h"
 
+#include "Debug.h"
+
+#include <gtk/gtk.h>
+
+#define ERROR_IF_NOT_COMMITTED()                                               \
+  do {                                                                         \
+    if(not committed)                                                          \
+      ERROR("Cannot call this function on uncommitted CSS builder");           \
+  } while(0)
+
+#define ERROR_IF_COMMITTED()                                                   \
+  do {                                                                         \
+    if(committed)                                                              \
+      ERROR("Cannot call this function on committed CSS builder object");      \
+  } while(0)
+
 CSSBuilder::CSSBuilder() : committed(false) {
   ;
 }
 
-CSSBuilder& CSSBuilder::addBeginSelector(const std::string& selector) {
+CSSBuilder::CSSBuilder(const std::string& selector) : committed(false) {
+  beginSelector(selector);
+}
+
+CSSBuilder& CSSBuilder::beginSelector(const std::string& selector) {
   ss << selector << " {" << std::endl;
 
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addEndSelector() {
+CSSBuilder& CSSBuilder::endSelector() {
   ss << "}";
 
   return *this;
@@ -24,11 +44,11 @@ CSSBuilder& CSSBuilder::init() {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::commit() {
+const std::string& CSSBuilder::commit() {
   css       = ss.str();
   committed = true;
 
-  return *this;
+  return css;
 }
 
 CSSBuilder& CSSBuilder::addBeginDeclaration(const std::string& declaration) {
@@ -55,7 +75,7 @@ CSSBuilder& CSSBuilder::addColor(const GdkRGBA* color) {
 }
 
 CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA* color) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("color");
   addColor(color);
@@ -65,7 +85,7 @@ CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA* color) {
 }
 
 CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA* color) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("background-color");
   addColor(color);
@@ -75,7 +95,7 @@ CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA* color) {
 }
 
 CSSBuilder& CSSBuilder::addFont(const PangoFontDescription* font) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addFontFamily(pango_font_description_get_family(font));
   addFontSize(pango_font_description_get_size(font), "px");
@@ -111,7 +131,7 @@ CSSBuilder& CSSBuilder::addFont(const PangoFontDescription* font) {
 }
 
 CSSBuilder& CSSBuilder::addFontFamily(const std::string& family) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-family");
   ss << family;
@@ -121,7 +141,7 @@ CSSBuilder& CSSBuilder::addFontFamily(const std::string& family) {
 }
 
 CSSBuilder& CSSBuilder::addFontSize(double size, const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-size");
   ss << size << units;
@@ -131,7 +151,7 @@ CSSBuilder& CSSBuilder::addFontSize(double size, const std::string& units) {
 }
 
 CSSBuilder& CSSBuilder::addFontSize(const std::string& size) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-size");
   ss << size;
@@ -141,7 +161,7 @@ CSSBuilder& CSSBuilder::addFontSize(const std::string& size) {
 }
 
 CSSBuilder& CSSBuilder::addFontStyle(const std::string& style) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-style");
   ss << style;
@@ -151,7 +171,7 @@ CSSBuilder& CSSBuilder::addFontStyle(const std::string& style) {
 }
 
 CSSBuilder& CSSBuilder::addFontVariant(const std::string& variant) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-variant");
   ss << variant;
@@ -161,7 +181,7 @@ CSSBuilder& CSSBuilder::addFontVariant(const std::string& variant) {
 }
 
 CSSBuilder& CSSBuilder::addFontWeight(const std::string& weight) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-weight");
   ss << weight;
@@ -171,7 +191,7 @@ CSSBuilder& CSSBuilder::addFontWeight(const std::string& weight) {
 }
 
 CSSBuilder& CSSBuilder::addFontWeight(unsigned weight) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("font-weight");
   ss << weight;
@@ -181,7 +201,7 @@ CSSBuilder& CSSBuilder::addFontWeight(unsigned weight) {
 }
 
 CSSBuilder& CSSBuilder::addMargin(unsigned margin, const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("margin");
   ss << margin << " " << units;
@@ -192,7 +212,7 @@ CSSBuilder& CSSBuilder::addMargin(unsigned margin, const std::string& units) {
 
 CSSBuilder& CSSBuilder::addMarginLeft(unsigned           margin,
                                       const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("margin-left");
   ss << margin << " " << units;
@@ -203,7 +223,7 @@ CSSBuilder& CSSBuilder::addMarginLeft(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginTop(unsigned           margin,
                                      const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("margin-top");
   ss << margin << " " << units;
@@ -214,7 +234,7 @@ CSSBuilder& CSSBuilder::addMarginTop(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginRight(unsigned           margin,
                                        const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("margin-right");
   ss << margin << " " << units;
@@ -225,7 +245,7 @@ CSSBuilder& CSSBuilder::addMarginRight(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginBottom(unsigned           margin,
                                         const std::string& units) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("margin-bottom");
   ss << margin << " " << units;
@@ -235,7 +255,7 @@ CSSBuilder& CSSBuilder::addMarginBottom(unsigned           margin,
 }
 
 CSSBuilder& CSSBuilder::addTextAlign(const std::string& align) {
-  error_if_committed();
+  ERROR_IF_COMMITTED();
 
   addBeginDeclaration("text-align");
   ss << align;
@@ -245,15 +265,15 @@ CSSBuilder& CSSBuilder::addTextAlign(const std::string& align) {
 }
 
 CSSBuilder& CSSBuilder::addText(const std::string& text) {
-  error_if_committed();
-  
+  ERROR_IF_COMMITTED();
+
   ss << text;
 
   return *this;
 }
 
 const std::string& CSSBuilder::str() const {
-  error_if_not_committed();
+  ERROR_IF_NOT_COMMITTED();
 
   return css;
 }
@@ -268,14 +288,4 @@ std::string::size_type CSSBuilder::length() const {
 
 std::string::size_type CSSBuilder::size() const {
   return str().size();
-}
-
-void CSSBuilder::error_if_not_committed() const {
-  if(not committed)
-    g_error("Cannot call this function on uncommitted CSS builder");
-}
-
-void CSSBuilder::error_if_committed() const {
-  if(committed)
-    g_error("Cannot call this function on committed CSS builder object");
 }

@@ -1,12 +1,8 @@
-#ifndef XFCE_APPLET_NETWORK_PLUGIN_UI_H
-#define XFCE_APPLET_NETWORK_PLUGIN_UI_H
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif // HAVE_CONFIG_H
+#ifndef XFCE_APPLET_SPEED_PLUGIN_UI_H
+#define XFCE_APPLET_SPEED_PLUGIN_UI_H
 
 #include "Array.h"
-#include "Enums.h"
+#include "Types.h"
 
 #include <libxfce4util/libxfce4util.h>
 
@@ -25,65 +21,36 @@ private:
 
   // TODO: The label could be to the left, right, top or bottom of the
   // network monitors
-  struct {
-    Array<GtkWidget*, LabelPosition>
-               labels;    // The labels displayed with the plugin
-    GtkWidget* container; // Box which contains the grid
-    GtkWidget* networks;  // Box containing all the network dials
-    GtkWidget* grid;      // Grid containing the labels and monitors
-    GtkWidget* evt;       // The event box for the entire plugin
-  } widgets;
-
-  struct {
-    unsigned              border;
-    unsigned              padding;
-    unsigned              spacing;
-    bool                  showLabel;
-    std::string           label;
-    LabelPosition         labelPosition;
-    PangoFontDescription* font;
-    TooltipVerbosity      verbosity;
-  } opts;
+  Array<GtkWidget*, LabelPosition>
+             labels;     // The labels displayed with the plugin
+  GtkWidget* boxDevices; // Box containing all the device dials
+  GtkWidget* grid;       // Grid containing the labels and dials
+  GtkWidget* evt;        // The event box for the entire plugin
 
 private:
-  void clearWidgets();
+  void createUI();
+  void destroyUI();
   
 public:
   PluginUI(Plugin&);
+  PluginUI(const Plugin&)  = delete;
+  PluginUI(const Plugin&&) = delete;
   ~PluginUI();
 
-  void readConfig(XfceRc*);
-  void writeConfig(XfceRc*) const;
+  PluginUI& operator=(const Plugin&) = delete;
 
-  void addNetworkWidget(GtkWidget*);
-  void removeNetworkWidget(GtkWidget*);
-  
-  void setOrientation(GtkOrientation);
-  void setSize(unsigned);
-  void setBorder(unsigned);
-  void setPadding(unsigned);
-  void setSpacing(unsigned);
-  void setShowLabel(bool);
-  void setLabel(const std::string&);
-  void setLabelPosition(LabelPosition);
-  void setFont(const PangoFontDescription*);
-  void setVerbosity(TooltipVerbosity);
+  void addDeviceWidget(GtkWidget*);
+  void removeDeviceWidget(GtkWidget*);
 
-  unsigned                    getSize() const;
-  GtkOrientation              getOrientation() const;
-  GtkIconTheme*               getIconTheme() const;
-  unsigned                    getBorder() const;
-  unsigned                    getPadding() const;
-  unsigned                    getSpacing() const;
-  bool                        getShowLabel() const;
-  const std::string&          getLabel() const;
-  LabelPosition               getLabelPosition() const;
-  const PangoFontDescription* getFont() const;
-  TooltipVerbosity            getVerbosity() const;
+  void cbReorient(GtkOrientation);
+  void cbResize(unsigned);
 
-  GtkWidget* createUI();
-  void       destroyUI();
-  void       refresh();
+  unsigned       getSize() const;
+  GtkOrientation getOrientation() const;
+  GtkIconTheme*  getIconTheme() const;
+
+  void cbRefresh();
+  void cbRedraw();
 };
 
-#endif // XFCE_APPLET_NETWORK_PLUGIN_UI_H
+#endif // XFCE_APPLET_SPEED_PLUGIN_UI_H

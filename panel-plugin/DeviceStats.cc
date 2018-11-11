@@ -1,20 +1,30 @@
 #include "DeviceStats.h"
 
+#include "Debug.h"
+#include "Device.h"
+#include "Functional.h"
 #include "Plugin.h"
+#include "Utils.h"
+#include "sys/common/StatsReader.h"
 
-DeviceStats::DeviceStats(Plugin& refPlugin, StatsReaderBase& refReader)
-    : plugin(refPlugin), reader(refReader) {
-  ;
-}
+DeviceStats::DeviceStats(const Device& refDevice)
+    : device(refDevice), plugin(device.getPlugin()) {
+  TRACE_FUNC_ENTER;
 
-DeviceStats::~DeviceStats() {
-  ;
+  status = DeviceStatus::Disabled;
+  functional::map(functional::Functor<double>(nullify<double>), rate);
+  functional::map(functional::Functor<uint64_t>(nullify<uint64_t>), bytes);
+
+  TRACE_FUNC_EXIT;
 }
 
 void DeviceStats::reset() {
-  status = DeviceStatus::Disabled;
-  resetStats(rate);
-  resetStats(bytes);
+  TRACE_FUNC_ENTER;
+
+  functional::map(functional::Functor<double>(nullify<double>), rate);
+  functional::map(functional::Functor<uint64_t>(nullify<uint64_t>), bytes);
+
+  TRACE_FUNC_EXIT;
 }
 
 DeviceStatus DeviceStats::getStatus() const {
@@ -35,18 +45,19 @@ void DeviceStats::setStatus(DeviceStatus newStatus) {
 }
 
 void DeviceStats::setBytes(XferDirection direction, uint64_t newBytes) {
-  updateStats(bytes[direction], newBytes);
+  update(bytes[direction], newBytes);
 }
 
 void DeviceStats::setRate(XferDirection direction, double newRate) {
   rate[direction] = newRate;
 }
 
-bool DeviceStats::update() {
-  return reader.update(plugin.getPeriod());
-}
+bool DeviceStats::update(StatsReader& reader) {
+  TRACE_TICK_FUNC_ENTER;
 
-void DeviceStats::reset(const std::string& device) {
-  reader.reset(device);
-  reset();
+  bool changed = reader.update(plugin.getPeriod());
+
+  TRACE_TICK_FUNC_EXIT;
+  
+  return changed;
 }

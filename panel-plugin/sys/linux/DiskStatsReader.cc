@@ -6,7 +6,7 @@
 #include <fstream>
 
 DiskStatsReader::DiskStatsReader(DiskStats& refStats)
-    : StatsReaderBase(), stats(refStats) {
+    : StatsReader(), stats(refStats) {
   ;
 }
 
@@ -55,7 +55,11 @@ bool DiskStatsReader::update(double period) {
     stats.setStatus(DeviceStatus::Disabled);
   }
 
-  if(stats.getStatus() != DeviceStatus::Connected)
+  bool changed = false;
+  if(stats.getStatus() != status)
+    changed = true;
+  
+  if(changed)
     stats.reset();
-  return stats.getStatus() != status;
+  return changed;
 }

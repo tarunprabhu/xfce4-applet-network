@@ -14,23 +14,31 @@ libappletnetwork_la_LIBADD =		\
 
 libappletnetwork_la_SOURCES =  \
 	Constants.cc \
+	CSS.cc \
 	CSSBuilder.cc \
 	Defaults.cc \
 	Device.cc \
 	DeviceConfig.cc \
+	DeviceOptions.cc \
 	DeviceTooltip.cc \
 	DeviceUI.cc \
 	DeviceStats.cc \
 	Disk.cc \
+	DiskOptions.cc \
 	DiskStats.cc \
 	DiskTooltip.cc \
+	DiskUI.cc \
 	GtkUtils.cc \
-	IconContext.cc \
+	Icons.cc \
+	IDialog.cc \
 	Network.cc \
+	NetworkOptions.cc \
 	NetworkStats.cc \
 	NetworkTooltip.cc \
+	NetworkUI.cc \
 	PanelPlugin.cc \
 	Plugin.cc \
+	PluginOptions.cc \
 	PluginConfig.cc \
 	PluginUI.cc \
 	Utils.cc \
@@ -40,7 +48,7 @@ libappletnetwork_la_SOURCES =  \
 # Common sys files
 libappletnetwork_la_SOURCES += \
 	sys/common/PathPrivate.cc \
-	sys/common/StatsReaderBase.cc
+	sys/common/StatsReader.cc
 
 if LINUX
 libappletnetwork_la_SOURCES += \

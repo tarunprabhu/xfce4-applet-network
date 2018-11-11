@@ -10,25 +10,22 @@ class DiskStats;
 
 class DiskTooltip : public DeviceTooltip {
 private:
-  Disk& disk;
-  DiskStats& stats;
-
-  struct {
-    // TODO: Add widgets here
-  } widgets;
+  const Disk&      disk;
+  const DiskStats& stats;
 
 protected:
-  virtual void clearWidgets() override;
   virtual void updateIcon() override;
   virtual void updateText() override;
 
+  virtual void createUI() override;
+  
 public:
-  DiskTooltip(Disk&);
-  virtual ~DiskTooltip();
+  DiskTooltip(const Disk&);
+  DiskTooltip(const DiskTooltip&)  = delete;
+  DiskTooltip(const DiskTooltip&&) = delete;
+  virtual ~DiskTooltip()           = default;
 
-  virtual GtkWidget* createUI() override;
-  using DeviceTooltip::destroyUI;
-  using DeviceTooltip::update;
+  DiskTooltip& operator=(const DiskTooltip&) = delete;
 };
 
 #endif // XFCE_APPLET_SPEED_DISK_TOOLTIP_H
