@@ -8,8 +8,7 @@
 #include "NetworkTooltip.h"
 #include "NetworkUI.h"
 #include "Types.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <string>
 
@@ -45,11 +44,11 @@ public:
   virtual Network& setDevice(const std::string&) override;
   virtual Network& setKind(const std::string&) override;
   Network&         setKind(NetworkKind);
-  Network&         setShowDisconnected(bool);
+  Network&         setShowNotConnected(bool);
 
   NetworkKind         getKind() const;
   virtual const char* getKindCstr() const override;
-  bool                getShowDisconnected() const;
+  bool                getShowNotConnected() const;
 
   virtual void readConfig(XfceRc*) override;
   virtual void writeConfig(XfceRc*) const override;

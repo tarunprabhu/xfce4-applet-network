@@ -10,8 +10,8 @@ protected:
   Disk& disk;
 
 protected:
-  virtual void createUI() override;
-  
+  virtual GtkWidget* createUI() override;
+
 public:
   DiskUI(Disk&);
   DiskUI(const DiskUI&)  = delete;

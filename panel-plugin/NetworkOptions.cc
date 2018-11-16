@@ -5,12 +5,12 @@
 #include "Network.h"
 #include "XfceUtils.h"
 
-NetworkOptions::NetworkOptions(Network& refNetwork)
-    : DeviceOptions(refNetwork), network(refNetwork) {
+NetworkOptions::NetworkOptions(Network& network)
+    : DeviceOptions(network), network(network) {
   TRACE_FUNC_ENTER;
 
   kind             = Defaults::Device::Network::Kind;
-  showDisconnected = Defaults::Device::Network::ShowDisconnected;
+  showNotConnected = Defaults::Device::Network::ShowNotConnected;
 
   TRACE_FUNC_EXIT;
 }
@@ -23,12 +23,12 @@ NetworkOptions::~NetworkOptions() {
 void NetworkOptions::readConfig(XfceRc* rc) {
   DeviceOptions::readConfig(rc);
   network.setKind(xfce_rc_read_enum_entry(rc, "kind", kind));
-  network.setShowDisconnected(
-      xfce_rc_read_bool_entry(rc, "disconnected", showDisconnected));
+  network.setShowNotConnected(
+      xfce_rc_read_bool_entry(rc, "not_connected", showNotConnected));
 }
 
 void NetworkOptions::writeConfig(XfceRc* rc) const {
   DeviceOptions::writeConfig(rc);
   xfce_rc_write_enum_entry(rc, "kind", kind);
-  xfce_rc_write_bool_entry(rc, "disconnected", showDisconnected);
+  xfce_rc_write_bool_entry(rc, "not_connected", showNotConnected);
 }

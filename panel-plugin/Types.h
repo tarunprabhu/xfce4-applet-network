@@ -13,20 +13,47 @@ ENUM_CREATE(XferDirection,
 
 // Indicates whether the value of the statistic is over the sampling interval
 // or since the device came up
-ENUM_CREATE(StatsRange, Interval, Total);
+ENUM_CREATE(StatsRange, // <
+            Interval,   // <
+            Total);
 
+// The purpose of the icon. This is used to determine the size that will be
+// used. By not having the size hard-coded here, we can (comparatively) easily
+// change the icon size as desired
 ENUM_CREATE(IconKind, Dialog, Menu, Toolbar, Tooltip);
 
-ENUM_CREATE(LabelPosition, Left, Top, Right, Bottom);
+ENUM_CREATE(LabelPosition, // <
+            Left,          // <
+            Top,           // <
+            Right,         // <
+            Bottom);
+
+ENUM_CREATE(DialKind,
+            SingleArc360,      // A single (almost) circular dial
+            SingleArc180,      // A semi-circular dial
+            MultipleArc360,    // Separate (almost) circular dials
+            MultipleArc180,    // Separate semi-circular dials
+            CombinedVertical,  // Two semi-circular vertical dials
+            CombinedHorizontal // Two semi-circular horizontal dials
+);
 
 ENUM_CREATE(TooltipVerbosity, Limited, Moderate, Verbose);
 
 ENUM_CREATE(DeviceStatus,
-            Connected,    // The device is connected and operational
-            Disabled,     // The device is not connected
-            Disconnected, // In the case of networks, the network is down
-            Error // This occurs when the device stats cannot be obtained even
-                  // though the device is determined to be available
+            // <begin common values>
+            Unavailable, // The device is not present
+            Error,       // The device stats cannot be obtained even
+            // <end common values>
+
+            // <begin disk-specific values>
+            Mounted,
+            Unmounted,
+            // <end disk-specific values>
+
+            // <begin network-specific values>
+            Connected,   // The interface is up
+            Disconnected // The interface is down
+                         // <end network-specific values>
 );
 
 ENUM_CREATE(DiskKind,
@@ -52,6 +79,20 @@ ENUM_CREATE(DeviceClass,
             // multimedia card etc.)
             Network // The device is a network interface
 );
+
+ENUM_CREATE(StatsUnit,
+            Bytes,   // <
+            Rate,    // <
+            Seconds, // <
+            Unitless);
+
+ENUM_CREATE(Response,
+            None,   // <
+            Delete, // The dialog is closed
+            OK,     // <
+            Cancel, // <
+            Close,  // <
+            Apply);
 
 // Since the disk kind and the network kind enums are different
 // Given the device type, we need to find a way to find the right enum for

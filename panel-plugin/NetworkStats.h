@@ -10,7 +10,7 @@ class Network;
 
 class NetworkStats : public DeviceStats {
 protected:
-  Network&           network;
+  Network& network;
 
   Stats2<uint64_t> dropped;
   Stats2<uint64_t> errors;
@@ -18,12 +18,12 @@ protected:
 
 public:
   NetworkStats(Network&);
-  NetworkStats(const NetworkStats&) = delete;
+  NetworkStats(const NetworkStats&)  = delete;
   NetworkStats(const NetworkStats&&) = delete;
   virtual ~NetworkStats();
 
   NetworkStats& operator=(const NetworkStats&) = delete;
-  
+
   using DeviceStats::getBytes;
   using DeviceStats::getRate;
   using DeviceStats::getStatus;

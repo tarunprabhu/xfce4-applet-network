@@ -13,14 +13,14 @@ template <typename T> using Functor = std::function<void(T&)>;
 template <typename T> void map(const Functor<T>&, T&);
 template <
     typename T,
-    template <typename...> typename Tuple,
+    template <typename...> class Tuple,
     typename... Types,
     typename std::enable_if_t<!is_iterable<Tuple<Types...>>::value, int> = 0>
 void map(const Functor<T>&, Tuple<Types...>&);
 
 template <
     typename T,
-    template <typename, typename...> typename Container,
+    template <typename, typename...> class Container,
     typename Element,
     typename... Params,
     typename std::enable_if_t<is_iterable<Container<Element, Params...>>::value,
@@ -29,17 +29,19 @@ void map(const Functor<T>&, Container<Element, Params...>&);
 
 namespace impl {
 
-template <typename T, template <typename...> typename Tuple, typename... Types>
+template <typename T,                         // <
+          template <typename...> class Tuple, // <
+          typename... Types>
 void map_(const Functor<T>&, Tuple<Types...>&);
 
 template <typename T,
-          template <typename, typename...> typename Container,
+          template <typename, typename...> class Container,
           typename Element,
           typename... Params>
 void map_(const Functor<T>&, Container<Element, Params...>&);
 
 template <typename T,
-          template <typename, typename...> typename Container,
+          template <typename, typename...> class Container,
           typename Element,
           typename... Params>
 void map_(const Functor<T>& func, Container<Element, Params...>& container) {
@@ -49,7 +51,7 @@ void map_(const Functor<T>& func, Container<Element, Params...>& container) {
 
 template <size_t N,
           typename T,
-          template <typename...> typename Tuple,
+          template <typename...> class Tuple,
           typename... Types,
           std::enable_if_t<N == 1, int> = 0>
 void map_(const Functor<T>& func, Tuple<Types...>& tuple) {
@@ -58,7 +60,7 @@ void map_(const Functor<T>& func, Tuple<Types...>& tuple) {
 
 template <size_t N,
           typename T,
-          template <typename...> typename Tuple,
+          template <typename...> class Tuple,
           typename... Types,
           std::enable_if_t<N >= 2, int> = 0>
 void map_(const Functor<T>& func, Tuple<Types...>& tuple) {
@@ -66,7 +68,9 @@ void map_(const Functor<T>& func, Tuple<Types...>& tuple) {
   map_<N - 1, T, Tuple, Types...>(func, tuple);
 }
 
-template <typename T, template <typename...> typename Tuple, typename... Types>
+template <typename T,                         // <
+          template <typename...> class Tuple, // <
+          typename... Types>
 void map_(const Functor<T>& func, Tuple<Types...>& tuple) {
   constexpr size_t N = std::tuple_size<Tuple<Types...>>::value;
   map_<N, T, Tuple, Types...>(func, tuple);
@@ -78,22 +82,21 @@ template <typename T> void map(const Functor<T>& func, T& e) {
   func(e);
 }
 
-template <
-    typename T,
-    template <typename...> typename Tuple,
-    typename... Types,
-    typename std::enable_if_t<!is_iterable<Tuple<Types...>>::value, int> = 0>
+template <typename T,
+          template <typename...> class Tuple,
+          typename... Types,
+          typename std::enable_if_t<!is_iterable<Tuple<Types...>>::value, int>>
 void map(const Functor<T>& func, Tuple<Types...>& tuple) {
   impl::map_(func, tuple);
 }
 
 template <
     typename T,
-    template <typename, typename...> typename Container,
+    template <typename, typename...> class Container,
     typename Element,
     typename... Params,
     typename std::enable_if_t<is_iterable<Container<Element, Params...>>::value,
-                              int> = 0>
+                              int>>
 void map(const Functor<T>& func, Container<Element, Params...>& container) {
   impl::map_(func, container);
 }

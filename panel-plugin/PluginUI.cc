@@ -6,21 +6,22 @@
 #include "Plugin.h"
 #include "XfceUtils.h"
 
-PluginUI::PluginUI(Plugin& refPlugin) : plugin(refPlugin) {
+PluginUI::PluginUI(Plugin& plugin) : plugin(plugin) {
   TRACE_FUNC_ENTER;
 
   XfcePanelPlugin* xfce = plugin.getXfcePanelPlugin();
   size                  = xfce_panel_plugin_get_size(xfce);
   orientation           = xfce_panel_plugin_get_orientation(xfce);
 
+  clearUI();
   createUI();
-  
+
   TRACE_FUNC_EXIT;
 }
 
 PluginUI::~PluginUI() {
   TRACE_FUNC_ENTER;
- 
+
   destroyUI();
 
   TRACE_FUNC_EXIT;
@@ -36,15 +37,15 @@ GtkOrientation PluginUI::getOrientation() const {
 
 void PluginUI::cbReorient(GtkOrientation orient) {
   orientation = orient;
-  cbRedraw();
+  cbRefresh();
 }
 
 void PluginUI::cbResize(unsigned sz) {
   size = sz;
-  cbRedraw();
+  cbRefresh();
 }
 
-void PluginUI::createUI() {
+GtkWidget* PluginUI::createUI() {
   TRACE_FUNC_ENTER;
 
   GtkWidget* evt = gtk_event_box_new();
@@ -93,15 +94,44 @@ void PluginUI::createUI() {
   // Connect signals
 
   TRACE_FUNC_EXIT;
+
+  return evt;
+}
+
+void PluginUI::clearUI() {
+  TRACE_FUNC_ENTER;
+
+  for(auto pos : LabelPosition())
+    labels[pos] = nullptr;
+  boxDevices = nullptr;
+  grid       = nullptr;
+  evt        = nullptr;
+
+  TRACE_FUNC_EXIT;
 }
 
 void PluginUI::destroyUI() {
-  if(evt)
+  TRACE_FUNC_ENTER;
+
+  if(evt) {
     gtk_widget_destroy(evt);
+    clearUI();
+  }
+
+  TRACE_FUNC_EXIT;
 }
 
 void PluginUI::cbRefresh() {
   TRACE_FUNC_ENTER;
+
+  for(GtkWidget* label : labels)
+    if(label)
+      gtk_widget_hide(label);
+
+  for(auto& pDevice : plugin.getDevices()) {
+    DeviceUI& ui = pDevice->getUI();
+    gtk_widget_hide(ui.getWidget());
+  }
 
   // TODO: Update font
 
@@ -110,17 +140,17 @@ void PluginUI::cbRefresh() {
 
   gtk_grid_set_row_spacing(GTK_GRID(grid), plugin.getPadding());
   gtk_grid_set_column_spacing(GTK_GRID(grid), plugin.getPadding());
-
-  for(GtkWidget* labelLabel : labels) {
-    if(labelLabel) {
-      gtk_label_set_text(GTK_LABEL(labelLabel), plugin.getLabel().c_str());
-      gtk_widget_hide(labelLabel);
-    }
+  
+  for(auto& pDevice : plugin.getDevices()) {
+    DeviceUI& ui = pDevice->getUI();
+    ui.cbRefresh();
   }
-
-  if(plugin.getShowLabel())
-    if(GtkWidget* label = labels[plugin.getLabelPosition()])
-      gtk_widget_show(label);
+  
+  if(plugin.getShowLabel()) {
+    GtkWidget* label = labels[plugin.getLabelPosition()];
+    gtk_label_set_text(GTK_LABEL(label), plugin.getLabel().c_str());
+    gtk_widget_show(label);
+  }
 
   TRACE_FUNC_EXIT;
 }
@@ -143,18 +173,6 @@ void PluginUI::cbRefresh() {
 //   TRACE_FUNC_EXIT;
 // }
 
-void PluginUI::cbRedraw() {
-  TRACE_FUNC_ENTER;
-
-  // clearTimer();
-
-  // for(auto& device : getDevices())
-  //   device->getUI().destroyUI();
-  // destroyUI();
-
-  // createUI();
-  // for(auto& device : getDevices())
-  //   device->getUI().createUI();
-
-  TRACE_FUNC_EXIT;
+GtkWidget* PluginUI::getWidget() {
+  return evt;
 }

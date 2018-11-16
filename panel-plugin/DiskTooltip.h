@@ -17,10 +17,11 @@ protected:
   virtual void updateIcon() override;
   virtual void updateText() override;
 
-  virtual void createUI() override;
-  
+  virtual GtkWidget* createUI() override;
+  virtual void clearUI() override;
+
 public:
-  DiskTooltip(const Disk&);
+  DiskTooltip(Disk&);
   DiskTooltip(const DiskTooltip&)  = delete;
   DiskTooltip(const DiskTooltip&&) = delete;
   virtual ~DiskTooltip()           = default;

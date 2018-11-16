@@ -2,8 +2,7 @@
 #define XFCE_APPLET_SPEED_PLUGIN_OPTIONS_H
 
 #include "Types.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 

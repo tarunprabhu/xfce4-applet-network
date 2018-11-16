@@ -8,8 +8,8 @@
 
 #include <sstream>
 
-Disk::Disk(Plugin& refPlugin)
-    : Device(refPlugin, DeviceClass::Disk), options(*this), stats(*this),
+Disk::Disk(Plugin& plugin)
+    : Device(plugin, DeviceClass::Disk), options(*this), stats(*this),
       reader(stats), tooltip(*this), ui(*this) {
   TRACE_FUNC_ENTER;
   
@@ -60,6 +60,10 @@ const char* Disk::getKindCstr() const {
   return enum_cstr(options.kind);
 }
 
+bool Disk::getShowNotMounted() const {
+  return options.showNotMounted;
+}
+
 Disk& Disk::setDevice(const std::string& device) {
   options.dev = device;
   setKind(System::getDeviceKind<DeviceClass::Disk>(device));
@@ -77,6 +81,12 @@ Disk& Disk::setKind(const std::string& kind) {
 
 Disk& Disk::setKind(DiskKind kind) {
   options.kind = kind;
+
+  return *this;
+}
+
+Disk& Disk::setShowNotMounted(bool show) {
+  options.showNotMounted = show;
 
   return *this;
 }

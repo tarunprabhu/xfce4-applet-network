@@ -3,19 +3,20 @@
 #include "Debug.h"
 #include "Network.h"
 
-NetworkUI::NetworkUI(Network& refNetwork)
-    : DeviceUI(refNetwork), network(refNetwork) {
+NetworkUI::NetworkUI(Network& network) : DeviceUI(network), network(network) {
   TRACE_FUNC_ENTER;
 
   createUI();
-  
+
   TRACE_FUNC_EXIT;
 }
 
-void NetworkUI::createUI() {
+GtkWidget* NetworkUI::createUI() {
   TRACE_FUNC_ENTER;
-  
+
   DeviceUI::createUI();
 
   TRACE_FUNC_EXIT;
+
+  return container;
 }

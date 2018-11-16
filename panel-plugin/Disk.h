@@ -8,8 +8,7 @@
 #include "DiskTooltip.h"
 #include "DiskUI.h"
 #include "Types.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <string>
 
@@ -45,15 +44,17 @@ public:
   virtual Disk& setDevice(const std::string&) override;
   virtual Disk& setKind(const std::string&) override;
   Disk&         setKind(DiskKind);
+  Disk&         setShowNotMounted(bool);
 
   DiskKind            getKind() const;
   virtual const char* getKindCstr() const override;
+  bool                getShowNotMounted() const;
 
   virtual void readConfig(XfceRc*) override;
   virtual void writeConfig(XfceRc*) const override;
 
 public:
-  static bool  classof(const Device*);
+  static bool classof(const Device*);
 };
 
 #endif // XFCE_APPLET_SPEED_DISK_H

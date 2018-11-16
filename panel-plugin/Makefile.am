@@ -23,6 +23,7 @@ libappletnetwork_la_SOURCES =  \
 	DeviceTooltip.cc \
 	DeviceUI.cc \
 	DeviceStats.cc \
+	Dial.cc \
 	Disk.cc \
 	DiskOptions.cc \
 	DiskStats.cc \

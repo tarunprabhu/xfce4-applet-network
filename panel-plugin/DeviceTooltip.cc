@@ -6,8 +6,8 @@
 
 #include <sstream>
 
-DeviceTooltip::DeviceTooltip(const Device& refDevice)
-    : device(refDevice), plugin(device.getPlugin()), icons(plugin.getIcons()),
+DeviceTooltip::DeviceTooltip(Device& device)
+    : device(device), plugin(device.getPlugin()), icons(plugin.getIcons()),
       icon(nullptr) {
   TRACE_FUNC_ENTER;
 
@@ -21,14 +21,14 @@ DeviceTooltip::DeviceTooltip(const Device& refDevice)
 
 DeviceTooltip::~DeviceTooltip() {
   TRACE_FUNC_ENTER;
-  
+
   destroyUI();
 
   TRACE_FUNC_EXIT;
 }
 
 gboolean DeviceTooltip::cbBoxQueryTooltip(
-    GtkWidget* widget, gint x, gint y, gboolean kbMode, GtkTooltip* tooltip) {
+    GtkWidget*, gint, gint, gboolean, GtkTooltip*) {
   update(true);
 
   return TRUE;
@@ -41,7 +41,9 @@ void DeviceTooltip::update(bool force) {
   }
 }
 
-void DeviceTooltip::createUI() {
+GtkWidget* DeviceTooltip::createUI() {
+  TRACE_FUNC_ENTER;
+  
   GtkWidget* window = gtk_window_new(GTK_WINDOW_POPUP);
 
   GtkWidget* box =
@@ -68,14 +70,35 @@ void DeviceTooltip::createUI() {
   this->imageDevice = imageDevice;
   this->labelTitle  = labelTitle;
   this->boxText     = boxText;
+
+  TRACE_FUNC_EXIT;
+  
+  return window;
+}
+
+void DeviceTooltip::clearUI() {
+  TRACE_FUNC_ENTER;
+  
+  window      = nullptr;
+  imageDevice = nullptr;
+  labelTitle  = nullptr;
+  boxText     = nullptr;
+
+  TRACE_FUNC_EXIT;
 }
 
 void DeviceTooltip::destroyUI() {
-  if(window)
+  TRACE_FUNC_ENTER;
+  
+  if(window) {
     gtk_widget_destroy(window);
+    clearUI();
+  }
+
+  TRACE_FUNC_EXIT;
 }
 
-void DeviceTooltip::refresh() {
+void DeviceTooltip::cbRefresh() {
   gchar* markup = g_markup_printf_escaped("<b>%s</b> (%s)",           //
                                           device.getDevice().c_str(), //
                                           device.getName().c_str());
@@ -83,4 +106,8 @@ void DeviceTooltip::refresh() {
   gtk_label_set_text(GTK_LABEL(labelTitle), markup);
 
   g_free(markup);
+}
+
+GtkWidget* DeviceTooltip::getWidget() {
+  return window;
 }

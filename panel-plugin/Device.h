@@ -3,8 +3,7 @@
 
 #include "Types.h"
 #include "UniqueID.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
@@ -49,31 +48,33 @@ public:
   virtual const DeviceUI&      getUI() const      = 0;
 
   virtual Device& setDevice(const std::string&) = 0;
-  virtual Device& setKind(const std::string&) = 0;
+  virtual Device& setKind(const std::string&)   = 0;
   Device&         setName(const std::string&);
-  Device&         setRxMax(double);
-  Device&         setTxMax(double);
-  Device&         setShowDisabled(bool);
+  Device&         setDial(DialKind);
+  Device&         setRxMax(uint64_t);
+  Device&         setTxMax(uint64_t);
+  Device&         setShowNotAvailable(bool);
   Device&         setShowLabel(bool);
   Device&         setLabel(const std::string&);
-  Device&         setLabelFgColor(const GdkRGBA*);
-  Device&         setLabelBgColor(const GdkRGBA*);
-  Device&         setLabelFont(const PangoFontDescription*);
+  Device&         setLabelFgColor(const GdkRGBA&);
+  Device&         setLabelBgColor(const GdkRGBA&);
   Device&         setLabelPosition(LabelPosition);
 
-  DeviceClass                 getClass() const;
-  const std::string&          getDevice() const;
-  virtual const char*         getKindCstr() const = 0;
-  const std::string&          getName() const;
-  double                      getRxMax() const;
-  double                      getTxMax() const;
-  bool                        getShowDisabled() const;
-  bool                        getShowLabel() const;
-  const std::string&          getLabel() const;
-  const GdkRGBA*              getLabelFgColor() const;
-  const GdkRGBA*              getLabelBgColor() const;
-  const PangoFontDescription* getLabelFont() const;
-  LabelPosition               getLabelPosition() const;
+  DeviceClass         getClass() const;
+  const std::string&  getDevice() const;
+  virtual const char* getKindCstr() const = 0;
+  const std::string&  getName() const;
+  DialKind            getDial() const;
+  uint64_t            getRxMax() const;
+  uint64_t            getTxMax() const;
+  bool                getShowNotAvailable() const;
+  bool                getShowLabel() const;
+  const std::string&  getLabel() const;
+  const GdkRGBA&      getLabelFgColor() const;
+  const GdkRGBA&      getLabelBgColor() const;
+  LabelPosition       getLabelPosition() const;
+
+  DeviceStatus getStatus() const;
 
   virtual void       readConfig(XfceRc*)        = 0;
   virtual void       writeConfig(XfceRc*) const = 0;

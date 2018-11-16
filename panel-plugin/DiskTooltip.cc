@@ -5,19 +5,35 @@
 #include "DiskStats.h"
 #include "Icons.h"
 
-DiskTooltip::DiskTooltip(const Disk& refDisk)
-    : DeviceTooltip(refDisk), disk(refDisk), stats(disk.getStats()) {
+DiskTooltip::DiskTooltip(Disk& disk)
+    : DeviceTooltip(disk), disk(disk), stats(disk.getStats()) {
   TRACE_FUNC_ENTER;
 
   createUI();
-  
+
   TRACE_FUNC_EXIT;
 }
 
-void DiskTooltip::createUI() {
-  DeviceTooltip::createUI();
+GtkWidget* DiskTooltip::createUI() {
+  TRACE_FUNC_ENTER;
+  
+  GtkWidget* window = DeviceTooltip::createUI();
 
   // TODO: Implement  this
+
+  TRACE_FUNC_EXIT;
+  
+  return window;
+}
+
+void DiskTooltip::clearUI() {
+  TRACE_FUNC_ENTER;
+  
+  // TODO: Implement this
+
+  DeviceTooltip::clearUI();
+
+  TRACE_FUNC_EXIT;
 }
 
 void DiskTooltip::updateIcon() {

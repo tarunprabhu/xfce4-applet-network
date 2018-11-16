@@ -25,9 +25,9 @@ static gboolean cb_timer_tick(gpointer data) {
   return reinterpret_cast<Plugin*>(data)->cbTimerTick();
 }
 
-Plugin::Plugin(XfcePanelPlugin* xfcePanelPlugin)
-    : xfce(xfcePanelPlugin), timer(0), css(), icons(*this), options(*this),
-      config(*this), ui(*this) {
+Plugin::Plugin(XfcePanelPlugin* xfce)
+    : xfce(xfce), timer(0), css(), icons(*this), options(*this), config(*this),
+      ui(*this) {
   TRACE_FUNC_ENTER;
 
   setTimer();
@@ -149,20 +149,27 @@ void Plugin::cbSave() const {
   writeConfig();
 }
 
-void Plugin::cbRefresh() {
-  // TODO: Unimplemented
-}
-
 gboolean Plugin::cbTimerTick() {
   TRACE_TICK_FUNC_ENTER;
-  
-  for(auto& device : getDevices())
-    device->getStats().update(device->getReader());
-  // Once the stats have been updated, all the UI elements should be notified
-  // of this so they can take appropriate action
+
+  // We may need to refresh the entire UI if the DeviceStatus has changed
+  // because it may need to be hidden
+  bool refresh = false;
+  for(auto& pDevice : getDevices()) {
+    Device&      device = *pDevice.get();
+    DeviceStats& stats  = device.getStats();
+    StatsReader& reader = device.getReader();
+
+    // if(stats.getRate())
+    //   device.getUI().activateDial(stats.getRate());
+    refresh |= stats.update(reader);
+  }
+
+  if(refresh)
+    ui.cbRefresh();
 
   TRACE_TICK_FUNC_EXIT;
-  
+
   return TRUE;
 }
 
@@ -225,9 +232,11 @@ Plugin& Plugin::setLabelPosition(LabelPosition position) {
 Plugin& Plugin::setFont(const PangoFontDescription* font) {
   pango_font_description_free(options.font);
   options.font = pango_font_description_copy(font);
-  for(auto& device : devices)
-    device->setLabelFont(font);
-
+  for(auto& pDevice : getDevices()) {
+    DeviceUI& ui = pDevice->getUI();
+    ui.setCSS();
+  }
+  
   return *this;
 }
 
@@ -282,7 +291,7 @@ void Plugin::writeConfig(XfceRc* rc) const {
   unsigned i = 0;
   for(const auto& device : getDevices()) {
     constexpr unsigned bufsz = digits(Defaults::Plugin::MaxDevices) + 1;
-    char     group[bufsz];
+    char               group[bufsz];
     g_snprintf(group, bufsz, "%d", i);
     xfce_rc_set_group(rc, group);
     xfce_rc_write_enum_entry(rc, "class", device->getClass());
@@ -323,11 +332,10 @@ void Plugin::readConfig(XfceRc* rc) {
     xfce_rc_set_group(rc, group);
     DeviceClass clss = xfce_rc_read_enum_entry(rc, "class", DeviceClass::Last_);
     std::unique_ptr<Device> pDevice = Device::makeNew(clss, *this);
-    g_message("readConfig: %p", pDevice.get());
     pDevice->readConfig(rc);
     appendDevice(std::move(pDevice));
   }
-  ui.cbRedraw();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }

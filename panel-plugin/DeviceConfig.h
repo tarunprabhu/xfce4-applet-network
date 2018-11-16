@@ -5,6 +5,7 @@
 #include "Defaults.h"
 #include "IDialog.h"
 #include "Range.h"
+#include "Types.h"
 
 #include <gtk/gtk.h>
 
@@ -13,58 +14,54 @@
 class CSS;
 class Device;
 class DeviceOptions;
-class DiskOptions;
-class NetworkOptions;
 class DeviceUI;
 class Icons;
 class Plugin;
-class PluginUI;
 
 class DeviceConfig : public IDialog {
 public:
   enum class Mode {
-    Add,  // Adding a new device to the list
+    Add,  // Add a new device to the list
     Edit, // Edit an existing device in the list
   };
 
 public:
-  // The width of each step in the slider in pixels
-  static const unsigned SliderStepWidth = 12;
-
-  static constexpr Range<double> RangeRxRate = {
-      0.5, 10.0, 0.5, Defaults::Device::RxMax}; // MB/s
-  static constexpr Range<double> RangeTxRate = {
-      0.125, 2.5, 0.125, Defaults::Device::TxMax};                // MB/s
-  static constexpr double RxRateMultiplier = Constants::Megabyte; // 1 MB
-  static constexpr double TxRateMultiplier = Constants::Megabyte; // 1 MB
+  static constexpr char const*          Bps  = "B/s";
+  static constexpr char const*          KBps = "KB/s";
+  static constexpr char const*          MBps = "MB/s";
+  static constexpr char const*          GBps = "GB/s";
+  static const std::vector<std::string> Rates;
+  static const std::vector<std::string> Units;
 
 private:
   Device&      device;
+  DeviceUI&    ui;
   Plugin&      plugin;
   const CSS&   css;
   const Icons& icons;
   Mode         mode;
 
-  GtkWidget* dialog;            // Main dialog window
-  GtkWidget* buttonSave;        // Dialog save button
-  GtkWidget* buttonCancel;      // Dialog close button
-  GtkWidget* comboDevice;       // Select the device
-  GtkWidget* comboKind;         // Select the device kind
-  GtkWidget* imageDevice;       // Device icon
-  GtkWidget* entryName;         // User-friendly device name
-  GtkWidget* scaleRx;           // Choose maximum incoming rate on the dial
-  GtkWidget* labelRx;           // DIsplay maximum incoming rate on the dial
-  GtkWidget* scaleTx;           // Choose maximum outgoing rate on the dial
-  GtkWidget* labelTx;           // Display maximum outgoing rate on the dial
-  GtkWidget* checkShowDisabled; // Show the dial and (maybe) label when the
-                                // device is disabled
-  GtkWidget* entryLabel;        // Entry for label to display
-  GtkWidget* colorFg;           // Label foreground color
-  GtkWidget* colorBg;           // Label background color
-  GtkWidget* checkShowLabel;    // Whether or not to display the label
-  GtkWidget* comboPosition;     // Position of the label relative to the dial
-  GtkWidget* boxLabelSensitive; // Box containing widgets that should be
-                                // disabled if show label is set to false
+  GtkWidget* dialog;
+  GtkWidget* buttonSave;
+  GtkWidget* buttonCancel;
+  GtkWidget* comboDevice;
+  GtkWidget* comboKind;
+  GtkWidget* imageDevice;
+  GtkWidget* entryName;
+  GtkWidget* comboDial;
+  GtkWidget* comboRx;
+  GtkWidget* comboRxUnits;
+  GtkWidget* comboTx;
+  GtkWidget* comboTxUnits;
+  GtkWidget* checkShowNotAvailable;
+  GtkWidget* checkShowNotConnected;
+  GtkWidget* checkShowNotMounted;
+  GtkWidget* entryLabel;
+  GtkWidget* colorFg;
+  GtkWidget* colorBg;
+  GtkWidget* checkShowLabel;
+  GtkWidget* comboPosition;
+  GtkWidget* boxLabelSensitive;
 
   // Widgets exclusively for disks
 
@@ -85,6 +82,8 @@ private:
 
   virtual GtkWidget* createDialog() override;
   virtual void       clearDialog() override;
+  virtual void       destroyDialog() override;
+  virtual GtkWidget* getDialog() override;
 
 public:
   DeviceConfig(Device&, DeviceConfig::Mode);
@@ -94,15 +93,19 @@ public:
 
   DeviceConfig& operator=(const DeviceConfig&) = delete;
 
-  int cbDialogResponse(GtkDialog*, int);
+  gint cbDialogResponse(GtkDialog*, Response);
 
   void cbComboDeviceChanged(GtkComboBox*);
   void cbComboKindChanged(GtkComboBox*);
   void cbEntryNameChanged(GtkEntry*);
-  void cbScaleRxChanged(GtkRange*);
-  void cbScaleTxChanged(GtkRange*);
-  void cbCheckShowDisconnectedToggled(GtkToggleButton*);
-  void cbCheckShowDisabledToggled(GtkToggleButton*);
+  void cbComboDialChanged(GtkComboBox*);
+  void cbComboRxChanged(GtkComboBox*);
+  void cbComboRxUnitsChanged(GtkComboBox*);
+  void cbComboTxChanged(GtkComboBox*);
+  void cbComboTxUnitsChanged(GtkComboBox*);
+  void cbCheckShowNotAvailableToggled(GtkToggleButton*);
+  void cbCheckShowNotConnectedToggled(GtkToggleButton*);
+  void cbCheckShowNotMountedToggled(GtkToggleButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
   void cbEntryLabelChanged(GtkEntry*);
   void cbColorFgSet(GtkColorChooser*);

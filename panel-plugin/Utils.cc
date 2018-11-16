@@ -14,8 +14,8 @@ void concatImpl(std::stringstream&, char) {
 
 std::string demangle(const std::string& mangled) {
   std::string demangled;
-  int status;
-  char* buf = abi::__cxa_demangle(mangled.c_str(), NULL, NULL, &status);
+  int         status;
+  char*       buf = abi::__cxa_demangle(mangled.c_str(), NULL, NULL, &status);
   if(buf) {
     demangled = buf;
     std::free(buf);
@@ -29,21 +29,106 @@ std::string demangle(const std::type_info& ti) {
   return demangle(ti.name());
 }
 
-std::string getRateString(double rate) {
-  std::array<double, 5> boundaries = {Constants::Terabyte, Constants::Gigabyte,
-                                      Constants::Megabyte, Constants::Kilobyte,
-                                      1};
-  std::array<const char*, 5> units = { "TB/s", "GB/s", "MB/s", "KB/s", "B/s" };
-
-  size_t idx = 0;
-  for(idx = 0; idx < boundaries.size() - 1; idx++)
-    if(rate > boundaries[idx])
-      break;
-
-  char buf[32];
-  g_snprintf(buf, 32, "%-.2f %s", rate / boundaries[idx], units[idx]);
-  return buf;
+template <> bool isValidStatus<DiskKind>(DeviceStatus status) {
+  switch(status) {
+  case DeviceStatus::Unavailable:
+  case DeviceStatus::Error:
+  case DeviceStatus::Mounted:
+  case DeviceStatus::Unmounted:
+    return true;
+  default:
+    break;
+  }
+  return false;
 }
+
+template <> bool isValidStatus<NetworkKind>(DeviceStatus status) {
+  switch(status) {
+  case DeviceStatus::Unavailable:
+  case DeviceStatus::Error:
+  case DeviceStatus::Connected:
+  case DeviceStatus::Disconnected:
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+bool isValidStatus(DeviceStatus status, DeviceClass clss) {
+  switch(clss) {
+  case DeviceClass::Disk:
+    return isValidStatus<DeviceClassKind<DeviceClass::Disk>::type>(status);
+  case DeviceClass::Network:
+    return isValidStatus<DeviceClassKind<DeviceClass::Network>::type>(status);
+  default:
+    g_error("Unsupported device class: %s", enum_cstr(clss));
+    break;
+  }
+  return false;
+}
+
+Response convertResponse(int response) {
+  switch(response) {
+  case GTK_RESPONSE_NONE:
+    return Response::None;
+  case GTK_RESPONSE_DELETE_EVENT:
+    return Response::Delete;
+  case GTK_RESPONSE_OK:
+    return Response::OK;
+  case GTK_RESPONSE_CANCEL:
+    return Response::Cancel;
+  case GTK_RESPONSE_CLOSE:
+    return Response::Close;
+  case GTK_RESPONSE_APPLY:
+    return Response::Apply;
+  default:
+    g_error("Unsupported response kind: %d", response);
+    break;
+  }
+  
+  return Response::None;
+}
+
+gint convertResponse(Response response) {
+  switch(response) {
+  case Response::None:
+    return GTK_RESPONSE_NONE;
+  case Response::Delete:
+    return GTK_RESPONSE_DELETE_EVENT;
+  case Response::OK:
+    return GTK_RESPONSE_OK;
+  case Response::Cancel:
+    return GTK_RESPONSE_CANCEL;
+  case Response::Close:
+    return GTK_RESPONSE_CLOSE;
+  case Response::Apply:
+    return GTK_RESPONSE_APPLY;
+  default:
+    g_error("Unsupported response id: %s", enum_cstr(response));
+    break;
+  }
+
+  return GTK_RESPONSE_NONE;
+}
+
+// std::string getRateString(double rate) {
+//   std::array<double, 5> boundaries = {Constants::Terabyte,
+//   Constants::Gigabyte,
+//                                       Constants::Megabyte,
+//                                       Constants::Kilobyte, 1};
+//   std::array<const char*, 5> units = { "TB/s", "GB/s", "MB/s", "KB/s", "B/s"
+//   };
+
+//   size_t idx = 0;
+//   for(idx = 0; idx < boundaries.size() - 1; idx++)
+//     if(rate > boundaries[idx])
+//       break;
+
+//   char buf[32];
+//   g_snprintf(buf, 32, "%-.2f %s", rate / boundaries[idx], units[idx]);
+//   return buf;
+// }
 
 // std::string getBytesString(uint64_t bytes) {
 //   std::array<uint64_t, 6> boundaries = {

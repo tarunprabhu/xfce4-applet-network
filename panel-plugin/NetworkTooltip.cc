@@ -5,20 +5,35 @@
 #include "Network.h"
 #include "NetworkStats.h"
 
-NetworkTooltip::NetworkTooltip(const Network& refNetwork)
-    : DeviceTooltip(refNetwork), network(refNetwork),
-      stats(network.getStats()) {
+NetworkTooltip::NetworkTooltip(Network& network)
+    : DeviceTooltip(network), network(network), stats(network.getStats()) {
   TRACE_FUNC_ENTER;
 
   createUI();
-  
+
   TRACE_FUNC_EXIT;
 }
 
-void NetworkTooltip::createUI() {
-  DeviceTooltip::createUI();
+GtkWidget* NetworkTooltip::createUI() {
+  TRACE_FUNC_ENTER;
+  
+  GtkWidget* window = DeviceTooltip::createUI();
 
   // TODO: Implement this
+
+  TRACE_FUNC_EXIT;
+  
+  return window;
+}
+
+void NetworkTooltip::clearUI() {
+  TRACE_FUNC_ENTER;
+  
+  // TODO: Implement this
+
+  DeviceTooltip::clearUI();
+
+  TRACE_FUNC_EXIT;
 }
 
 void NetworkTooltip::updateIcon() {

@@ -1,21 +1,8 @@
 #include "IDialog.h"
+#include "Utils.h"
 
-IDialog::IDialog() : dialog(nullptr) {
-  ;
-}
-
-void IDialog::saveDialog(GtkWidget* dlg) {
-  dialog = dlg;
-}
-
-void IDialog::destroyDialog() {
-  if(dialog)
-    gtk_widget_destroy(dialog);
-  dialog = nullptr;
-}
-
-int IDialog::runDialog() {
-  dialog = createDialog();
+Response IDialog::runDialog() {
+  GtkWidget* dialog = createDialog();
 
   // Blocking call
   int response = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -23,9 +10,5 @@ int IDialog::runDialog() {
   destroyDialog();
   clearDialog();
 
-  return response;
-}
-
-GtkWidget* IDialog::getDialog() {
-  return dialog;
+  return convertResponse(response);
 }

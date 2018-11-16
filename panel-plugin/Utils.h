@@ -2,6 +2,7 @@
 #define XFCE_APPLET_SPEED_UTILS_H
 
 #include "Array.h"
+#include "Types.h"
 
 #include <gtk/gtk.h>
 
@@ -57,6 +58,12 @@ template <typename T> void unref(T*& ptr) {
     ptr = nullptr;
   }
 }
+
+template <typename DeviceKind> bool isValidStatus(DeviceStatus);
+bool isValidStatus(DeviceStatus, DeviceClass);
+
+Response convertResponse(gint);
+gint convertResponse(Response);
 
 std::string demangle(const std::type_info&);
 std::string demangle(const std::string&);

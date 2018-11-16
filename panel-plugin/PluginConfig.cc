@@ -10,18 +10,18 @@
 #include "Icons.h"
 #include "Plugin.h"
 #include "Utils.h"
-
-#include <libxfce4ui/libxfce4ui.h>
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <sstream>
 
 // Local types
 // Enum for the columns of the device list
 ENUM_CREATE(DeviceListColumn,
-            DeviceIcon, // Device icon
+            DeviceIcon, // <
             Name,       // Device name (this is the user-friendly name)
-            StatusIcon);
+            Device,     // The name of the device on the system
+            StatusIcon, // <
+            Status);
 
 // Utils
 static unsigned getNumDigits(unsigned num) {
@@ -36,8 +36,8 @@ static unsigned getNumDigits(unsigned num) {
 
 // Callback for the dialog
 static void cb_dialog_response(GtkWidget* w, gint response, gpointer data) {
-  reinterpret_cast<PluginConfig*>(data)->cbDialogResponse(GTK_DIALOG(w),
-                                                          response);
+  reinterpret_cast<PluginConfig*>(data)->cbDialogResponse(
+      GTK_DIALOG(w), convertResponse(response));
 }
 
 // Callbacks for the display page
@@ -130,43 +130,78 @@ static void cb_toolitem_config_clicked(GtkWidget* w, gpointer data) {
       GTK_TOOL_ITEM(w));
 }
 
-PluginConfig::PluginConfig(Plugin& refPlugin)
-    : plugin(refPlugin), css(plugin.getCSS()), icons(plugin.getIcons()) {
+static gboolean cb_treeview_query_tooltip(GtkWidget*  w,
+                                          gint        x,
+                                          gint        y,
+                                          gboolean    kbMode,
+                                          GtkTooltip* tooltip,
+                                          gpointer    data) {
+  return reinterpret_cast<PluginConfig*>(data)->cbTreeViewQueryTooltip(
+      GTK_TREE_VIEW(w), x, y, kbMode, tooltip);
+}
+
+// Definition of static members
+const Range<double>   PluginConfig::RangePeriod  = {0.25, 2, 0.25,
+                                                 Defaults::Plugin::Period};
+const Range<unsigned> PluginConfig::RangeBorder  = {0, 16, 1,
+                                                   Defaults::Plugin::Border};
+const Range<unsigned> PluginConfig::RangePadding = {0, 16, 1,
+                                                    Defaults::Plugin::Padding};
+const Range<unsigned> PluginConfig::RangeSpacing = {0, 16, 1,
+                                                    Defaults::Plugin::Spacing};
+
+PluginConfig::PluginConfig(Plugin& plugin)
+    : plugin(plugin), ui(plugin.getUI()), css(plugin.getCSS()),
+      icons(plugin.getIcons()) {
   TRACE_FUNC_ENTER;
 
   TRACE_FUNC_EXIT;
 }
 
 void PluginConfig::appendDevice(const Device& device) {
-  GtkTreeIter   iter;
-  GtkTreeView*  tree     = GTK_TREE_VIEW(treeDevices);
-  GtkTreeModel* model    = gtk_tree_view_get_model(tree);
-  GtkListStore* list     = GTK_LIST_STORE(model);
-  GdkPixbuf*    pbDevice = device.getIcon(IconKind::Toolbar);
-  GdkPixbuf*    pbStatus = icons.getIcon(device.getStats().getStatus());
+  GtkTreeIter        iter;
+  constexpr unsigned maxName   = Defaults::Device::MaxNameLength;
+  constexpr unsigned maxDevice = Defaults::Device::MaxDeviceLength;
+  DeviceStatus       status    = device.getStatus();
+  GtkTreeView*       tree      = GTK_TREE_VIEW(treeDevices);
+  GtkTreeModel*      model     = gtk_tree_view_get_model(tree);
+  GtkListStore*      list      = GTK_LIST_STORE(model);
+  GdkPixbuf*         pbDevice  = device.getIcon(IconKind::Toolbar);
+  GdkPixbuf*         pbStatus  = icons.getIcon(status);
+  char               name[maxName + 1];
+  char               dev[maxDevice + 1];
 
+  g_snprintf(name, maxName, "%-*s", maxName, device.getName().c_str());
+  g_snprintf(dev, maxDevice, "%-*s", maxDevice, device.getDevice().c_str());
   gtk_list_store_append(list, &iter);
-  gtk_list_store_set(list, &iter,                            // To prevent clang
-                     DeviceListColumn::DeviceIcon, pbDevice, // from inlining
-                     DeviceListColumn::Name, device.getName().c_str(), //
-                     DeviceListColumn::StatusIcon, pbStatus, -1);
+  gtk_list_store_set(list, &iter,                                   // <
+                     DeviceListColumn::DeviceIcon, pbDevice,        // <
+                     DeviceListColumn::Name, name,                  // <
+                     DeviceListColumn::Device, dev,                 // <
+                     DeviceListColumn::StatusIcon, pbStatus,        // <
+                     DeviceListColumn::Status, EnumAs<int>(status), // <
+                     -1);
 }
 
-int PluginConfig::cbDialogResponse(GtkDialog* dialog, gint response) {
+gint PluginConfig::cbDialogResponse(GtkDialog*, Response response) {
   TRACE_FUNC_ENTER;
 
   switch(response) {
-  case GTK_RESPONSE_OK:
-  case GTK_RESPONSE_NONE:
+  case Response::Delete:
+  case Response::OK:
+  case Response::None:
     plugin.writeConfig();
     plugin.getUI().cbRefresh();
+    break;
+  default:
+    g_error("Unsupported signal in PluginConfig: %s", enum_cstr(response));
     break;
   }
   xfce_panel_plugin_unblock_menu(plugin.getXfcePanelPlugin());
 
   TRACE_FUNC_EXIT;
 
-  return response;
+  return convertResponse(response);
 }
 
 void PluginConfig::cbSpinPeriodChanged(GtkSpinButton* spinPeriod) {
@@ -186,10 +221,10 @@ void PluginConfig::cbCheckShowLabelToggled(GtkToggleButton* toggleShowLabel) {
   gboolean show = gtk_toggle_button_get_active(toggleShowLabel);
 
   plugin.setShowLabel(show);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   // Update other elements in the config dialog
-  gtk_widget_set_sensitive(entryLabel, show);
+  gtk_widget_set_sensitive(boxLabel, show);
 
   TRACE_FUNC_EXIT;
 }
@@ -200,7 +235,7 @@ void PluginConfig::cbEntryLabelChanged(GtkEntry* entryLabel) {
   const gchar* label = gtk_entry_get_text(entryLabel);
 
   plugin.setLabel(label);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -213,7 +248,7 @@ void PluginConfig::cbComboLabelPositionChanged(
   auto         labelPosition = enum_parse<LabelPosition>(s);
 
   plugin.setLabelPosition(labelPosition);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -236,7 +271,7 @@ void PluginConfig::cbScaleBorderChanged(GtkRange* scaleBorder) {
   gint border = gtk_range_get_value(scaleBorder);
 
   plugin.setBorder(border);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   // Update other gui elements
   std::string text = concat(" ", border, "px");
@@ -251,7 +286,7 @@ void PluginConfig::cbScalePaddingChanged(GtkRange* scalePadding) {
   gint padding = gtk_range_get_value(scalePadding);
 
   plugin.setPadding(padding);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   // Update other gui elements
   std::string text = concat(" ", padding, "px");
@@ -266,7 +301,7 @@ void PluginConfig::cbScaleSpacingChanged(GtkRange* scaleSpacing) {
   gint spacing = gtk_range_get_value(scaleSpacing);
 
   plugin.setSpacing(spacing);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   // Update other gui elements
   std::string text = concat(" ", spacing, "px");
@@ -281,7 +316,7 @@ void PluginConfig::cbFontFontSet(GtkFontChooser* fontFont) {
   PangoFontDescription* font = gtk_font_chooser_get_font_desc(fontFont);
 
   plugin.setFont(font);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -296,7 +331,7 @@ void PluginConfig::cbToggleBoldToggled(GtkToggleButton* buttonBold) {
     pango_font_description_set_weight(font, PANGO_WEIGHT_NORMAL);
 
   plugin.setFont(font);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   // Cleanup
   pango_font_description_free(font);
@@ -314,7 +349,7 @@ void PluginConfig::cbToggleSmallcapsToggled(GtkToggleButton* buttonSmallCaps) {
     pango_font_description_set_variant(font, PANGO_VARIANT_NORMAL);
 
   plugin.setFont(font);
-  plugin.getUI().cbRefresh();
+  ui.cbRefresh();
 
   // Cleanup
   pango_font_description_free(font);
@@ -322,20 +357,19 @@ void PluginConfig::cbToggleSmallcapsToggled(GtkToggleButton* buttonSmallCaps) {
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfig::cbTreeRowActivated(GtkTreeView*       tree,
-                                      GtkTreePath*       path,
-                                      GtkTreeViewColumn* column) {
+void PluginConfig::cbTreeRowActivated(GtkTreeView*,
+                                      GtkTreePath* path,
+                                      GtkTreeViewColumn*) {
   TRACE_FUNC_ENTER;
 
-  gint*   indices = gtk_tree_path_get_indices(path);
-  guint   row     = indices[0];
-  Device& device  = plugin.getDeviceAt(row);
-  if(device.getStats().getStatus() != DeviceStatus::Disabled) {
-    DeviceConfig config(device, DeviceConfig::Mode::Edit);
-    config.runDialog();
-    plugin.writeConfig();
-    plugin.cbRefresh();
-  }
+  gint*        indices = gtk_tree_path_get_indices(path);
+  guint        row     = indices[0];
+  Device&      device  = plugin.getDeviceAt(row);
+  DeviceConfig config(device, DeviceConfig::Mode::Edit);
+
+  config.runDialog();
+  plugin.writeConfig();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -350,8 +384,6 @@ void PluginConfig::cbTreeCursorChanged(GtkTreeView* tree) {
 
   int row = gtk_tree_view_get_selected_row(tree);
   if(row >= 0) {
-    GtkTreeModel* model = gtk_tree_view_get_model(tree);
-
     gtk_widget_set_sensitive(toolitemRemove, TRUE);
 
     if(row != 0)
@@ -359,17 +391,6 @@ void PluginConfig::cbTreeCursorChanged(GtkTreeView* tree) {
 
     if(row != (gtk_tree_view_get_num_rows(tree) - 1))
       gtk_widget_set_sensitive(toolitemMoveDown, TRUE);
-
-    // A disabled network cannot be modified. It can only be removed from the
-    // list
-    const Device& device = plugin.getDeviceAt(row);
-    if(device.getStats().getStatus() == DeviceStatus::Disabled) {
-      gtk_widget_set_tooltip_text(toolitemConfig,
-                                  "Cannot configure disabled network");
-    } else {
-      gtk_widget_set_tooltip_text(toolitemConfig, "Configure selected network");
-      gtk_widget_set_sensitive(toolitemConfig, TRUE);
-    }
   }
 
   TRACE_FUNC_EXIT;
@@ -384,46 +405,48 @@ void PluginConfig::cbToolItemAddClicked(GtkToolItem* toolitemAdd) {
     if(GTK_WIDGET(toolitemAdd) == menuItems[clss]) {
       std::unique_ptr<Device> pDevice = Device::makeNew(clss, plugin);
       DeviceConfig            config(*pDevice.get(), DeviceConfig::Mode::Add);
-      int                     response = config.runDialog();
+      Response                response = config.runDialog();
       switch(response) {
-      case GTK_RESPONSE_OK:
-        g_message("Adding device");
+      case Response::OK:
         appendDevice(*pDevice.get());
         plugin.appendDevice(std::move(pDevice));
         break;
-      case GTK_RESPONSE_NONE:
-      case GTK_RESPONSE_CANCEL:
+      case Response::None:
+      case Response::Delete:
+      case Response::Cancel:
         // The unique_ptr will go out of scope so no need to delete the device
         break;
       default:
-        g_error("Unhandled signal in cbToolItemAddClicked: %d", response);
+        g_error("Unhandled signal in cbToolItemAddClicked: %s",
+                enum_cstr(response));
         break;
       }
     }
   }
 
   gtk_widget_set_sensitive(GTK_WIDGET(toolitemAdd), TRUE);
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfig::cbToolItemRemoveClicked(GtkToolItem* toolitemRemove) {
+void PluginConfig::cbToolItemRemoveClicked(GtkToolItem*) {
   TRACE_FUNC_ENTER;
 
-  GtkTreeView*      tree      = GTK_TREE_VIEW(treeDevices);
-  GtkTreeModel*     model     = gtk_tree_view_get_model(tree);
-  GtkListStore*     list      = GTK_LIST_STORE(model);
-  int               row       = gtk_tree_view_get_selected_row(tree);
-  GtkTreeIter       iter      = gtk_tree_view_get_selected_iter(tree);
+  GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
+  GtkTreeModel* model = gtk_tree_view_get_model(tree);
+  GtkListStore* list  = GTK_LIST_STORE(model);
+  int           row   = gtk_tree_view_get_selected_row(tree);
+  GtkTreeIter   iter  = gtk_tree_view_get_selected_iter(tree);
 
   gtk_list_store_remove(list, &iter);
   plugin.removeDeviceAt(row);
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfig::cbToolItemMoveUpClicked(GtkToolItem* toolitemMoveUp) {
+void PluginConfig::cbToolItemMoveUpClicked(GtkToolItem*) {
   TRACE_FUNC_ENTER;
 
   GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
@@ -437,10 +460,9 @@ void PluginConfig::cbToolItemMoveUpClicked(GtkToolItem* toolitemMoveUp) {
   gtk_list_store_move_before(list, &curr, &prev);
 
   plugin.moveDeviceUp(row);
-  plugin.getUI().cbRedraw();
+  ui.cbRefresh();
 
   // Update gui
-  g_message("row: %d", row);
   if(row == 1)
     gtk_widget_set_sensitive(GTK_WIDGET(toolitemMoveUp), FALSE);
   gtk_widget_set_sensitive(toolitemMoveDown, TRUE);
@@ -448,7 +470,7 @@ void PluginConfig::cbToolItemMoveUpClicked(GtkToolItem* toolitemMoveUp) {
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfig::cbToolItemMoveDownClicked(GtkToolItem* toolitemMoveDown) {
+void PluginConfig::cbToolItemMoveDownClicked(GtkToolItem*) {
   TRACE_FUNC_ENTER;
 
   GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
@@ -462,7 +484,7 @@ void PluginConfig::cbToolItemMoveDownClicked(GtkToolItem* toolitemMoveDown) {
   gtk_list_store_move_after(list, &curr, &next);
 
   plugin.moveDeviceDown(row);
-  plugin.getUI().cbRedraw();
+  ui.cbRefresh();
 
   // Update gui
   if(row == gtk_tree_view_get_num_rows(tree) - 2)
@@ -472,7 +494,7 @@ void PluginConfig::cbToolItemMoveDownClicked(GtkToolItem* toolitemMoveDown) {
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfig::cbToolItemConfigClicked(GtkToolItem* toolitemConfig) {
+void PluginConfig::cbToolItemConfigClicked(GtkToolItem*) {
   TRACE_FUNC_ENTER;
 
   GtkTreeView* tree   = GTK_TREE_VIEW(treeDevices);
@@ -482,9 +504,35 @@ void PluginConfig::cbToolItemConfigClicked(GtkToolItem* toolitemConfig) {
 
   config.runDialog();
   plugin.writeConfig();
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
+}
+
+gboolean PluginConfig::cbTreeViewQueryTooltip(
+    GtkTreeView* tree, gint x, gint y, gboolean kbMode, GtkTooltip* tooltip) {
+  GtkTreeIter   iter;
+  GtkTreeModel* model = NULL;
+  GtkTreePath*  path  = NULL;
+
+  if(gtk_tree_view_get_tooltip_context(tree, &x, &y, kbMode, &model, &path,
+                                       &iter)) {
+    DeviceStatus status = DeviceStatus::Error;
+
+    GtkTreeViewColumn* col = gtk_tree_view_get_column(
+        tree, EnumAs<gint>(DeviceListColumn::StatusIcon));
+    gtk_tree_view_set_tooltip_cell(tree, tooltip, path, col, NULL);
+
+    gtk_tree_model_get(model, &iter, DeviceListColumn::Status, &status, -1);
+    gtk_tooltip_set_text(tooltip, enum_cstr(status));
+
+    g_message("longest: %s => %d", enum_cstr(status),
+              enum_name_longest<DeviceStatus>());
+
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 GtkWidget* PluginConfig::createDisplayPage() {
@@ -501,8 +549,8 @@ GtkWidget* PluginConfig::createDisplayPage() {
   // Period
   row += 1;
   GtkWidget* labelPeriod = gtk_label_new_with_mnemonic("_Update");
-  gtk_widget_set_tooltip_text(labelPeriod, "How often to update the dials");
   gtk_grid_attach(GTK_GRID(grid), labelPeriod, 0, row, 1, 1);
+  gtk_widget_set_tooltip_text(labelPeriod, "How often to update the dials");
   gtk_widget_show(labelPeriod);
 
   GtkWidget* hboxPeriod =
@@ -516,11 +564,11 @@ GtkWidget* PluginConfig::createDisplayPage() {
   double     spinStep  = PluginConfig::RangePeriod.getStep();
   GtkWidget* spinPeriod =
       gtk_spin_button_new_with_range(spinFirst, spinLast, spinStep);
+  gtk_box_pack_start(GTK_BOX(hboxPeriod), spinPeriod, FALSE, FALSE, 0);
   gtk_spin_button_set_value(GTK_SPIN_BUTTON(spinPeriod), plugin.getPeriod());
   gtk_spin_button_set_snap_to_ticks(GTK_SPIN_BUTTON(spinPeriod), TRUE);
   gtk_spin_button_set_numeric(GTK_SPIN_BUTTON(spinPeriod), TRUE);
   gtk_label_set_mnemonic_widget(GTK_LABEL(labelPeriod), spinPeriod);
-  gtk_box_pack_start(GTK_BOX(hboxPeriod), spinPeriod, FALSE, FALSE, 0);
   gtk_widget_show(spinPeriod);
 
   GtkWidget* labelPeriodUnits = gtk_label_new("seconds");
@@ -530,29 +578,50 @@ GtkWidget* PluginConfig::createDisplayPage() {
   // Plugin label
   row += 1;
   GtkWidget* checkLabel = gtk_check_button_new_with_mnemonic("_Label");
+  gtk_grid_attach(GTK_GRID(grid), checkLabel, 0, row, 1, 1);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkLabel),
                                plugin.getShowLabel());
   gtk_widget_set_tooltip_text(checkLabel,
                               "Label to be displayed with the plugin");
-  gtk_grid_attach(GTK_GRID(grid), checkLabel, 0, row, 1, 1);
   gtk_widget_show(checkLabel);
 
+  // Box containing widgets that will be disabled if the show label check
+  // button is toggled
+  GtkWidget* boxLabel =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, PluginConfig::Spacing);
+  gtk_grid_attach(GTK_GRID(grid), boxLabel, 1, row, 1, 1);
+  gtk_widget_set_sensitive(boxLabel, plugin.getShowLabel());
+  gtk_widget_show(boxLabel);
+
   GtkWidget* entryLabel = gtk_entry_new();
+  gtk_box_pack_start(GTK_BOX(boxLabel), entryLabel, TRUE, TRUE, 0);
   gtk_entry_set_text(GTK_ENTRY(entryLabel), plugin.getLabel().c_str());
-  gtk_widget_set_sensitive(entryLabel, plugin.getShowLabel());
-  gtk_grid_attach(GTK_GRID(grid), entryLabel, 1, row, 1, 1);
   gtk_widget_show(entryLabel);
 
+  GtkWidget* comboLabelPosition = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxLabel), comboLabelPosition, TRUE, TRUE, 0);
+  for(auto pos : LabelPosition()) {
+    const char* s = enum_cstr(pos);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboLabelPosition), s, s);
+  }
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboLabelPosition),
+                              enum_cstr(plugin.getLabelPosition()));
+  gtk_widget_show(comboLabelPosition);
+
   // Save widgets
-  this->entryLabel = entryLabel;
+  this->boxLabel           = boxLabel;
+  this->entryLabel         = entryLabel;
+  this->comboLabelPosition = comboLabelPosition;
 
   // Connect signals
   g_signal_connect(spinPeriod, "value_changed",
                    G_CALLBACK(cb_spin_period_changed), this);
-  g_signal_connect(entryLabel, "changed", G_CALLBACK(cb_entry_label_changed),
-                   this);
   g_signal_connect(checkLabel, "toggled",
                    G_CALLBACK(cb_check_show_label_toggled), this);
+  g_signal_connect(entryLabel, "changed", G_CALLBACK(cb_entry_label_changed),
+                   this);
+  g_signal_connect(comboLabelPosition, "changed",
+                   G_CALLBACK(cb_combo_label_position_changed), this);
 
   TRACE_FUNC_EXIT;
 
@@ -866,29 +935,48 @@ GtkWidget* PluginConfig::createDevicesPage() {
   gtk_box_set_homogeneous(GTK_BOX(box), FALSE);
   gtk_widget_show(box);
 
-  GtkListStore* list =
-      gtk_list_store_new(3, GDK_TYPE_PIXBUF, G_TYPE_STRING, GDK_TYPE_PIXBUF);
+  GtkListStore* list = gtk_list_store_new(5,
+                                          GDK_TYPE_PIXBUF, // Device icon
+                                          G_TYPE_STRING,   // Device name
+                                          G_TYPE_STRING,   // Device
+                                          GDK_TYPE_PIXBUF, // Status icon
+                                          G_TYPE_UINT      // Status
+  );
 
   GtkCellRenderer*   rendererIcon = gtk_cell_renderer_pixbuf_new();
   GtkTreeViewColumn* columnIcon   = gtk_tree_view_column_new_with_attributes(
-      "Icon", rendererIcon, "pixbuf", DeviceListColumn::DeviceIcon, NULL);
+      "", rendererIcon,                       // <
+      "pixbuf", DeviceListColumn::DeviceIcon, // <
+      NULL);
   gtk_tree_view_column_set_sizing(columnIcon, GTK_TREE_VIEW_COLUMN_FIXED);
   gtk_tree_view_column_set_fixed_width(
-      columnIcon, icons.getIconSize(IconKind::Toolbar) + 8);
+      columnIcon, icons.getIconSize(IconKind::Toolbar) + 16);
 
   GtkCellRenderer*   rendererName = gtk_cell_renderer_text_new();
   GtkTreeViewColumn* columnName   = gtk_tree_view_column_new_with_attributes(
-      "Name", rendererName, "text", DeviceListColumn::Name, NULL);
+      "Name", rendererName,           // <
+      "text", DeviceListColumn::Name, // <
+      NULL);
   gtk_tree_view_column_set_expand(columnName, TRUE);
+
+  GtkCellRenderer*   rendererDevice = gtk_cell_renderer_text_new();
+  GtkTreeViewColumn* columnDevice   = gtk_tree_view_column_new_with_attributes(
+      "Device", rendererDevice,         // <
+      "text", DeviceListColumn::Device, // <
+      NULL);
+  gtk_tree_view_column_set_expand(columnDevice, FALSE);
 
   GtkCellRenderer*   rendererStatus = gtk_cell_renderer_pixbuf_new();
   GtkTreeViewColumn* columnStatus   = gtk_tree_view_column_new_with_attributes(
-      "Status", rendererStatus, "pixbuf", DeviceListColumn::StatusIcon, NULL);
+      "Status", rendererStatus,               // <
+      "pixbuf", DeviceListColumn::StatusIcon, // <
+      NULL);
 
   GtkWidget* treeDevices = gtk_tree_view_new();
   gtk_box_pack_start(GTK_BOX(box), treeDevices, TRUE, TRUE, 0);
   gtk_tree_view_append_column(GTK_TREE_VIEW(treeDevices), columnIcon);
   gtk_tree_view_append_column(GTK_TREE_VIEW(treeDevices), columnName);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(treeDevices), columnDevice);
   gtk_tree_view_append_column(GTK_TREE_VIEW(treeDevices), columnStatus);
   gtk_tree_view_set_model(GTK_TREE_VIEW(treeDevices), GTK_TREE_MODEL(list));
   gtk_tree_view_set_show_expanders(GTK_TREE_VIEW(treeDevices), FALSE);
@@ -898,6 +986,7 @@ GtkWidget* PluginConfig::createDevicesPage() {
   gtk_tree_view_set_hover_selection(GTK_TREE_VIEW(treeDevices), FALSE);
   gtk_tree_view_set_grid_lines(GTK_TREE_VIEW(treeDevices),
                                GTK_TREE_VIEW_GRID_LINES_NONE);
+  gtk_widget_set_has_tooltip(treeDevices, TRUE);
   gtk_widget_show(treeDevices);
 
   GtkTreeSelection* selection =
@@ -1021,6 +1110,8 @@ GtkWidget* PluginConfig::createDevicesPage() {
                    G_CALLBACK(cb_toolitem_move_down_clicked), this);
   g_signal_connect(toolitemConfig, "clicked",
                    G_CALLBACK(cb_toolitem_config_clicked), this);
+  g_signal_connect(treeDevices, "query-tooltip",
+                   G_CALLBACK(cb_treeview_query_tooltip), this);
 
   // Cleanup
   g_object_unref(G_OBJECT(list));
@@ -1105,17 +1196,29 @@ GtkWidget* PluginConfig::createDialog() {
 }
 
 void PluginConfig::clearDialog() {
-  dialog           = nullptr;
-  entryLabel       = nullptr;
-  treeDevices      = nullptr;
-  toolitemAdd      = nullptr;
-  toolitemRemove   = nullptr;
-  toolitemMoveUp   = nullptr;
-  toolitemMoveDown = nullptr;
-  toolitemConfig   = nullptr;
-  labelBorderText  = nullptr;
-  labelPaddingText = nullptr;
-  labelSpacingText = nullptr;
+  dialog             = nullptr;
+  boxLabel           = nullptr;
+  entryLabel         = nullptr;
+  comboLabelPosition = nullptr;
+  treeDevices        = nullptr;
+  toolitemAdd        = nullptr;
+  toolitemRemove     = nullptr;
+  toolitemMoveUp     = nullptr;
+  toolitemMoveDown   = nullptr;
+  toolitemConfig     = nullptr;
+  labelBorderText    = nullptr;
+  labelPaddingText   = nullptr;
+  labelSpacingText   = nullptr;
   for(auto clss : DeviceClass())
     menuItems[clss] = nullptr;
+}
+
+void PluginConfig::destroyDialog() {
+  if(dialog)
+    gtk_widget_destroy(dialog);
+  dialog = nullptr;
+}
+
+GtkWidget* PluginConfig::getDialog() {
+  return dialog;
 }

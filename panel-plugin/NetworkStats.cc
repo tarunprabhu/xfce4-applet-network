@@ -5,15 +5,15 @@
 #include "Network.h"
 #include "Utils.h"
 
-NetworkStats::NetworkStats(Network& refNetwork)
-    : DeviceStats(refNetwork), network(refNetwork) {
+NetworkStats::NetworkStats(Network& network)
+    : DeviceStats(network), network(network) {
   TRACE_FUNC_ENTER;
 
   functional::Functor<uint64_t> func(nullify<uint64_t>);
   functional::map(func, dropped);
   functional::map(func, errors);
   functional::map(func, packets);
-  
+
   TRACE_FUNC_EXIT;
 }
 

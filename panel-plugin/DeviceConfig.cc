@@ -6,16 +6,17 @@
 #include "Devices.h"
 #include "GtkUtils.h"
 #include "Icons.h"
+#include "Metric.h"
 #include "Plugin.h"
 #include "PluginConfig.h"
 #include "RTTI.h"
 #include "System.h"
+#include "Types.h"
 #include "Utils.h"
-
-#include <libxfce4ui/libxfce4ui.h>
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <list>
+#include <tuple>
 #include <vector>
 
 // Local utils
@@ -32,11 +33,36 @@ static std::vector<const char*> getDeviceKindNames(DeviceClass clss) {
   return std::vector<const char*>();
 }
 
+static unsigned long calculateRate(const std::string& rate,
+                                   const std::string& units) {
+  unsigned long val = std::stoul(rate);
+  if(units == DeviceConfig::Bps)
+    return val;
+  else if(units == DeviceConfig::KBps)
+    return val * Metric::Multiplier::Kilo;
+  else if(units == DeviceConfig::MBps)
+    return val * Metric::Multiplier::Mega;
+  else if(units == DeviceConfig::GBps)
+    return val * Metric::Multiplier::Giga;
+  else
+    g_error("Unsupported units: %s", units.c_str());
+  return 1;
+}
+
+static std::tuple<unsigned, std::string> splitRate(uint64_t rate) {
+  if(rate >= Metric::Multiplier::Giga)
+    return std::make_tuple(rate / Metric::Multiplier::Giga, DeviceConfig::GBps);
+  else if(rate >= Metric::Multiplier::Mega)
+    return std::make_tuple(rate / Metric::Multiplier::Mega, DeviceConfig::MBps);
+  else if(rate >= Metric::Multiplier::Kilo)
+    return std::make_tuple(rate / Metric::Multiplier::Kilo, DeviceConfig::KBps);
+  return std::make_tuple(rate, DeviceConfig::Bps);
+}
 
 // Dialog response
 static void cb_dialog_response(GtkWidget* w, gint response, gpointer data) {
-  reinterpret_cast<DeviceConfig*>(data)->cbDialogResponse(GTK_DIALOG(w),
-                                                          response);
+  reinterpret_cast<DeviceConfig*>(data)->cbDialogResponse(
+      GTK_DIALOG(w), convertResponse(response));
 }
 
 // Callbacks for the device page
@@ -52,21 +78,40 @@ static void cb_entry_name_changed(GtkWidget* w, gpointer data) {
   reinterpret_cast<DeviceConfig*>(data)->cbEntryNameChanged(GTK_ENTRY(w));
 }
 
-static void cb_scale_rx_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<DeviceConfig*>(data)->cbScaleRxChanged(GTK_RANGE(w));
+static void cb_combo_dial_changed(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbComboDialChanged(GTK_COMBO_BOX(w));
 }
 
-static void cb_scale_tx_changed(GtkWidget* w, gpointer data) {
-  reinterpret_cast<DeviceConfig*>(data)->cbScaleTxChanged(GTK_RANGE(w));
+static void cb_combo_rx_changed(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbComboRxChanged(GTK_COMBO_BOX(w));
 }
 
-static void cb_check_show_disabled_toggled(GtkWidget* w, gpointer data) {
-  reinterpret_cast<DeviceConfig*>(data)->cbCheckShowDisabledToggled(
+static void cb_combo_rx_units_changed(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbComboRxUnitsChanged(
+      GTK_COMBO_BOX(w));
+}
+
+static void cb_combo_tx_changed(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbComboTxChanged(GTK_COMBO_BOX(w));
+}
+
+static void cb_combo_tx_units_changed(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbComboTxUnitsChanged(
+      GTK_COMBO_BOX(w));
+}
+
+static void cb_check_show_not_available_toggled(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbCheckShowNotAvailableToggled(
       GTK_TOGGLE_BUTTON(w));
 }
 
-static void cb_check_show_disconnected_toggled(GtkWidget* w, gpointer data) {
-  reinterpret_cast<DeviceConfig*>(data)->cbCheckShowDisconnectedToggled(
+static void cb_check_show_not_connected_toggled(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbCheckShowNotConnectedToggled(
+      GTK_TOGGLE_BUTTON(w));
+}
+
+static void cb_check_show_not_mounted_toggled(GtkWidget* w, gpointer data) {
+  reinterpret_cast<DeviceConfig*>(data)->cbCheckShowNotMountedToggled(
       GTK_TOGGLE_BUTTON(w));
 }
 
@@ -92,31 +137,40 @@ static void cb_combo_position_changed(GtkWidget* w, gpointer data) {
       GTK_COMBO_BOX(w));
 }
 
+// Static variable definitions
+const std::vector<std::string> DeviceConfig::Rates = {
+    "1", "2", "4", "8", "16", "32", "64", "128", "256", "512", "768"};
+
+const std::vector<std::string> DeviceConfig::Units = {
+    DeviceConfig::Bps, DeviceConfig::KBps, DeviceConfig::MBps,
+    DeviceConfig::GBps};
+
 DeviceConfig::DeviceConfig(Device& refDevice, DeviceConfig::Mode mode)
-    : device(refDevice), plugin(device.getPlugin()), css(plugin.getCSS()),
-      icons(plugin.getIcons()), mode(mode) {
+    : device(refDevice), ui(device.getUI()), plugin(device.getPlugin()),
+      css(plugin.getCSS()), icons(plugin.getIcons()), mode(mode) {
   TRACE_FUNC_ENTER;
 
   TRACE_FUNC_EXIT;
 }
 
-int DeviceConfig::cbDialogResponse(GtkDialog* dialog, int response) {
+int DeviceConfig::cbDialogResponse(GtkDialog*, Response response) {
   switch(response) {
-  case GTK_RESPONSE_OK:
+  case Response::OK:
     // The device configuration will need to be written but all that will
     // be handled in the plugin config handler
     break;
-  case GTK_RESPONSE_CANCEL:
-  case GTK_RESPONSE_NONE:
+  case Response::Cancel:
+  case Response::Delete:
+  case Response::None:
     // Everything will be handled by the caller
     break;
   default:
-    g_error("Unsupported signal in DeviceConfig::cbDialogResponse: %d",
-            response);
+    g_error("Unsupported signal in DeviceConfig::cbDialogResponse: %s",
+            enum_cstr(response));
     break;
   }
 
-  return response;
+  return convertResponse(response);
 }
 
 void DeviceConfig::cbComboDeviceChanged(GtkComboBox* comboDevice) {
@@ -172,48 +226,90 @@ void DeviceConfig::cbEntryNameChanged(GtkEntry* entryName) {
   TRACE_FUNC_EXIT;
 }
 
-void DeviceConfig::cbScaleRxChanged(GtkRange* scaleRx) {
+void DeviceConfig::cbComboDialChanged(GtkComboBox* comboDial) {
   TRACE_FUNC_ENTER;
 
-  double value = gtk_range_get_value(scaleRx) * DeviceConfig::RxRateMultiplier;
+  const char* id = gtk_combo_box_get_active_id(comboDial);
 
-  device.setRxMax(value);
-
-  // Update other fields in page
-  std::string rateText = getRateString(value);
-  gtk_label_set_text(GTK_LABEL(labelRx), rateText.c_str());
-}
-
-void DeviceConfig::cbScaleTxChanged(GtkRange* scaleTx) {
-  TRACE_FUNC_ENTER;
-
-  double value = gtk_range_get_value(scaleTx) * DeviceConfig::TxRateMultiplier;
-
-  device.setTxMax(value);
-
-  // Update other fields in page
-  std::string rateText = getRateString(value);
-  gtk_label_set_text(GTK_LABEL(labelTx), rateText.c_str());
+  device.setDial(enum_parse<DialKind>(id));
 
   TRACE_FUNC_EXIT;
 }
 
-void DeviceConfig::cbCheckShowDisabledToggled(GtkToggleButton* checkShow) {
+void DeviceConfig::cbComboRxChanged(GtkComboBox* comboRx) {
   TRACE_FUNC_ENTER;
 
-  gboolean show = gtk_toggle_button_get_active(checkShow);
+  const char* rate  = gtk_combo_box_get_active_id(comboRx);
+  const char* units = gtk_combo_box_get_active_id(GTK_COMBO_BOX(comboRxUnits));
 
-  device.setShowDisabled(show);
+  device.setRxMax(calculateRate(rate, units));
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
 
-void DeviceConfig::cbCheckShowDisconnectedToggled(GtkToggleButton* checkShow) {
+void DeviceConfig::cbComboRxUnitsChanged(GtkComboBox* comboRxUnits) {
+  TRACE_FUNC_ENTER;
+
+  const char* rate  = gtk_combo_box_get_active_id(GTK_COMBO_BOX(comboRx));
+  const char* units = gtk_combo_box_get_active_id(comboRxUnits);
+
+  device.setRxMax(calculateRate(rate, units));
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfig::cbComboTxChanged(GtkComboBox* comboTx) {
+  TRACE_FUNC_ENTER;
+
+  const char* rate  = gtk_combo_box_get_active_id(comboTx);
+  const char* units = gtk_combo_box_get_active_id(GTK_COMBO_BOX(comboTxUnits));
+
+  device.setTxMax(calculateRate(rate, units));
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfig::cbComboTxUnitsChanged(GtkComboBox* comboTxUnits) {
+  TRACE_FUNC_ENTER;
+
+  const char* rate  = gtk_combo_box_get_active_id(GTK_COMBO_BOX(comboTx));
+  const char* units = gtk_combo_box_get_active_id(comboTxUnits);
+
+  device.setTxMax(calculateRate(rate, units));
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfig::cbCheckShowNotAvailableToggled(GtkToggleButton* checkShow) {
   TRACE_FUNC_ENTER;
 
   gboolean show = gtk_toggle_button_get_active(checkShow);
 
-  cast<Network>(device).setShowDisconnected(show);
+  device.setShowNotAvailable(show);
+  ui.cbRefresh();
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfig::cbCheckShowNotConnectedToggled(GtkToggleButton* checkShow) {
+  TRACE_FUNC_ENTER;
+
+  gboolean show = gtk_toggle_button_get_active(checkShow);
+
+  cast<Network>(device).setShowNotConnected(show);
+  ui.cbRefresh();
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfig::cbCheckShowNotMountedToggled(GtkToggleButton* checkShow) {
+  TRACE_FUNC_ENTER;
+
+  gboolean show = gtk_toggle_button_get_active(checkShow);
+
+  cast<Disk>(device).setShowNotMounted(show);
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -224,6 +320,7 @@ void DeviceConfig::cbCheckShowLabelToggled(GtkToggleButton* checkShow) {
   gboolean show = gtk_toggle_button_get_active(checkShow);
 
   device.setShowLabel(show);
+  ui.cbRefresh();
 
   // Update config gui
   gtk_widget_set_sensitive(boxLabelSensitive, show);
@@ -245,8 +342,7 @@ void DeviceConfig::cbEntryLabelChanged(GtkEntry* entryLabel) {
   } else {
     gtk_widget_set_sensitive(buttonSave, FALSE);
   }
-
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -257,8 +353,8 @@ void DeviceConfig::cbColorFgSet(GtkColorChooser* colorFg) {
   GdkRGBA color;
   gtk_color_chooser_get_rgba(colorFg, &color);
 
-  device.setLabelFgColor(&color);
-  plugin.cbRefresh();
+  device.setLabelFgColor(color);
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -269,8 +365,8 @@ void DeviceConfig::cbColorBgSet(GtkColorChooser* colorBg) {
   GdkRGBA color;
   gtk_color_chooser_get_rgba(colorBg, &color);
 
-  device.setLabelBgColor(&color);
-  plugin.cbRefresh();
+  device.setLabelBgColor(color);
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -281,7 +377,7 @@ void DeviceConfig::cbComboPositionChanged(GtkComboBox* comboPosition) {
   const gchar* id = gtk_combo_box_get_active_id(comboPosition);
 
   device.setLabelPosition(enum_parse<LabelPosition>(id));
-  plugin.cbRefresh();
+  ui.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -318,8 +414,6 @@ GtkWidget* DeviceConfig::addDeviceOptions() {
   for(const std::string& s : System::getDevices(device.getClass()))
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboDevice), s.c_str(),
                               s.c_str());
-  // The device cannot be configured if it is disabled. So the drop-down for the
-  // devices list will always contain the device
   if(mode == Mode::Edit) {
     gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboDevice),
                                 device.getDevice().c_str());
@@ -329,20 +423,18 @@ GtkWidget* DeviceConfig::addDeviceOptions() {
   gtk_label_set_mnemonic_widget(GTK_LABEL(labelDevice), comboDevice);
 
   // Device icon
-  // GtkWidget* boxIcon =
-  //     gtk_box_new(GTK_ORIENTATION_VERTICAL, PluginConfig::Spacing);
-  // gtk_grid_attach(GTK_GRID(grid), boxIcon, 2, row, 1, 3);
-  // gtk_container_set_border_width(GTK_CONTAINER(boxIcon),
-  // PluginConfig::Border); gtk_widget_show(boxIcon);
-  GtkWidget* frameIcon = gtk_frame_new(NULL);
-  gtk_container_set_border_width(GTK_CONTAINER(frameIcon),
-                                 PluginConfig::Border);
-  gtk_grid_attach(GTK_GRID(grid), frameIcon, 2, row, 1, 3);
-  gtk_widget_show(frameIcon);
+  GtkWidget* boxIcon =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, PluginConfig::Spacing);
+  gtk_grid_attach(GTK_GRID(grid), boxIcon, 2, row, 1, 3);
+  gtk_container_set_border_width(GTK_CONTAINER(boxIcon), PluginConfig::Border);
+  gtk_widget_show(boxIcon);
 
   GtkWidget* imageDevice = gtk_image_new_from_pixbuf(NULL);
-  // gtk_box_pack_start(GTK_BOX(boxIcon), imageDevice, TRUE, TRUE, 0);
-  gtk_container_add(GTK_CONTAINER(frameIcon), imageDevice);
+  gtk_box_pack_start(GTK_BOX(boxIcon), imageDevice, TRUE, TRUE, 0);
+  gtk_image_set_from_pixbuf(GTK_IMAGE(imageDevice),
+                            device.getIcon(IconKind::Tooltip));
+  gtk_widget_set_halign(imageDevice, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(imageDevice, GTK_ALIGN_CENTER);
   gtk_widget_show(imageDevice);
 
   // Device kind
@@ -410,122 +502,167 @@ GtkWidget* DeviceConfig::addDialOptions() {
   gtk_container_add(GTK_CONTAINER(frame), grid);
   gtk_widget_show(grid);
 
+  // Dial type
+  row += 1;
+  GtkWidget* labelDial = gtk_label_new_with_mnemonic("_Dial style");
+  gtk_grid_attach(GTK_GRID(grid), labelDial, 0, row, 1, 1);
+  gtk_widget_set_tooltip_text(labelDial, "The style of the dial to display");
+  gtk_widget_show(labelDial);
+
+  GtkWidget* comboDial = gtk_combo_box_text_new();
+  gtk_grid_attach(GTK_GRID(grid), comboDial, 1, row, 1, 1);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboDial),
+                            enum_cstr(DialKind::MultipleArc360),
+                            "Separate circular");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboDial),
+                            enum_cstr(DialKind::MultipleArc180),
+                            "Separate semicircular");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboDial),
+                            enum_cstr(DialKind::CombinedVertical),
+                            "Combined vertical");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboDial),
+                            enum_cstr(DialKind::CombinedHorizontal),
+                            "Combined horizontal");
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboDial),
+                              enum_cstr(device.getDial()));
+  gtk_widget_show(comboDial);
+
   // Maximum incoming rate
   row += 1;
   GtkWidget* labelRxLabel = gtk_label_new_with_mnemonic("Max _incoming rate");
+  gtk_grid_attach(GTK_GRID(grid), labelRxLabel, 0, row, 1, 1);
   gtk_widget_set_tooltip_text(labelRxLabel,
                               "Maximum incoming rate on the dial");
-  gtk_grid_attach(GTK_GRID(grid), labelRxLabel, 0, row, 1, 1);
   gtk_widget_show(labelRxLabel);
 
-  GtkWidget* boxRx = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  std::tuple<unsigned, std::string> rx = splitRate(device.getRxMax());
+
+  GtkWidget* boxRx = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_grid_attach(GTK_GRID(grid), boxRx, 1, row, 1, 1);
   gtk_widget_show(boxRx);
 
-  // TODO: We might want to have a different range in the scale depending on
-  // the network kind - wireless networks will likely be slower than ethernet
-  // which might be slower than loopback or virtual networks
-  double      rxFirst = DeviceConfig::RangeRxRate.getFirst();
-  double      rxLast  = DeviceConfig::RangeRxRate.getLast();
-  double      rxStep  = DeviceConfig::RangeRxRate.getStep();
-  GtkWidget*  scaleRx = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
-                                                rxFirst, rxLast, rxStep);
-  std::string rxRateText =
-      getRateString(device.getRxMax() * DeviceConfig::RxRateMultiplier);
-  GtkWidget* labelRx = gtk_label_new(rxRateText.c_str());
-  gtk_box_pack_start(GTK_BOX(boxRx), labelRx, TRUE, TRUE, 0);
-  gtk_widget_show(labelRx);
+  GtkWidget* comboRx = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxRx), comboRx, TRUE, TRUE, 0);
+  for(const std::string& rate : DeviceConfig::Rates)
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboRx), rate.c_str(),
+                              rate.c_str());
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboRx),
+                              std::to_string(std::get<unsigned>(rx)).c_str());
+  gtk_widget_show(comboRx);
 
-  for(double v : DeviceConfig::RangeRxRate)
-    gtk_scale_add_mark(GTK_SCALE(scaleRx), v, GTK_POS_BOTTOM, NULL);
-  gtk_range_set_increments(GTK_RANGE(scaleRx), rxStep, rxStep);
-  gtk_scale_set_draw_value(GTK_SCALE(scaleRx), FALSE);
-  gtk_range_set_value(GTK_RANGE(scaleRx), device.getRxMax());
-  gtk_widget_set_size_request(
-      scaleRx, ((rxLast - rxFirst) / rxStep) * DeviceConfig::SliderStepWidth,
-      -1);
-  gtk_box_pack_start(GTK_BOX(boxRx), scaleRx, TRUE, TRUE, 0);
-  gtk_widget_show(scaleRx);
+  GtkWidget* comboRxUnits = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxRx), comboRxUnits, TRUE, TRUE, 0);
+  for(const std::string& units : DeviceConfig::Units)
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboRxUnits), units.c_str(),
+                              units.c_str());
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboRxUnits),
+                              std::get<std::string>(rx).c_str());
+  gtk_widget_show(comboRxUnits);
 
   // Maximum outgoing rate
   row += 1;
   GtkWidget* labelTxLabel = gtk_label_new_with_mnemonic("Max _outgoing rate");
+  gtk_grid_attach(GTK_GRID(grid), labelTxLabel, 0, row, 1, 1);
   gtk_widget_set_tooltip_text(labelTxLabel,
                               "Maximum outgoing rate on the dial");
-  gtk_grid_attach(GTK_GRID(grid), labelTxLabel, 0, row, 1, 1);
   gtk_widget_show(labelTxLabel);
 
-  GtkWidget* boxTx = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  std::tuple<unsigned, std::string> tx = splitRate(device.getTxMax());
+
+  GtkWidget* boxTx = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_grid_attach(GTK_GRID(grid), boxTx, 1, row, 1, 1);
   gtk_widget_show(boxTx);
 
-  // TODO: We might want to have a different range in the scale depending on
-  // the network kind - wireless networks will likely be slower than ethernet
-  // which might be slower than loopback or virtual networks
-  double      txFirst = DeviceConfig::RangeTxRate.getFirst();
-  double      txLast  = DeviceConfig::RangeTxRate.getLast();
-  double      txStep  = DeviceConfig::RangeTxRate.getStep();
-  std::string txRateText =
-      getRateString(device.getTxMax() * DeviceConfig::TxRateMultiplier);
-  GtkWidget* labelTx = gtk_label_new(rxRateText.c_str());
-  gtk_box_pack_start(GTK_BOX(boxTx), labelTx, TRUE, TRUE, 0);
-  gtk_widget_show(labelTx);
+  GtkWidget* comboTx = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxTx), comboTx, TRUE, TRUE, 0);
+  for(const std::string& rate : DeviceConfig::Rates)
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboTx), rate.c_str(),
+                              rate.c_str());
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboTx),
+                              std::to_string(std::get<unsigned>(tx)).c_str());
+  gtk_widget_show(comboTx);
 
-  GtkWidget* scaleTx = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
-                                                txFirst, txLast, txStep);
-  for(double v : DeviceConfig::RangeTxRate)
-    gtk_scale_add_mark(GTK_SCALE(scaleTx), v, GTK_POS_BOTTOM, NULL);
-  gtk_range_set_increments(GTK_RANGE(scaleTx), txStep, txStep);
-  gtk_scale_set_draw_value(GTK_SCALE(scaleTx), FALSE);
-  gtk_range_set_value(GTK_RANGE(scaleTx), device.getTxMax());
-  gtk_box_pack_start(GTK_BOX(boxTx), scaleTx, TRUE, TRUE, 0);
-  gtk_widget_set_size_request(
-      scaleTx, ((txLast - txFirst) / txStep) * DeviceConfig::SliderStepWidth,
-      -1);
-  gtk_widget_show(scaleTx);
+  GtkWidget* comboTxUnits = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxTx), comboTxUnits, TRUE, TRUE, 0);
+  for(const std::string& units : DeviceConfig::Units)
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboTxUnits), units.c_str(),
+                              units.c_str());
+  gtk_combo_box_set_active_id(GTK_COMBO_BOX(comboTxUnits),
+                              std::get<std::string>(tx).c_str());
+  gtk_widget_show(comboTxUnits);
 
-  // Show the dial even when the device is disabled/disconnected
+  // Show the dial even when the device is unavailable
   row += 1;
   GtkWidget* boxShowDial =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, PluginConfig::Spacing);
-  gtk_grid_attach(GTK_GRID(grid), boxShowDial, 0, row, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), boxShowDial, 0, row, 3, 1);
   gtk_widget_show(boxShowDial);
 
-  GtkWidget* checkShowDisabled =
-      gtk_check_button_new_with_mnemonic("Show when dis_abled");
+  GtkWidget* checkShowNotAvailable =
+      gtk_check_button_new_with_mnemonic("Show when not a_vailable");
+  gtk_box_pack_start(GTK_BOX(boxShowDial), checkShowNotAvailable, TRUE, TRUE,
+                     PluginConfig::Spacing);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowNotAvailable),
+                               device.getShowNotAvailable());
   gtk_widget_set_tooltip_text(
-      checkShowDisabled,
-      "Display the dial and maybe the label even when the device is disabled");
-  gtk_box_pack_start(GTK_BOX(boxShowDial), checkShowDisabled, TRUE, TRUE, 0);
-  gtk_widget_show(checkShowDisabled);
+      checkShowNotAvailable,
+      "Display the dial when the device is not available");
+  gtk_widget_show(checkShowNotAvailable);
 
-  GtkWidget* checkShowDisconnected =
+  GtkWidget* checkShowNotConnected =
       gtk_check_button_new_with_mnemonic("Show when dis_connected");
-  gtk_widget_set_tooltip_text(checkShowDisconnected,
-                              "Display the dial and maybe the label even when "
-                              "the network is disconnected");
-  gtk_box_pack_start(GTK_BOX(boxShowDial), checkShowDisconnected, TRUE, TRUE,
-                     0);
-  gtk_widget_hide(checkShowDisconnected);
+  gtk_box_pack_start(GTK_BOX(boxShowDial), checkShowNotConnected, TRUE, TRUE,
+                     PluginConfig::Spacing);
+  gtk_widget_set_tooltip_text(checkShowNotConnected,
+                              "Show the dial when the network is disconnected");
+  if(const auto* network = dyn_cast<Network>(&device)) {
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowNotConnected),
+                                 network->getShowNotConnected());
+    gtk_widget_show(checkShowNotConnected);
+  } else {
+    gtk_widget_hide(checkShowNotConnected);
+  }
+
+  GtkWidget* checkShowNotMounted =
+      gtk_check_button_new_with_mnemonic("Show when not _mounted");
+  gtk_box_pack_start(GTK_BOX(boxShowDial), checkShowNotMounted, TRUE, TRUE,
+                     PluginConfig::Spacing);
+  gtk_widget_set_tooltip_text(checkShowNotMounted,
+                              "Display the dial when the disk is not mounted");
+  if(const auto* disk = dyn_cast<Disk>(&device)) {
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowNotMounted),
+                                 disk->getShowNotMounted());
+    gtk_widget_show(checkShowNotMounted);
+  } else {
+    gtk_widget_hide(checkShowNotMounted);
+  }
 
   // Save widgets
-  this->scaleRx               = scaleRx;
-  this->labelRx               = labelRx;
-  this->scaleTx               = scaleTx;
-  this->labelTx               = labelTx;
-  this->checkShowDisabled     = checkShowDisabled;
-  this->checkShowDisconnected = checkShowDisconnected;
+  this->comboDial             = comboDial;
+  this->comboRx               = comboRx;
+  this->comboTxUnits          = comboRxUnits;
+  this->comboTx               = comboTx;
+  this->comboTxUnits          = comboTxUnits;
+  this->checkShowNotAvailable = checkShowNotAvailable;
+  this->checkShowNotConnected = checkShowNotConnected;
+  this->checkShowNotMounted   = checkShowNotMounted;
   this->frameDialOptions      = frame;
 
   // Connect signals
-  g_signal_connect(scaleRx, "value-changed", G_CALLBACK(cb_scale_rx_changed),
+  g_signal_connect(comboDial, "changed", G_CALLBACK(cb_combo_dial_changed),
                    this);
-  g_signal_connect(scaleTx, "value-changed", G_CALLBACK(cb_scale_tx_changed),
-                   this);
-  g_signal_connect(checkShowDisconnected, "toggled",
-                   G_CALLBACK(cb_check_show_disconnected_toggled), this);
-  g_signal_connect(checkShowDisabled, "toggled",
-                   G_CALLBACK(cb_check_show_disabled_toggled), this);
+  g_signal_connect(comboRx, "changed", G_CALLBACK(cb_combo_rx_changed), this);
+  g_signal_connect(comboRxUnits, "changed",
+                   G_CALLBACK(cb_combo_rx_units_changed), this);
+  g_signal_connect(comboTx, "changed", G_CALLBACK(cb_combo_tx_changed), this);
+  g_signal_connect(comboTxUnits, "changed",
+                   G_CALLBACK(cb_combo_tx_units_changed), this);
+  g_signal_connect(checkShowNotAvailable, "toggled",
+                   G_CALLBACK(cb_check_show_not_available_toggled), this);
+  g_signal_connect(checkShowNotConnected, "toggled",
+                   G_CALLBACK(cb_check_show_not_connected_toggled), this);
+  g_signal_connect(checkShowNotMounted, "toggled",
+                   G_CALLBACK(cb_check_show_not_mounted_toggled), this);
 
   TRACE_FUNC_EXIT;
 
@@ -546,52 +683,55 @@ GtkWidget* DeviceConfig::addLabelOptions() {
 
   GtkWidget* boxLabelRow =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, PluginConfig::Padding);
+  gtk_container_add(GTK_CONTAINER(frame), boxLabelRow);
   gtk_container_set_border_width(GTK_CONTAINER(boxLabelRow),
                                  PluginConfig::Border);
-  gtk_container_add(GTK_CONTAINER(frame), boxLabelRow);
   gtk_widget_show(boxLabelRow);
 
   // Whether or not to show the label
   GtkWidget* checkShowLabel = gtk_check_button_new_with_mnemonic("_Label");
+  gtk_box_pack_start(GTK_BOX(boxLabelRow), checkShowLabel, TRUE, TRUE, 0);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkShowLabel),
                                device.getShowLabel());
   gtk_widget_set_tooltip_text(checkShowLabel,
                               "The label to be displayed with the dial");
-  gtk_box_pack_start(GTK_BOX(boxLabelRow), checkShowLabel, TRUE, TRUE, 0);
   gtk_widget_show(checkShowLabel);
 
   // Box containing all the widgets that will be disabled if the check box
   // to show the label is deactivated
   GtkWidget* boxLabelSensitive =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, PluginConfig::Padding);
-  gtk_widget_set_sensitive(boxLabelSensitive, device.getShowLabel());
   gtk_box_pack_start(GTK_BOX(boxLabelRow), boxLabelSensitive, TRUE, TRUE, 0);
+  gtk_widget_set_sensitive(boxLabelSensitive, device.getShowLabel());
   gtk_widget_show(boxLabelSensitive);
 
   // The text of the label
   GtkWidget* entryLabel = gtk_entry_new();
+  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), entryLabel, TRUE, TRUE, 0);
   gtk_entry_set_text(GTK_ENTRY(entryLabel), device.getLabel().c_str());
   gtk_entry_set_max_length(GTK_ENTRY(entryLabel),
                            Defaults::Device::MaxLabelLength);
-  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), entryLabel, TRUE, TRUE, 0);
   gtk_widget_show(entryLabel);
 
   // Foreground color
-  GtkWidget* colorFg = gtk_color_button_new_with_rgba(device.getLabelFgColor());
+  GtkWidget* colorFg =
+      gtk_color_button_new_with_rgba(&device.getLabelFgColor());
+  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), colorFg, TRUE, TRUE, 0);
   gtk_color_chooser_set_use_alpha(GTK_COLOR_CHOOSER(colorFg), TRUE);
   gtk_widget_set_tooltip_text(colorFg, "Foreground color of the label");
-  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), colorFg, TRUE, TRUE, 0);
   gtk_widget_show(colorFg);
 
   // Background color
-  GtkWidget* colorBg = gtk_color_button_new_with_rgba(device.getLabelBgColor());
+  GtkWidget* colorBg =
+      gtk_color_button_new_with_rgba(&device.getLabelBgColor());
+  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), colorBg, TRUE, TRUE, 0);
   gtk_color_chooser_set_use_alpha(GTK_COLOR_CHOOSER(colorBg), TRUE);
   gtk_widget_set_tooltip_text(colorBg, "Background color of the label");
-  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), colorBg, TRUE, TRUE, 0);
   gtk_widget_show(colorBg);
 
   // Position
   GtkWidget* comboPosition = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), comboPosition, TRUE, TRUE, 1);
   for(LabelPosition pos : {LabelPosition::Top, LabelPosition::Bottom})
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(comboPosition), enum_cstr(pos),
                               enum_cstr(pos));
@@ -599,7 +739,6 @@ GtkWidget* DeviceConfig::addLabelOptions() {
                               enum_cstr(device.getLabelPosition()));
   gtk_widget_set_tooltip_text(comboPosition,
                               "The position of the label relative to the dial");
-  gtk_box_pack_start(GTK_BOX(boxLabelSensitive), comboPosition, TRUE, TRUE, 1);
   gtk_widget_show(comboPosition);
 
   // Save widgets
@@ -685,24 +824,27 @@ GtkWidget* DeviceConfig::createDialog() {
 }
 
 void DeviceConfig::clearDialog() {
-  dialog            = nullptr;
-  buttonSave        = nullptr;
-  buttonCancel      = nullptr;
-  comboDevice       = nullptr;
-  comboKind         = nullptr;
-  imageDevice       = nullptr;
-  entryName         = nullptr;
-  scaleRx           = nullptr;
-  labelRx           = nullptr;
-  scaleTx           = nullptr;
-  labelTx           = nullptr;
-  checkShowDisabled = nullptr;
-  entryLabel        = nullptr;
-  colorFg           = nullptr;
-  colorBg           = nullptr;
-  checkShowLabel    = nullptr;
-  comboPosition     = nullptr;
-  boxLabelSensitive = nullptr;
+  dialog                = nullptr;
+  buttonSave            = nullptr;
+  buttonCancel          = nullptr;
+  comboDevice           = nullptr;
+  comboKind             = nullptr;
+  imageDevice           = nullptr;
+  entryName             = nullptr;
+  comboDial             = nullptr;
+  comboRx               = nullptr;
+  comboRxUnits          = nullptr;
+  comboTx               = nullptr;
+  comboTxUnits          = nullptr;
+  checkShowNotAvailable = nullptr;
+  checkShowNotConnected = nullptr;
+  checkShowNotMounted   = nullptr;
+  entryLabel            = nullptr;
+  colorFg               = nullptr;
+  colorBg               = nullptr;
+  checkShowLabel        = nullptr;
+  comboPosition         = nullptr;
+  boxLabelSensitive     = nullptr;
 
   // Widgets exclusively for disks
 
@@ -713,4 +855,14 @@ void DeviceConfig::clearDialog() {
   frameDeviceOptions = nullptr;
   frameDialOptions   = nullptr;
   frameLabelOptions  = nullptr;
+}
+
+void DeviceConfig::destroyDialog() {
+  if(dialog)
+    gtk_widget_destroy(dialog);
+  dialog = nullptr;
+}
+
+GtkWidget* DeviceConfig::getDialog() {
+  return dialog;
 }

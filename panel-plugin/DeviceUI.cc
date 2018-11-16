@@ -2,17 +2,13 @@
 
 #include "CSSBuilder.h"
 #include "Debug.h"
-#include "Defaults.h"
-#include "Device.h"
 #include "DeviceStats.h"
 #include "DeviceTooltip.h"
 #include "Devices.h"
 #include "GtkUtils.h"
+#include "Icons.h"
 #include "Plugin.h"
-#include "PluginUI.h"
 #include "RTTI.h"
-#include "Utils.h"
-#include "XfceUtils.h"
 
 // Callbacks
 static gboolean cb_box_query_tooltip(GtkWidget*     w,
@@ -24,14 +20,12 @@ static gboolean cb_box_query_tooltip(GtkWidget*     w,
   return tooltip->cbBoxQueryTooltip(w, x, y, kbMode, tooltipWidget);
 }
 
-DeviceUI::DeviceUI(Device& refDevice)
-    : device(refDevice), plugin(device.getPlugin()) {
+DeviceUI::DeviceUI(Device& device)
+    : device(device), plugin(device.getPlugin()), icons(plugin.getIcons()),
+      dial(nullptr) {
   TRACE_FUNC_ENTER;
 
-  for(LabelPosition pos : LabelPosition())
-    labels[pos] = nullptr;
-  dial      = nullptr;
-  container = nullptr;
+  clearUI();
 
   TRACE_FUNC_EXIT;
 }
@@ -44,7 +38,21 @@ DeviceUI::~DeviceUI() {
   TRACE_FUNC_EXIT;
 }
 
-void DeviceUI::createUI() {
+void DeviceUI::setDial(DialKind) {
+  dial.reset(new Dial(canvas, 30, 270, 0, device.getRxMax(), plugin.getPeriod(),
+                      Dial::ColorsRedToGreen));
+}
+
+void DeviceUI::setCSS() {
+  css = CSSBuilder("label")
+            .addBgColor(device.getLabelBgColor())
+            .addFgColor(device.getLabelFgColor())
+            .addFont(plugin.getFont())
+            .endSelector()
+            .commit();
+}
+
+GtkWidget* DeviceUI::createUI() {
   TRACE_FUNC_ENTER;
 
   // GtkWidget* window = tooltip.createUI();
@@ -59,13 +67,10 @@ void DeviceUI::createUI() {
   gtk_box_pack_start(GTK_BOX(box), labelTop, TRUE, TRUE, 0);
   gtk_widget_show(labelTop);
 
-  // TODO: Actually use a dial
-  unsigned size = plugin.getUI().getSize() - 2 * plugin.getBorder();
-  // GdkPixbuf* pixbuf = device->getIcon(DeviceStatus::Connected, size);
-  // GtkWidget* dial = gtk_image_new_from_pixbuf(pixbuf);
-  GtkWidget* dial = gtk_label_new(device.getKindCstr());
-  gtk_box_pack_start(GTK_BOX(box), dial, TRUE, TRUE, 0);
-  gtk_widget_show(dial);
+  unsigned   size   = plugin.getUI().getSize() - 2 * plugin.getBorder();
+  GtkWidget* canvas = gtk_drawing_area_new();
+  gtk_box_pack_start(GTK_BOX(box), canvas, TRUE, TRUE, 0);
+  gtk_widget_show(canvas);
 
   GtkWidget* labelBottom = gtk_label_new(device.getLabel().c_str());
   gtk_box_pack_start(GTK_BOX(box), labelBottom, TRUE, TRUE, 0);
@@ -75,7 +80,11 @@ void DeviceUI::createUI() {
   this->container                     = box;
   this->labels[LabelPosition::Top]    = labelTop;
   this->labels[LabelPosition::Bottom] = labelBottom;
-  this->dial                          = dial;
+  this->canvas                        = canvas;
+
+  // Add reference count to the main widget so that it doesn't get destroyed
+  // automatically when it is removed from the parent's container
+  g_object_ref(this->container);
 
   // Connect signals
   g_object_set(G_OBJECT(box), "has-tooltip", TRUE, NULL);
@@ -83,65 +92,77 @@ void DeviceUI::createUI() {
                    G_CALLBACK(cb_box_query_tooltip), &device.getTooltip());
 
   TRACE_FUNC_EXIT;
+
+  return this->container;
 }
 
-void DeviceUI::refresh() {
+void DeviceUI::destroyUI() {
   TRACE_FUNC_ENTER;
 
-  gtk_box_set_spacing(GTK_BOX(container), plugin.getPadding());
-
-  // Hide everything before showing only those widgets that we should
-  gtk_widget_hide(container);
-  gtk_widget_hide(dial);
-  for(GtkWidget* labelLabel : labels)
-    if(labelLabel)
-      gtk_widget_hide(labelLabel);
-
-  bool showDial = false;
-  switch(device.getStats().getStatus()) {
-  case DeviceStatus::Connected:
-    showDial = true;
-    break;
-  case DeviceStatus::Disconnected:
-    if(const auto* network = dyn_cast<Network>(&device))
-      showDial = network->getShowDisconnected();
-    break;
-  case DeviceStatus::Disabled:
-    showDial = device.getShowDisabled();
-    break;
-  default:
-    break;
-  }
-
-  if(showDial) {
-    gtk_widget_show(container);
-    gtk_widget_show(dial);
-
-    if(device.getShowLabel()) {
-      CSSBuilder css("label");
-      css.addBgColor(device.getLabelBgColor());
-      css.addFgColor(device.getLabelFgColor());
-      css.addFont(device.getLabelFont());
-      css.endSelector();
-      css.commit();
-
-      g_message("css: %s", css.c_str());
-
-      GtkWidget* labelLabel = labels[device.getLabelPosition()];
-      gtk_label_set_text(GTK_LABEL(labelLabel), device.getLabel().c_str());
-      gtk_widget_set_css(labelLabel, css.str());
-      gtk_widget_show(labelLabel);
-    }
+  if(container) {
+    g_object_unref(container);
+    gtk_widget_destroy(container);
+    clearUI();
   }
 
   TRACE_FUNC_EXIT;
 }
 
-void DeviceUI::destroyUI() {
-  if(container)
-    gtk_widget_destroy(container);
+void DeviceUI::clearUI() {
+  TRACE_FUNC_ENTER;
+
+  container = nullptr;
+  canvas    = nullptr;
+  for(auto pos : LabelPosition())
+    labels[pos] = nullptr;
+
+  TRACE_FUNC_EXIT;
 }
 
-GtkWidget* DeviceUI::get() {
+GtkWidget* DeviceUI::getWidget() {
   return container;
+}
+
+void DeviceUI::cbRefresh() {
+  TRACE_FUNC_ENTER;
+
+  // Hide everything before showing only those widgets that we should
+  gtk_widget_hide(container);
+  for(GtkWidget* label : labels)
+    if(label)
+      gtk_widget_hide(label);
+
+  bool showDial = false;
+  switch(device.getStatus()) {
+  case DeviceStatus::Connected:
+  case DeviceStatus::Mounted:
+    showDial = true;
+    break;
+  case DeviceStatus::Disconnected:
+    showDial = cast<Network>(device).getShowNotConnected();
+    break;
+  case DeviceStatus::Unmounted:
+    showDial = cast<Disk>(device).getShowNotMounted();
+    break;
+  case DeviceStatus::Unavailable:
+    showDial = device.getShowNotAvailable();
+    break;
+  default:
+    break;
+  }
+
+  gtk_box_set_spacing(GTK_BOX(container), plugin.getPadding());
+  
+  if(showDial) {
+    gtk_widget_show(container);
+
+    if(device.getShowLabel()) {
+      GtkWidget* label = labels[device.getLabelPosition()];
+      gtk_label_set_text(GTK_LABEL(label), device.getLabel().c_str());
+      gtk_widget_set_css(label, css);
+      gtk_widget_show(label);
+    }
+  }
+
+  TRACE_FUNC_EXIT;
 }

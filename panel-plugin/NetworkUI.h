@@ -7,10 +7,10 @@ class Network;
 
 class NetworkUI : public DeviceUI {
 protected:
-  const Network& network;
+  Network& network;
 
 protected:
-  virtual void createUI() override;
+  virtual GtkWidget* createUI() override;
 
 public:
   NetworkUI(Network&);

@@ -63,18 +63,18 @@ CSSBuilder& CSSBuilder::addEndDeclaration() {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addColor(const GdkRGBA* color) {
+CSSBuilder& CSSBuilder::addColor(const GdkRGBA& color) {
   ss << "rgba(";
-  ss << ((unsigned)(color->red * 255)) << ", ";
-  ss << ((unsigned)(color->green * 255)) << ", ";
-  ss << ((unsigned)(color->blue * 255)) << ", ";
-  ss << color->alpha;
+  ss << ((unsigned)(color.red * 255)) << ", ";
+  ss << ((unsigned)(color.green * 255)) << ", ";
+  ss << ((unsigned)(color.blue * 255)) << ", ";
+  ss << color.alpha;
   ss << ")";
 
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA* color) {
+CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA& color) {
   ERROR_IF_COMMITTED();
 
   addBeginDeclaration("color");
@@ -84,7 +84,7 @@ CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA* color) {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA* color) {
+CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA& color) {
   ERROR_IF_COMMITTED();
 
   addBeginDeclaration("background-color");

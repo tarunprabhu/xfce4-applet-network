@@ -4,77 +4,14 @@
 #include "Functional.h"
 #include "Plugin.h"
 #include "Utils.h"
-
-#include <libxfce4panel/libxfce4panel.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
-
-// static void unrefImpl(GdkPixbuf*& pixbuf) {
-//   if(pixbuf)
-//     g_object_unref(G_OBJECT(pixbuf));
-// }
-
-// static void dispatchImpl(const Icons::DispatchFunc& func, GdkPixbuf*& pixbuf)
-// {
-//   MESSAGE("dispatchImpl: GdkPixbuf");
-//   func(pixbuf);
-// }
-
-// template <typename Enum>
-// static void dispatchImpl(const Icons::DispatchFunc& func,
-//                          Array<GdkPixbuf*, Enum>&   icons) {
-//   MESSAGE("dispatchImpl: Array<GdkPixbuf>");
-//   for(GdkPixbuf*& pixbuf : icons)
-//     func(pixbuf);
-// }
-
-// template <> void Icons::dispatch<0>(const DispatchFunc&) {
-//   ;
-// }
-
-// template <size_t N> void Icons::dispatch(const DispatchFunc& func) {
-//   MESSAGE("dispatch: %ld", N);
-
-//   for(DeviceSpec& spec : std::get<N - 1>(deviceIcons)) {
-//     dispatchImpl(func, spec.basic);
-//     dispatchImpl(func, spec.tooltip);
-//   }
-//   dispatch<N - 1>(func);
-// }
-
-// template <> void Icons::dispatch<Icons::PluginIconT>(const DispatchFunc&
-// func) {
-//   MESSAGE("dispatch: %s", demangle(typeid(Icons::PluginIconT)).c_str());
-
-//   dispatchImpl(func, pluginIcon);
-// }
-
-// template <> void Icons::dispatch<Icons::ClassIconsT>(const DispatchFunc&
-// func) {
-//   MESSAGE("dispatch: %s", demangle(typeid(Icons::ClassIconsT)).c_str());
-
-//   dispatchImpl(func, classIcons);
-// }
-
-// template <>
-// void Icons::dispatch<Icons::StatusIconsT>(const DispatchFunc& func) {
-//   MESSAGE("dispatch: %s", demangle(typeid(Icons::StatusIconsT)).c_str());
-
-//   dispatchImpl(func, statusIcons);
-// }
-
-// template <>
-// void Icons::dispatch<Icons::DeviceIconsT>(const DispatchFunc& func) {
-//   MESSAGE("dispatch: %s", demangle(typeid(Icons::DeviceIconsT)).c_str());
-
-//   using type = typename std::remove_reference<DeviceIconsT>::type;
-//   dispatch<std::tuple_size<type>::value>(func);
-// }
 
 void Icons::create(const char* inp) {
   MESSAGE("Create plugin icon");
 
-  pluginIcon = makeIcon(inp, IconKind::Dialog);
+  getIcons<PluginIconT>() = makeIcon(inp, IconKind::Dialog);
 }
 
 void Icons::create(const std::map<DeviceClass, const char*>& inp) {
@@ -84,8 +21,8 @@ void Icons::create(const std::map<DeviceClass, const char*>& inp) {
     DeviceClass clss = i.first;
     const char* name = i.second;
 
-    classIcons[clss]     = makeIcon(name, IconKind::Dialog);
-    classIconNames[clss] = name;
+    getIcons<ClassIconsT>()[clss] = makeIcon(name, IconKind::Dialog);
+    getIconNames<DeviceClass>()[clss] = name;
   }
 }
 
@@ -96,8 +33,8 @@ void Icons::create(const std::map<DeviceStatus, const char*>& inp) {
     DeviceStatus status = i.first;
     const char*  name   = i.second;
 
-    statusIcons[status]     = makeIcon(name, IconKind::Toolbar);
-    statusIconNames[status] = name;
+    getIcons<StatusIconsT>()[status] = makeIcon(name, IconKind::Toolbar);
+    getIconNames<DeviceStatus>()[status] = name;
   }
 }
 
@@ -105,17 +42,18 @@ template <typename DeviceKind>
 void Icons::create(const std::map<DeviceKind, const char*>& inp) {
   MESSAGE("Create icons for device: %s", demangle(typeid(DeviceKind)).c_str());
 
-  auto& device = std::get<Array<DeviceSpec, DeviceKind>>(deviceIcons);
   for(const auto& i : inp) {
     DeviceKind  kind = i.first;
     const char* name = i.second;
 
-    DeviceSpec& spec = device[kind];
+    auto& deviceIcons = getDeviceIcons(kind);
     for(auto iconKind : IconKind())
-      std::get<0>(spec)[iconKind] = makeIcon(name, iconKind);
+      std::get<KindIconsT>(deviceIcons)[iconKind] = makeIcon(name, iconKind);
+
     for(auto status : DeviceStatus())
-      std::get<1>(spec)[status] = makeCompositeIcon(
-          getIcon(kind, IconKind::Tooltip), getIcon(status), status);
+      if(isValidStatus<DeviceKind>(status))
+        std::get<StatusIconsT>(deviceIcons)[status] = makeCompositeIcon(
+            getIcon(kind, IconKind::Tooltip), getIcon(status), status);
   }
 }
 
@@ -145,10 +83,12 @@ Icons::Icons(Plugin& plugin) : theme(nullptr) {
           {DeviceClass::Network, "network-idle"}});
 
   // Status icons
-  create({{DeviceStatus::Connected, "emblem-default"},
-          {DeviceStatus::Disabled, "dialog-warning"},
-          {DeviceStatus::Disconnected, "gtk-cancel"},
-          {DeviceStatus::Error, "dialog-error"}});
+  create({{DeviceStatus::Connected, "network-transmit-receive"},
+          {DeviceStatus::Mounted, "emblem-generic"},
+          {DeviceStatus::Disconnected, "network-offline"},
+          {DeviceStatus::Unmounted, "gtk-delete"},
+          {DeviceStatus::Unavailable, "gtk-close"},
+          {DeviceStatus::Error, "dialog-warning"}});
 
   // Disk icons
   create<DiskKind>({{DiskKind::Internal, "drive-harddisk"},
@@ -172,11 +112,8 @@ Icons::Icons(Plugin& plugin) : theme(nullptr) {
 Icons::~Icons() {
   TRACE_FUNC_ENTER;
 
-  functional::Functor<GdkPixbuf*> func(unref<GdkPixbuf>);
-  functional::map(func, pluginIcon);
-  functional::map(func, classIcons);
-  functional::map(func, statusIcons);
-  functional::map(func, deviceIcons);
+  functional::Functor<GdkPixbuf*> unref(::unref<GdkPixbuf>);
+  functional::map(unref, icons);
 
   TRACE_FUNC_EXIT;
 }
@@ -206,13 +143,15 @@ GdkPixbuf* Icons::makeCompositeIcon(GdkPixbuf*   base,
 
   switch(status) {
   case DeviceStatus::Connected:
+  case DeviceStatus::Mounted:
     break;
-  case DeviceStatus::Disabled:
+  case DeviceStatus::Unavailable:
     gdk_pixbuf_composite(overlay, copy, 0, baseHt - overlayHt, overlayWd,
                          overlayHt, 0, baseHt - overlayHt, 1.0, 1.0,
                          GDK_INTERP_HYPER, 255);
     break;
   case DeviceStatus::Disconnected:
+  case DeviceStatus::Unmounted:
     // Find a way to convert the image to grayscale
     break;
   case DeviceStatus::Error:
@@ -221,30 +160,22 @@ GdkPixbuf* Icons::makeCompositeIcon(GdkPixbuf*   base,
                          GDK_INTERP_HYPER, 255);
     break;
   default:
-    g_error("Unhandled device status: %d", static_cast<unsigned>(status));
+    g_error("Unhandled device status: %s", enum_cstr(status));
   }
 
   return copy;
 }
 
-const char* Icons::getIconName(DeviceClass clss) const {
-  return classIconNames[clss];
-}
-
-const char* Icons::getIconName(DeviceStatus status) const {
-  return statusIconNames[status];
-}
-
 GdkPixbuf* Icons::getIcon(DeviceClass clss) const {
-  return classIcons[clss];
+  return getIcons<ClassIconsT>()[clss];
 }
 
 GdkPixbuf* Icons::getIcon(DeviceStatus status) const {
-  return statusIcons[status];
+  return getIcons<StatusIconsT>()[status];
 }
 
 GdkPixbuf* Icons::getIcon() const {
-  return pluginIcon;
+  return getIcons<PluginIconT>();
 }
 
 unsigned Icons::getIconSize(IconKind kind) const {

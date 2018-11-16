@@ -1,19 +1,19 @@
 #include "DeviceStats.h"
 
 #include "Debug.h"
-#include "Device.h"
 #include "Functional.h"
 #include "Plugin.h"
 #include "Utils.h"
 #include "sys/common/StatsReader.h"
 
-DeviceStats::DeviceStats(const Device& refDevice)
-    : device(refDevice), plugin(device.getPlugin()) {
+DeviceStats::DeviceStats(Device& device)
+    : device(device), plugin(device.getPlugin()) {
   TRACE_FUNC_ENTER;
 
-  status = DeviceStatus::Disabled;
-  functional::map(functional::Functor<double>(nullify<double>), rate);
-  functional::map(functional::Functor<uint64_t>(nullify<uint64_t>), bytes);
+  status = DeviceStatus::Unavailable;
+  functional::Functor<uint64_t> func(nullify<uint64_t>);
+  functional::map(func, rate);
+  functional::map(func, bytes);
 
   TRACE_FUNC_EXIT;
 }
@@ -21,8 +21,9 @@ DeviceStats::DeviceStats(const Device& refDevice)
 void DeviceStats::reset() {
   TRACE_FUNC_ENTER;
 
-  functional::map(functional::Functor<double>(nullify<double>), rate);
-  functional::map(functional::Functor<uint64_t>(nullify<uint64_t>), bytes);
+  functional::Functor<uint64_t> func(nullify<uint64_t>);
+  functional::map(func, rate);
+  functional::map(func, bytes);
 
   TRACE_FUNC_EXIT;
 }
@@ -36,7 +37,7 @@ uint64_t DeviceStats::getBytes(XferDirection direction,
   return bytes[direction][range];
 }
 
-double DeviceStats::getRate(XferDirection direction) const {
+uint64_t DeviceStats::getRate(XferDirection direction) const {
   return rate[direction];
 }
 
@@ -58,6 +59,6 @@ bool DeviceStats::update(StatsReader& reader) {
   bool changed = reader.update(plugin.getPeriod());
 
   TRACE_TICK_FUNC_EXIT;
-  
+
   return changed;
 }

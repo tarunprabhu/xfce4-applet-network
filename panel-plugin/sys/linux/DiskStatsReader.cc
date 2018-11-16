@@ -47,12 +47,12 @@ bool DiskStatsReader::update(double period) {
         stats.setWaitTime(direction, waitTime);
       }
       stats.setUpTime(up);
-      stats.setStatus(DeviceStatus::Connected);
+      stats.setStatus(DeviceStatus::Mounted);
     } else {
       stats.setStatus(DeviceStatus::Error);
     }
   } else {
-    stats.setStatus(DeviceStatus::Disabled);
+    stats.setStatus(DeviceStatus::Unavailable);
   }
 
   bool changed = false;

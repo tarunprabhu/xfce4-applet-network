@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_NETWORK_PANEL_PLUGIN_H
 #define XFCE_APPLET_NETWORK_PANEL_PLUGIN_H
 
-#include <libxfce4panel/xfce-panel-plugin.h>
+#include "Xfce.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -21,11 +21,11 @@ protected:
   const Plugin& plugin;
 
   DeviceStatus     status;
-  Stats1<double>   rate;
+  Stats1<uint64_t> rate;
   Stats2<uint64_t> bytes;
 
 protected:
-  DeviceStats(const Device&);
+  DeviceStats(Device&);
 
   template <typename T> void update(Array<T, StatsRange>& arr, T newVal) {
     arr[StatsRange::Interval] = newVal - arr[StatsRange::Total];
@@ -40,7 +40,7 @@ public:
   DeviceStats& operator=(const DeviceStats&) = delete;
 
   DeviceStatus getStatus() const;
-  double       getRate(XferDirection) const;
+  uint64_t     getRate(XferDirection) const;
   uint64_t     getBytes(XferDirection, StatsRange) const;
 
   void setStatus(DeviceStatus);

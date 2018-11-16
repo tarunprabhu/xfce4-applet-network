@@ -2,8 +2,6 @@
 
 #include "Path.h"
 
-#include <libxfce4util/libxfce4util.h>
-
 #include <algorithm>
 #include <fstream>
 #include <stdint.h>

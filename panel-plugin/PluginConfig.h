@@ -4,6 +4,7 @@
 #include "Defaults.h"
 #include "IDialog.h"
 #include "Range.h"
+#include "Types.h"
 
 #include <gtk/gtk.h>
 
@@ -11,6 +12,7 @@ class CSS;
 class Device;
 class Icons;
 class Plugin;
+class PluginUI;
 
 class PluginConfig : public IDialog {
 public:
@@ -26,32 +28,31 @@ public:
   // The width of each step in a slider in pixels
   static const unsigned SliderStepWidth = 12;
 
-  static constexpr Range<double>   RangePeriod  = {0.25, 2, 0.25,
-                                                Defaults::Plugin::Period};
-  static constexpr Range<unsigned> RangeBorder  = {0, 16, 1,
-                                                  Defaults::Plugin::Border};
-  static constexpr Range<unsigned> RangePadding = {0, 16, 1,
-                                                   Defaults::Plugin::Padding};
-  static constexpr Range<unsigned> RangeSpacing = {0, 16, 1,
-                                                   Defaults::Plugin::Spacing};
+  static const Range<double>   RangePeriod;
+  static const Range<unsigned> RangeBorder;
+  static const Range<unsigned> RangePadding;
+  static const Range<unsigned> RangeSpacing;
 
 private:
   Plugin&      plugin;
+  PluginUI&    ui;
   const CSS&   css;
   const Icons& icons;
 
-  GtkWidget* dialog;           // Main config dialog window
-  GtkWidget* entryLabel;       // Textbox to update the plugin label
-  GtkWidget* treeDevices;      // Tree view showing the networks
-  GtkWidget* toolitemAdd;      // Add network toolbar button
-  GtkWidget* toolitemRemove;   // Remove network toolbar button
-  GtkWidget* toolitemMoveUp;   // Move network up toolbar button
-  GtkWidget* toolitemMoveDown; // Move network down toolbar button
-  GtkWidget* toolitemConfig;   // Configure network toolbar button
-  GtkWidget* labelBorderText;  // Label showing border width
-  GtkWidget* labelPaddingText; // Label showing padding
-  GtkWidget* labelSpacingText; // Label showing padding
-  Array<GtkWidget*, DeviceClass> menuItems; // Device classes to add
+  GtkWidget*                     dialog;
+  GtkWidget*                     boxLabel;
+  GtkWidget*                     entryLabel;
+  GtkWidget*                     comboLabelPosition;
+  GtkWidget*                     treeDevices;
+  GtkWidget*                     toolitemAdd;
+  GtkWidget*                     toolitemRemove;
+  GtkWidget*                     toolitemMoveUp;
+  GtkWidget*                     toolitemMoveDown;
+  GtkWidget*                     toolitemConfig;
+  GtkWidget*                     labelBorderText;
+  GtkWidget*                     labelPaddingText;
+  GtkWidget*                     labelSpacingText;
+  Array<GtkWidget*, DeviceClass> menuItems;
 
 private:
   GtkWidget* createPluginAppearanceFrame();
@@ -64,6 +65,7 @@ private:
   void appendDevice(const Device&);
 
   virtual GtkWidget* createDialog() override;
+  virtual void       destroyDialog() override;
   virtual void       clearDialog() override;
 
 public:
@@ -74,7 +76,7 @@ public:
 
   PluginConfig& operator=(const PluginConfig&) = delete;
 
-  int cbDialogResponse(GtkDialog*, gint);
+  gint cbDialogResponse(GtkDialog*, Response);
 
   void cbSpinPeriodChanged(GtkSpinButton*);
   void cbCheckShowLabelToggled(GtkToggleButton*);
@@ -94,6 +96,10 @@ public:
   void cbToolItemMoveUpClicked(GtkToolItem*);
   void cbToolItemMoveDownClicked(GtkToolItem*);
   void cbToolItemConfigClicked(GtkToolItem*);
+  gboolean
+  cbTreeViewQueryTooltip(GtkTreeView*, gint, gint, gboolean, GtkTooltip*);
+
+  virtual GtkWidget* getDialog() override;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_CONFIG_H

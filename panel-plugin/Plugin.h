@@ -8,9 +8,7 @@
 #include "PluginConfig.h"
 #include "PluginOptions.h"
 #include "PluginUI.h"
-
-#include <libxfce4panel/xfce-panel-plugin.h>
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
@@ -45,8 +43,6 @@ private:
   void writeConfig(XfceRc*) const;
 
   GdkPixbuf* getIcon(const std::string&, unsigned);
-  void       setTimer();
-  void       clearTimer();
 
 public:
   Plugin(XfcePanelPlugin*);
@@ -71,6 +67,8 @@ public:
   void readConfig();
   void writeConfig() const;
   void resetTimer();
+  void setTimer();
+  void clearTimer();
 
   size_t  getNumDevices() const;
   Device& getDeviceAt(int);
@@ -84,7 +82,6 @@ public:
   void     cbReadConfig();
   void     cbSave() const;
   gboolean cbTimerTick();
-  void     cbRefresh();
 
   Plugin& setPeriod(double);
   Plugin& setBorder(unsigned);

@@ -71,7 +71,7 @@ DeviceStatus NetworkStatsReader::readStatus() {
       return DeviceStatus::Error;
   }
 
-  return DeviceStatus::Disabled;
+  return DeviceStatus::Unavailable;
 }
 
 uint64_t NetworkStatsReader::readBytes(XferDirection direction) {

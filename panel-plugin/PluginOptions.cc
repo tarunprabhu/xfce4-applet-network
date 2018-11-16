@@ -5,7 +5,7 @@
 #include "Plugin.h"
 #include "XfceUtils.h"
 
-PluginOptions::PluginOptions(Plugin& refPlugin) : plugin(refPlugin) {
+PluginOptions::PluginOptions(Plugin& plugin) : plugin(plugin) {
   TRACE_FUNC_ENTER;
 
   period                 = Defaults::Plugin::Period;

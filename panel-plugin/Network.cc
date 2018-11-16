@@ -8,8 +8,8 @@
 
 #include <sstream>
 
-Network::Network(Plugin& refPlugin)
-    : Device(refPlugin, DeviceClass::Network), options(*this), stats(*this),
+Network::Network(Plugin& plugin)
+    : Device(plugin, DeviceClass::Network), options(*this), stats(*this),
       reader(stats), tooltip(*this), ui(*this) {
   TRACE_FUNC_ENTER;
 
@@ -60,8 +60,8 @@ const char* Network::getKindCstr() const {
   return enum_cstr(options.kind);
 }
 
-bool Network::getShowDisconnected() const {
-  return options.showDisconnected;
+bool Network::getShowNotConnected() const {
+  return options.showNotConnected;
 }
 
 Network& Network::setDevice(const std::string& device) {
@@ -85,8 +85,8 @@ Network& Network::setKind(NetworkKind kind) {
   return *this;
 }
 
-Network& Network::setShowDisconnected(bool show) {
-  options.showDisconnected = show;
+Network& Network::setShowNotConnected(bool show) {
+  options.showNotConnected = show;
 
   return *this;
 }

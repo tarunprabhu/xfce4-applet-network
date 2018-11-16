@@ -2,31 +2,32 @@
 #define XFCE_APPLET_SPEED_DEVICE_OPTIONS_H
 
 #include "Types.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
 #include <string>
 
 class Device;
+class Plugin;
 
 class DeviceOptions {
 protected:
   Device& device;
+  const Plugin& plugin;
 
   std::string dev;
   std::string name;
-  double      rxMax;               // Rate is in B/s
-  double      txMax;               // Rate is in B/s
-  bool        showDisabled;        // Show the dial and (maybe) label even when
-                                   // interface is disabled
-  bool                  showLabel; // Show a label above/below the dial
-  std::string           label;     // The label to display with the dial
-  GdkRGBA*              labelFg;   // Label text color
-  GdkRGBA*              labelBg;   // Label background color
-  PangoFontDescription* labelFont; // Label font
-  LabelPosition labelPosition;     // Position of the label relative to the dial
+  DialKind    dial;
+  uint64_t    rxMax;            // Rate is in B/s
+  uint64_t    txMax;            // Rate is in B/s
+  bool        showNotAvailable; // Show the dial and (maybe) label when
+                                // device is unavailable
+  bool          showLabel;      // Show a label above/below the dial
+  std::string   label;          // The label to display with the dial
+  GdkRGBA       labelFg;        // Label text color
+  GdkRGBA       labelBg;        // Label background color
+  LabelPosition labelPosition;  // Position of the label relative to the dial
 
 protected:
   DeviceOptions(Device&);

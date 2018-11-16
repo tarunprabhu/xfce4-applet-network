@@ -17,10 +17,11 @@ protected:
   virtual void updateIcon() override;
   virtual void updateText() override;
 
-  virtual void createUI() override;
+  virtual GtkWidget* createUI() override;
+  virtual void clearUI() override;
 
 public:
-  NetworkTooltip(const Network&);
+  NetworkTooltip(Network&);
   NetworkTooltip(const NetworkTooltip&)  = delete;
   NetworkTooltip(const NetworkTooltip&&) = delete;
   virtual ~NetworkTooltip()              = default;

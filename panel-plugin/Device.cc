@@ -10,18 +10,18 @@
 std::unique_ptr<Device> Device::makeNew(DeviceClass clss, Plugin& plugin) {
   switch(clss) {
   case DeviceClass::Disk:
-    return std::move(std::unique_ptr<Device>(new Disk(plugin)));
+    return std::unique_ptr<Device>(new Disk(plugin));
   case DeviceClass::Network:
-    return std::move(std::unique_ptr<Device>(new Network(plugin)));
+    return std::unique_ptr<Device>(new Network(plugin));
   default:
     g_error("Unsupported device class: %s", enum_cstr(clss));
     break;
   }
-  return std::move(std::unique_ptr<Device>(nullptr));
+  return std::unique_ptr<Device>(nullptr);
 }
 
-Device::Device(Plugin& refPlugin, DeviceClass initClass)
-    : plugin(refPlugin), icons(plugin.getIcons()), clss(initClass) {
+Device::Device(Plugin& plugin, DeviceClass clss)
+    : plugin(plugin), icons(plugin.getIcons()), clss(clss) {
   TRACE_FUNC_ENTER;
 
   TRACE_FUNC_EXIT;
@@ -55,16 +55,20 @@ const std::string& Device::getName() const {
   return getOptions().name;
 }
 
-double Device::getRxMax() const {
+DialKind Device::getDial() const {
+  return getOptions().dial;
+}
+
+uint64_t Device::getRxMax() const {
   return getOptions().rxMax;
 }
 
-double Device::getTxMax() const {
+uint64_t Device::getTxMax() const {
   return getOptions().txMax;
 }
 
-bool Device::getShowDisabled() const {
-  return getOptions().showDisabled;
+bool Device::getShowNotAvailable() const {
+  return getOptions().showNotAvailable;
 }
 
 bool Device::getShowLabel() const {
@@ -75,20 +79,20 @@ const std::string& Device::getLabel() const {
   return getOptions().label;
 }
 
-const GdkRGBA* Device::getLabelFgColor() const {
+const GdkRGBA& Device::getLabelFgColor() const {
   return getOptions().labelFg;
 }
 
-const GdkRGBA* Device::getLabelBgColor() const {
+const GdkRGBA& Device::getLabelBgColor() const {
   return getOptions().labelBg;
-}
-
-const PangoFontDescription* Device::getLabelFont() const {
-  return getOptions().labelFont;
 }
 
 LabelPosition Device::getLabelPosition() const {
   return getOptions().labelPosition;
+}
+
+DeviceStatus Device::getStatus() const {
+  return getStats().getStatus();
 }
 
 Device& Device::setName(const std::string& name) {
@@ -97,20 +101,29 @@ Device& Device::setName(const std::string& name) {
   return *this;
 }
 
-Device& Device::setRxMax(double rate) {
+Device& Device::setDial(DialKind kind) {
+  getOptions().dial = kind;
+  getUI().setDial(kind);
+  
+  return *this;
+}
+
+Device& Device::setRxMax(uint64_t rate) {
   getOptions().rxMax = rate;
+  getUI().setDial(getDial());
 
   return *this;
 }
 
-Device& Device::setTxMax(double rate) {
+Device& Device::setTxMax(uint64_t rate) {
   getOptions().txMax = rate;
+  getUI().setDial(getDial());
 
   return *this;
 }
 
-Device& Device::setShowDisabled(bool show) {
-  getOptions().showDisabled = show;
+Device& Device::setShowNotAvailable(bool show) {
+  getOptions().showNotAvailable = show;
 
   return *this;
 }
@@ -127,23 +140,16 @@ Device& Device::setLabel(const std::string& label) {
   return *this;
 }
 
-Device& Device::setLabelFgColor(const GdkRGBA* color) {
-  gdk_rgba_free(getOptions().labelFg);
-  getOptions().labelFg = gdk_rgba_copy(color);
+Device& Device::setLabelFgColor(const GdkRGBA& color) {
+  getOptions().labelFg = color;
+  getUI().setCSS();
 
   return *this;
 }
 
-Device& Device::setLabelBgColor(const GdkRGBA* color) {
-  gdk_rgba_free(getOptions().labelBg);
-  getOptions().labelBg = gdk_rgba_copy(color);
-
-  return *this;
-}
-
-Device& Device::setLabelFont(const PangoFontDescription* font) {
-  pango_font_description_free(getOptions().labelFont);
-  getOptions().labelFont = pango_font_description_copy(font);
+Device& Device::setLabelBgColor(const GdkRGBA& color) {
+  getOptions().labelBg = color;
+  getUI().setCSS();
 
   return *this;
 }

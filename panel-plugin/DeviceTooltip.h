@@ -1,7 +1,8 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 #define XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 
-#include <libxfce4util/libxfce4util.h>
+#include "IUI.h"
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
@@ -11,9 +12,9 @@ class Device;
 class Icons;
 class Plugin;
 
-class DeviceTooltip {
+class DeviceTooltip : public IUI {
 protected:
-  const Device& device;
+  Device&       device;
   const Plugin& plugin;
   const Icons&  icons;
   GdkPixbuf*    icon;
@@ -22,24 +23,25 @@ protected:
   GtkWidget* imageDevice; // Image for the device status icon
   GtkWidget* labelTitle;  // Title containing device name
   GtkWidget* boxText;     // Box for text
-  
+
 private:
   // There is no need for children to call this because the window widget
   // will contain everything that needs to be destroyed, including anything
   // added there by subclasses
-  void destroyUI();
-  
+  virtual void destroyUI() override;
+
 protected:
-  DeviceTooltip(const Device&);
+  DeviceTooltip(Device&);
 
   virtual void updateIcon() = 0;
   virtual void updateText() = 0;
-  
+
   // The implementation of this function will be called by all children
   // This function will create the common elements of the tooltip and the
   // children will be responsible for the rest
-  virtual void createUI();
-  
+  virtual GtkWidget* createUI() override;
+  virtual void       clearUI() override;
+
 public:
   DeviceTooltip(const DeviceTooltip&)  = delete;
   DeviceTooltip(const DeviceTooltip&&) = delete;
@@ -58,7 +60,9 @@ public:
   // This gets called when the device parameters change. This would involve
   // the title label being changed and anything else that depends on the
   // static device parameters
-  virtual void refresh();
+  virtual void cbRefresh() override;
+
+  virtual GtkWidget* getWidget() override;
 };
 
 #endif // XFCE_APPLET_SPEED_TOOLTIP_UI_H

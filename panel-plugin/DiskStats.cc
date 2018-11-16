@@ -5,14 +5,13 @@
 #include "Functional.h"
 #include "Utils.h"
 
-DiskStats::DiskStats(Disk& refDisk)
-    : DeviceStats(refDisk), disk(refDisk) {
+DiskStats::DiskStats(Disk& disk) : DeviceStats(disk), disk(disk) {
   TRACE_FUNC_ENTER;
 
   functional::Functor<uint64_t> func(nullify<uint64_t>);
   functional::map(func, upTime);
   functional::map(func, waitTime);
-  
+
   TRACE_FUNC_EXIT;
 }
 

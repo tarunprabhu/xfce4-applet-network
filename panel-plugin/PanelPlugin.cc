@@ -2,10 +2,7 @@
 
 #include "Debug.h"
 #include "Plugin.h"
-#include "PluginUI.h"
-
-#include <libxfce4panel/xfce-panel-plugin.h>
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
@@ -36,8 +33,7 @@ static void cb_resize(XfcePanelPlugin*, gint size, gpointer data) {
   reinterpret_cast<Plugin*>(data)->getUI().cbResize(size);
 }
 
-static gboolean
-cb_handle_event(XfcePanelPlugin*, gchar* name, GValue* value, gpointer data) {
+static gboolean cb_handle_event(XfcePanelPlugin*, gchar*, GValue*, gpointer) {
   return FALSE;
 }
 

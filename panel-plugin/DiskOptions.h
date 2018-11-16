@@ -7,12 +7,15 @@ class Disk;
 
 class DiskOptions : public DeviceOptions {
 private:
-  Disk& disk;
+  Disk&    disk;
   DiskKind kind;
 
+  // Show the device and (maybe) label when the disk is unmounted
+  bool showNotMounted;
+  
 public:
   DiskOptions(Disk&);
-  DiskOptions(const DiskOptions&) = delete;
+  DiskOptions(const DiskOptions&)  = delete;
   DiskOptions(const DiskOptions&&) = delete;
   virtual ~DiskOptions();
 
@@ -20,7 +23,7 @@ public:
 
   virtual void readConfig(XfceRc*) override;
   virtual void writeConfig(XfceRc*) const override;
-  
+
   friend class Disk;
 };
 

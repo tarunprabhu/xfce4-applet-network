@@ -3,18 +3,20 @@
 #include "Debug.h"
 #include "Disk.h"
 
-DiskUI::DiskUI(Disk& refDisk) : DeviceUI(refDisk), disk(refDisk) {
+DiskUI::DiskUI(Disk& disk) : DeviceUI(disk), disk(disk) {
   TRACE_FUNC_ENTER;
 
   createUI();
-  
+
   TRACE_FUNC_EXIT;
 }
 
-void DiskUI::createUI() {
+GtkWidget* DiskUI::createUI() {
   TRACE_FUNC_ENTER;
 
   DeviceUI::createUI();
 
   TRACE_FUNC_EXIT;
+
+  return container;
 }

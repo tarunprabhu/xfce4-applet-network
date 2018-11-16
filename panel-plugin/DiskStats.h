@@ -9,7 +9,7 @@
 class Disk;
 
 class DiskStats : public DeviceStats {
-private:
+protected:
   const Disk& disk;
 
   uint64_t         upTime;

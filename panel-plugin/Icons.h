@@ -13,39 +13,34 @@
 class Plugin;
 
 class Icons {
-public:
-  // using DispatchFunc = std::function<void(GdkPixbuf*&)>;
-
 private:
-  // struct DeviceSpec {
-  //   Array<GdkPixbuf*, IconKind>     basic;
-  //   Array<GdkPixbuf*, DeviceStatus> tooltip;
-  // };
-  using DeviceSpec =
-      std::tuple<Array<GdkPixbuf*, IconKind>, Array<GdkPixbuf*, DeviceStatus>>;
-  template <typename... Ts>
-  using DeviceIconsImpl = std::tuple<Array<DeviceSpec, Ts>...>;
-
   using PluginIconT  = GdkPixbuf*;
+  using KindIconsT   = Array<GdkPixbuf*, IconKind>;
   using ClassIconsT  = Array<GdkPixbuf*, DeviceClass>;
   using StatusIconsT = Array<GdkPixbuf*, DeviceStatus>;
-  using DeviceIconsT = DeviceIconsImpl<DiskKind, NetworkKind>;
+
+  template <typename DeviceKind>
+  using DeviceKindIconsT = Array<std::tuple<KindIconsT, // <
+                                            StatusIconsT>,
+                                 DeviceKind>;
+  using DeviceIconsT     = std::tuple<DeviceKindIconsT<DiskKind>, // <
+                                  DeviceKindIconsT<NetworkKind>>;
+
+  using IconsT =
+      std::tuple<PluginIconT, ClassIconsT, StatusIconsT, DeviceIconsT>;
+
+  using ClassIconNamesT  = Array<const char*, DeviceClass>;
+  using StatusIconNamesT = Array<const char*, DeviceStatus>;
+
+  using IconNamesT = std::tuple<ClassIconNamesT, StatusIconNamesT>;
 
 private:
   GtkIconTheme*             theme;
-  PluginIconT               pluginIcon;
-  ClassIconsT               classIcons;
-  StatusIconsT              statusIcons;
-  DeviceIconsT              deviceIcons;
   Array<unsigned, IconKind> sizes;
-
-  Array<const char*, DeviceClass>  classIconNames;
-  Array<const char*, DeviceStatus> statusIconNames;
+  IconsT                    icons;
+  IconNamesT                iconNames;
 
 private:
-  // template <size_t N> void   dispatch(const DispatchFunc&);
-  // template <typename T> void dispatch(const DispatchFunc&);
-
   GdkPixbuf* makeIcon(const char*, IconKind);
   GdkPixbuf* makeCompositeIcon(GdkPixbuf*, GdkPixbuf*, DeviceStatus);
 
@@ -56,6 +51,46 @@ private:
   template <typename DeviceKind>
   void create(const std::map<DeviceKind, const char*>&);
 
+  template <typename T> T& getIcons() {
+    return std::get<T>(icons);
+  }
+
+  template <typename T> const T& getIcons() const {
+    return std::get<T>(icons);
+  }
+
+  template <typename T> Array<const char*, T>& getIconNames() {
+    return std::get<Array<const char*, T>>(iconNames);
+  }
+
+  template <typename T> const Array<const char*, T>& getIconNames() const {
+    return std::get<Array<const char*, T>>(iconNames);
+  }
+
+  template <typename DeviceKind>
+  DeviceKindIconsT<DeviceKind>& getDeviceIcons() {
+    return std::get<DeviceKindIconsT<DeviceKind>>(getIcons<DeviceIconsT>());
+  }
+
+  template <typename DeviceKind>
+  const DeviceKindIconsT<DeviceKind>& getDeviceIcons() const {
+    return std::get<DeviceKindIconsT<DeviceKind>>(getIcons<DeviceIconsT>());
+  }
+
+  template <typename DeviceKind>
+  typename DeviceKindIconsT<DeviceKind>::reference
+  getDeviceIcons(DeviceKind kind) {
+    auto& deviceIcons = getDeviceIcons<DeviceKind>();
+    return deviceIcons[kind];
+  }
+
+  template <typename DeviceKind>
+  typename DeviceKindIconsT<DeviceKind>::const_reference
+  getDeviceIcons(DeviceKind kind) const {
+    const auto& deviceIcons = getDeviceIcons<DeviceKind>();
+    return deviceIcons[kind];
+  }
+
 public:
   Icons(Plugin&);
   Icons(const Plugin&)  = delete;
@@ -64,24 +99,21 @@ public:
 
   template <typename DeviceKind>
   GdkPixbuf* getIcon(DeviceKind deviceKind, IconKind iconKind) const {
-    auto& spec =
-        std::get<Array<DeviceSpec, DeviceKind>>(deviceIcons)[deviceKind];
-    return std::get<0>(spec)[iconKind];
+    return std::get<KindIconsT>(getDeviceIcons(deviceKind))[iconKind];
   }
 
   template <typename DeviceKind>
   GdkPixbuf* getIcon(DeviceKind deviceKind, DeviceStatus status) const {
-    auto& spec =
-        std::get<Array<DeviceSpec, DeviceKind>>(deviceIcons)[deviceKind];
-    return std::get<1>(spec)[status];
+    return std::get<StatusIconsT>(getDeviceIcons(deviceKind))[status];
   }
-
-  const char* getIconName(DeviceClass) const;
-  const char* getIconName(DeviceStatus) const;
 
   GdkPixbuf* getIcon(DeviceClass) const;
   GdkPixbuf* getIcon(DeviceStatus) const;
   GdkPixbuf* getIcon() const;
+
+  template <typename Enum> const char* getIconName(Enum e) const {
+    return getIconNames<Enum>()[e];
+  }
 
   unsigned getIconSize(IconKind) const;
 };

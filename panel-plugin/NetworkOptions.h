@@ -11,10 +11,8 @@ protected:
   Network&    network;
   NetworkKind kind;
 
-  // Networks have an additional disconnected state where the device is
-  // connected but not disabled Show the dial and (maybe) label when device is
-  // disconnected.
-  bool showDisconnected;
+  // Show the dial and (maybe) label when device is disconnected.
+  bool showNotConnected;
 
 public:
   NetworkOptions(Network&);

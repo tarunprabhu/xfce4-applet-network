@@ -2,9 +2,9 @@
 #define XFCE_APPLET_SPEED_PLUGIN_UI_H
 
 #include "Array.h"
+#include "IUI.h"
 #include "Types.h"
-
-#include <libxfce4util/libxfce4util.h>
+#include "Xfce.h"
 
 #include <gtk/gtk.h>
 
@@ -12,7 +12,7 @@
 
 class Plugin;
 
-class PluginUI {
+class PluginUI : public IUI {
 private:
   Plugin& plugin;
 
@@ -28,9 +28,10 @@ private:
   GtkWidget* evt;        // The event box for the entire plugin
 
 private:
-  void createUI();
-  void destroyUI();
-  
+  virtual GtkWidget* createUI() override;
+  virtual void destroyUI() override;
+  virtual void clearUI() override;
+
 public:
   PluginUI(Plugin&);
   PluginUI(const Plugin&)  = delete;
@@ -49,8 +50,9 @@ public:
   GtkOrientation getOrientation() const;
   GtkIconTheme*  getIconTheme() const;
 
-  void cbRefresh();
-  void cbRedraw();
+  virtual void cbRefresh() override;
+
+  virtual GtkWidget* getWidget() override;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_UI_H

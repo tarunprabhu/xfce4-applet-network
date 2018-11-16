@@ -16,7 +16,7 @@ private:
 private:
   CSSBuilder& addBeginDeclaration(const std::string&);
   CSSBuilder& addEndDeclaration();
-  CSSBuilder& addColor(const GdkRGBA*);
+  CSSBuilder& addColor(const GdkRGBA&);
 
   void error_if_committed() const;
   void error_if_not_committed() const;
@@ -39,8 +39,8 @@ public:
   CSSBuilder& addFontWeight(const std::string&);
   CSSBuilder& addFontWeight(unsigned);
   
-  CSSBuilder& addFgColor(const GdkRGBA*);
-  CSSBuilder& addBgColor(const GdkRGBA*);
+  CSSBuilder& addFgColor(const GdkRGBA&);
+  CSSBuilder& addBgColor(const GdkRGBA&);
 
   CSSBuilder& addMargin(unsigned, const std::string& = "px");
   CSSBuilder& addMarginLeft(unsigned, const std::string& = "px");
