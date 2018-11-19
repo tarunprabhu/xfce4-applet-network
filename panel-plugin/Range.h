@@ -30,58 +30,44 @@ public:
   };
 
 private:
-  T first;
-  T last;
-  T step;
-  T defalt;
+  T First;
+  T Last;
+  T Step;
+  T Steps;
+  T Default;
 
 public:
   constexpr Range() : Range(0, 0, 0, 0, true) {
     ;
   }
 
-  constexpr Range(
-      T initFirst, T initLast, T initStep, T initDefault, bool inclusive = true)
-      : first(initFirst), last(initLast), step(initStep), defalt(initDefault) {
-    ASSERT(step != 0, "Non-zero step required for range");
+  constexpr Range(T first, T last, T step, T def, bool inclusive = true)
+      : First(first), Last(last), Step(step), Steps(0), Default(def) {
+    ASSERT(Step != 0, "Non-zero step required for range");
 
     if(not inclusive) {
-      if(step > 0)
-        last -= step;
-      else if(step < 0)
-        last += step;
+      if(Step > 0)
+        Last -= Step;
+      else if(Step < 0)
+        Last += Step;
     }
 
-    if(step > 0)
-      ASSERT((first <= last) and (defalt >= first) and (defalt <= last),
+    Steps = (Last - First) / Step;
+
+    if(Step > 0)
+      ASSERT((First <= Last) and (Default >= First) and (Default <= Last),
              "For step > 0, condition 'first <= default <= last' is violated");
     else
-      ASSERT((first >= last) and (defalt <= first) and (defalt >= last),
+      ASSERT((First >= Last) and (Default <= First) and (Default >= Last),
              "For step < 0, condition 'first >= default >= last' is violated");
   }
 
-  T getFirst() const {
-    return first;
-  }
-
-  T getLast() const {
-    return last;
-  }
-
-  T getStep() const {
-    return step;
-  }
-
-  T getDefault() const {
-    return defalt;
-  }
-
   Iterator begin() const {
-    return Iterator(first, step);
+    return Iterator(First, Step);
   }
 
   Iterator end() const {
-    return Iterator(last + step, step);
+    return Iterator(Last + Step, Step);
   }
 };
 

@@ -2,24 +2,20 @@
 #define XFCE_APPLET_SPEED_PLUGIN_CONFIG_H
 
 #include "Defaults.h"
-#include "IDialog.h"
 #include "Range.h"
 #include "Types.h"
+#include <gtkmm/gtkmm.h>
 
-#include <gtk/gtk.h>
-
-class CSS;
 class Device;
 class Icons;
 class Plugin;
 class PluginUI;
 
-class PluginConfig : public IDialog {
+class PluginConfig : public Gtk::Dialog {
 public:
   // Style parameters for the dialog window
   static const unsigned Border  = 8;  // Border around the containers
-  static const unsigned Padding = 8;  // Padding between row/columns in grids
-  static const unsigned Spacing = 4;  // Spacing between contents of a box
+  static const unsigned Spacing = 8;  // Padding between row/columns in grids
   static const unsigned Width   = 12; // Maximum width of page titles
 
   static constexpr gfloat FrameAlignX = 0.05;
@@ -28,45 +24,41 @@ public:
   // The width of each step in a slider in pixels
   static const unsigned SliderStepWidth = 12;
 
-  static const Range<double>   RangePeriod;
-  static const Range<unsigned> RangeBorder;
-  static const Range<unsigned> RangePadding;
-  static const Range<unsigned> RangeSpacing;
-
 private:
   Plugin&      plugin;
   PluginUI&    ui;
-  const CSS&   css;
   const Icons& icons;
 
-  GtkWidget*                     dialog;
-  GtkWidget*                     boxLabel;
-  GtkWidget*                     entryLabel;
-  GtkWidget*                     comboLabelPosition;
-  GtkWidget*                     treeDevices;
-  GtkWidget*                     toolitemAdd;
-  GtkWidget*                     toolitemRemove;
-  GtkWidget*                     toolitemMoveUp;
-  GtkWidget*                     toolitemMoveDown;
-  GtkWidget*                     toolitemConfig;
-  GtkWidget*                     labelBorderText;
-  GtkWidget*                     labelPaddingText;
-  GtkWidget*                     labelSpacingText;
-  Array<GtkWidget*, DeviceClass> menuItems;
+  Gtk::Dialog*                       dialog;
+  Gtk::Grid*                         gridLabel;
+  Gtk::CheckButton*                  checkShowLabel;
+  Gtk::Entry*                        entryLabel;
+  Gtk::ColorButton*                  colorLabelFg;
+  Gtk::ColorButton*                  colorLabelBg;
+  Gtk::ComboBoxText*                 comboLabelPosition;
+  Gtk::TreeView*                     treeDevices;
+  Gtk::ToolButton*                   toolitemAdd;
+  Gtk::ToolButton*                   toolitemRemove;
+  Gtk::ToolButton*                   toolitemMoveUp;
+  Gtk::ToolButton*                   toolitemMoveDown;
+  Gtk::ToolButton*                   toolitemConfig;
+  Gtk::Scale*                        scaleBorder;
+  Gtk::Label*                        labelBorder;
+  Gtk::Scale*                        scalePadding;
+  Gtk::Label*                        labelPadding;
+  Gtk::Scale*                        scaleSpacing;
+  Gtk::Label*                        labelSpacing;
+  Array<Gtk::MenuItem*, DeviceClass> menuItems;
 
 private:
-  GtkWidget* createPluginAppearanceFrame();
-  GtkWidget* createTooltipAppearanceFrame();
-  GtkWidget* createLabelAppearanceFrame();
-  GtkWidget* createDisplayPage();
-  GtkWidget* createAppearancePage();
-  GtkWidget* createDevicesPage();
+  Gtk::Container& createPluginAppearanceFrame();
+  Gtk::Container& createTooltipAppearanceFrame();
+  Gtk::Container& createLabelAppearanceFrame();
+  Gtk::Container& createDisplayPage();
+  Gtk::Container& createAppearancePage();
+  Gtk::Container& createDevicesPage();
 
   void appendDevice(const Device&);
-
-  virtual GtkWidget* createDialog() override;
-  virtual void       destroyDialog() override;
-  virtual void       clearDialog() override;
 
 public:
   PluginConfig(Plugin&);
@@ -78,28 +70,28 @@ public:
 
   gint cbDialogResponse(GtkDialog*, Response);
 
-  void cbSpinPeriodChanged(GtkSpinButton*);
-  void cbCheckShowLabelToggled(GtkToggleButton*);
-  void cbEntryLabelChanged(GtkEntry*);
-  void cbComboLabelPositionChanged(GtkComboBox*);
-  void cbScaleBorderChanged(GtkRange*);
-  void cbScalePaddingChanged(GtkRange*);
-  void cbScaleSpacingChanged(GtkRange*);
-  void cbComboTooltipVerbosityChanged(GtkComboBox*);
-  void cbFontFontSet(GtkFontChooser*);
-  void cbToggleBoldToggled(GtkToggleButton*);
-  void cbToggleSmallcapsToggled(GtkToggleButton*);
-  void cbTreeRowActivated(GtkTreeView*, GtkTreePath*, GtkTreeViewColumn*);
-  void cbTreeCursorChanged(GtkTreeView*);
-  void cbToolItemAddClicked(GtkToolItem*);
-  void cbToolItemRemoveClicked(GtkToolItem*);
-  void cbToolItemMoveUpClicked(GtkToolItem*);
-  void cbToolItemMoveDownClicked(GtkToolItem*);
-  void cbToolItemConfigClicked(GtkToolItem*);
+  void cbSpinPeriodChanged();
+  void cbCheckShowLabelToggled();
+  void cbEntryLabelChanged();
+  void cbColorLabelFgSet();
+  void cbColorLabelBgSet();
+  void cbComboLabelPositionChanged();
+  void cbScaleBorderChanged();
+  void cbScalePaddingChanged();
+  void cbScaleSpacingChanged();
+  void cbComboVerbosityChanged();
+  void cbFontFontSet();
+  void cbToggleBoldToggled();
+  void cbToggleSmallcapsToggled();
+  void cbTreeRowActivated(GtkTreePath*, GtkTreeViewColumn*);
+  void cbTreeCursorChanged();
+  void cbToolItemAddClicked();
+  void cbToolItemRemoveClicked();
+  void cbToolItemMoveUpClicked();
+  void cbToolItemMoveDownClicked();
+  void cbToolItemConfigClicked();
   gboolean
   cbTreeViewQueryTooltip(GtkTreeView*, gint, gint, gboolean, GtkTooltip*);
-
-  virtual GtkWidget* getDialog() override;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_CONFIG_H

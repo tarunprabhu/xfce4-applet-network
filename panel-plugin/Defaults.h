@@ -27,9 +27,11 @@ public:
     static constexpr unsigned         Border     = 1;   // px
     static constexpr unsigned         Padding    = 1;   // px
     static constexpr unsigned         Spacing    = 1;   // px
+    static constexpr bool             ShowLabel      = true;
     static const char*                Label;
     static constexpr unsigned         MaxLabelLength = 32;
-    static constexpr bool             ShowLabel      = true;
+    static const GdkRGBA              LabelFg;
+    static const GdkRGBA              LabelBg;
     static constexpr LabelPosition    LabelPos       = LabelPosition::Bottom;
     static constexpr TooltipVerbosity Verbosity = TooltipVerbosity::Moderate;
   };
@@ -45,12 +47,12 @@ public:
     static constexpr uint64_t      RxMax         = 1 * Metric::Multiplier::Mega;
     static constexpr uint64_t      TxMax = 256 * Metric::Multiplier::Kilo;
     static constexpr bool          ShowNotAvailable = false;
-    static constexpr bool          ShowLabel        = true;
+    static constexpr bool          ShowLabel        = false;
     static const char*             Label;
     static constexpr unsigned      MaxLabelLength = 32;
-    static constexpr LabelPosition LabelPos       = LabelPosition::Bottom;
     static const GdkRGBA           LabelFg;
     static const GdkRGBA           LabelBg;
+    static constexpr LabelPosition LabelPos       = LabelPosition::Bottom;
 
     // Defaults for the block devices that are monitored
     class Disk {

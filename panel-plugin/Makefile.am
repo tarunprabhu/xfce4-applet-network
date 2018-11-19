@@ -14,7 +14,6 @@ libappletnetwork_la_LIBADD =		\
 
 libappletnetwork_la_SOURCES =  \
 	Constants.cc \
-	CSS.cc \
 	CSSBuilder.cc \
 	Defaults.cc \
 	Device.cc \
@@ -23,7 +22,8 @@ libappletnetwork_la_SOURCES =  \
 	DeviceTooltip.cc \
 	DeviceUI.cc \
 	DeviceStats.cc \
-	Dial.cc \
+# Dial.cc
+	DialOptions.cc \
 	Disk.cc \
 	DiskOptions.cc \
 	DiskStats.cc \
@@ -31,7 +31,6 @@ libappletnetwork_la_SOURCES =  \
 	DiskUI.cc \
 	GtkUtils.cc \
 	Icons.cc \
-	IDialog.cc \
 	Network.cc \
 	NetworkOptions.cc \
 	NetworkStats.cc \

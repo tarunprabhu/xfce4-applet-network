@@ -4,7 +4,9 @@
 // a definition is needed and when the compiler will do the right thing
 // and inline the constant RHS
 
-const char* Defaults::Plugin::Label = "Speed Monitor";
+const char*   Defaults::Plugin::Label   = "Speed Monitor";
+const GdkRGBA Defaults::Plugin::LabelFg = {0.0, 0.0, 0.0, 1.0}; // Opaque black
+const GdkRGBA Defaults::Plugin::LabelBg = {1.0, 1.0, 1.0, 0.0}; // Transparent
 
 // Defauls for all devices that are monitored
 const char*   Defaults::Device::Dev     = "<unknown>";

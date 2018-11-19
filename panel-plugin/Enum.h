@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace EnumImpl {
+namespace EnumImpl_ {
 constexpr static unsigned len(const char* s, unsigned l = 0) {
   if(*s == '\0')
     return l;
@@ -28,24 +28,22 @@ constexpr static void copy(char* dst, const char* src) {
 // Replaces the commas in the buffer with '\0' and save the indices which
 // correspond to the starts of each string. Also keeps track of the greatest
 // distance between commas seen so far
-constexpr static void initialize(char*     buffer,
-                                 unsigned  i,
-                                 unsigned* indices,
-                                 unsigned* longest) {
+constexpr static void
+initialize(char* buffer, unsigned i, unsigned* indices, unsigned* longest) {
   if(buffer[i] == '\0') {
     *indices = i;
     return;
   } else if(buffer[i] == ',') {
     const unsigned* prev = indices - 1;
-    buffer[i] = '\0';
-    *longest = std::max(*longest, i + 1 - *prev);
-    *indices  = (i + 1);
+    buffer[i]            = '\0';
+    *longest             = std::max(*longest, i + 1 - *prev);
+    *indices             = (i + 1);
     ++indices;
   }
   initialize(buffer, i + 1, indices, longest);
 }
-  
-template <typename Enum, unsigned Length> class EnumNameGen {
+
+template <typename Enum, unsigned Length> class EnumNameGenerator {
 private:
   // The name of the enum. Useful for debugging
   const char* name;
@@ -63,10 +61,10 @@ private:
 
   // The length of the longest name
   unsigned longest;
-  
+
 public:
-  constexpr EnumNameGen(const char* init, const char* initName)
-      : name(initName) {
+  constexpr EnumNameGenerator(const char* init, const char* initName)
+      : name(initName), buffer(""), indices{}, longest(0) {
     copy(buffer, init);
     indices[0] = 0;
     initialize(buffer, 1, &indices[1], &longest);
@@ -93,7 +91,7 @@ public:
   }
 };
 
-} // namespace EnumImpl
+} // namespace EnumImpl_
 
 template <typename DestTy, typename Enum> constexpr DestTy EnumAs(Enum e) {
   return static_cast<DestTy>(e);
@@ -139,28 +137,29 @@ template <typename Enum> Enum enum_parse(const std::string& s) {
   return enum_parse<Enum>(s.c_str());
 }
 
-#define ENUM_CREATE(Name, labels...)                                           \
+#define ENUM_CREATE(Name, Labels...)                                           \
   enum class Name {                                                            \
-    labels,                                                                    \
+    Labels,                                                                    \
     Last_,                                                                     \
     First_ = 0,                                                                \
   };                                                                           \
                                                                                \
-  namespace EnumImpl {                                                         \
-  static const EnumNameGen<Name, EnumImpl::len(#labels)> Enum##Name(#labels,   \
-                                                                    #Name);    \
-  }                                                                            \
-                                                                               \
   template <> inline const char* enum_cstr(Name e) {                           \
-    return EnumImpl::Enum##Name.cstr(e);                                       \
+    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
+        #Labels, #Name);                                                       \
+    return gen.cstr(e);                                                        \
   }                                                                            \
                                                                                \
   template <> inline Name enum_parse<Name>(const char* s) {                    \
-    return EnumImpl::Enum##Name.parse(s);                                      \
+    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
+        #Labels, #Name);                                                       \
+    return gen.parse(s);                                                       \
   }                                                                            \
                                                                                \
   template <> inline unsigned enum_name_longest<Name>() {                      \
-    return EnumImpl::Enum##Name.getLongest();                                  \
+    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
+        #Labels, #Name);                                                       \
+    return gen.getLongest();                                                   \
   }
 
 #endif // XFCE_APPLET_SPEED_ENUM_IMPL_H

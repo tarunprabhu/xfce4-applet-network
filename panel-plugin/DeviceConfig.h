@@ -7,18 +7,17 @@
 #include "Range.h"
 #include "Types.h"
 
-#include <gtk/gtk.h>
+#include <gtkmm/gtkmm.h>
 
 #include <memory>
 
-class CSS;
 class Device;
 class DeviceOptions;
 class DeviceUI;
 class Icons;
 class Plugin;
 
-class DeviceConfig : public IDialog {
+class DeviceConfig : public Gtk::Dialog {
 public:
   enum class Mode {
     Add,  // Add a new device to the list
@@ -37,53 +36,44 @@ private:
   Device&      device;
   DeviceUI&    ui;
   Plugin&      plugin;
-  const CSS&   css;
   const Icons& icons;
   Mode         mode;
 
-  GtkWidget* dialog;
-  GtkWidget* buttonSave;
-  GtkWidget* buttonCancel;
-  GtkWidget* comboDevice;
-  GtkWidget* comboKind;
-  GtkWidget* imageDevice;
-  GtkWidget* entryName;
-  GtkWidget* comboDial;
-  GtkWidget* comboRx;
-  GtkWidget* comboRxUnits;
-  GtkWidget* comboTx;
-  GtkWidget* comboTxUnits;
-  GtkWidget* checkShowNotAvailable;
-  GtkWidget* checkShowNotConnected;
-  GtkWidget* checkShowNotMounted;
-  GtkWidget* entryLabel;
-  GtkWidget* colorFg;
-  GtkWidget* colorBg;
-  GtkWidget* checkShowLabel;
-  GtkWidget* comboPosition;
-  GtkWidget* boxLabelSensitive;
+  Gtk::Dialog*       dialog;
+  Gtk::Button*       buttonSave;
+  Gtk::Button*       buttonCancel;
+  Gtk::ComboBoxText* comboDevice;
+  Gtk::ComboBoxText* comboKind;
+  Gtk::Image*        imageDevice;
+  Gtk::Entry*        entryName;
+  Gtk::ComboBoxText* comboDial;
+  Gtk::ComboBoxText* comboRx;
+  Gtk::ComboBoxText* comboRxUnits;
+  Gtk::ComboBoxText* comboTx;
+  Gtk::ComboBoxText* comboTxUnits;
+  Gtk::CheckButton*  checkShowNotAvailable;
+  Gtk::Entry*        entryLabel;
+  Gtk::ColorButton*  colorFg;
+  Gtk::ColorButton*  colorBg;
+  Gtk::CheckButton*  checkShowLabel;
+  Gtk::ComboBoxText* comboPosition;
+  Gtk::Grid*         gridLabel;
 
   // Widgets exclusively for disks
-
+  Gtk::CheckButton*  checkShowNotMounted;
+  
   // Widgets exclusively for networks
-  GtkWidget* checkShowDisconnected; // Show the dial and (maybe) label when
-                                    // the network is disconnected. Only
-                                    // applies to networks
+  Gtk::CheckButton*  checkShowNotConnected;
 
   // Frames
-  GtkWidget* frameDeviceOptions;
-  GtkWidget* frameDialOptions;
-  GtkWidget* frameLabelOptions;
+  Gtk::Frame* frameDeviceOptions;
+  Gtk::Frame* frameDialOptions;
+  Gtk::Frame* frameLabelOptions;
 
 private:
-  GtkWidget* addDeviceOptions();
-  GtkWidget* addDialOptions();
-  GtkWidget* addLabelOptions();
-
-  virtual GtkWidget* createDialog() override;
-  virtual void       clearDialog() override;
-  virtual void       destroyDialog() override;
-  virtual GtkWidget* getDialog() override;
+  Gtk::Container& addDeviceOptions();
+  Gtk::Container& addDialOptions();
+  Gtk::Container& addLabelOptions();
 
 public:
   DeviceConfig(Device&, DeviceConfig::Mode);
@@ -95,22 +85,22 @@ public:
 
   gint cbDialogResponse(GtkDialog*, Response);
 
-  void cbComboDeviceChanged(GtkComboBox*);
-  void cbComboKindChanged(GtkComboBox*);
-  void cbEntryNameChanged(GtkEntry*);
-  void cbComboDialChanged(GtkComboBox*);
-  void cbComboRxChanged(GtkComboBox*);
-  void cbComboRxUnitsChanged(GtkComboBox*);
-  void cbComboTxChanged(GtkComboBox*);
-  void cbComboTxUnitsChanged(GtkComboBox*);
-  void cbCheckShowNotAvailableToggled(GtkToggleButton*);
-  void cbCheckShowNotConnectedToggled(GtkToggleButton*);
-  void cbCheckShowNotMountedToggled(GtkToggleButton*);
-  void cbCheckShowLabelToggled(GtkToggleButton*);
-  void cbEntryLabelChanged(GtkEntry*);
-  void cbColorFgSet(GtkColorChooser*);
-  void cbColorBgSet(GtkColorChooser*);
-  void cbComboPositionChanged(GtkComboBox*);
+  void cbComboDeviceChanged();
+  void cbComboKindChanged();
+  void cbEntryNameChanged();
+  void cbComboDialChanged();
+  void cbComboRxChanged();
+  void cbComboRxUnitsChanged();
+  void cbComboTxChanged();
+  void cbComboTxUnitsChanged();
+  void cbCheckShowNotAvailableToggled();
+  void cbCheckShowNotConnectedToggled();
+  void cbCheckShowNotMountedToggled();
+  void cbCheckShowLabelToggled();
+  void cbEntryLabelChanged();
+  void cbColorLabelFgSet();
+  void cbColorLabelBgSet();
+  void cbComboPositionChanged();
 };
 
 #endif // XFCE_APPLET_SPEED_DEVICE_CONFIG_H

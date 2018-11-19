@@ -39,7 +39,12 @@
       throw std::invalid_argument(msg);                                        \
   } while(0)
 
-#else
+#define UNIMPLEMENTED                                                          \
+  do {                                                                         \
+    g_warning("UNIMPLEMENTED: %s()", DEBUG_FUNCNAME);                          \
+  } while(0)
+
+#else // !defined(ENABLE_DEBUG)
 
 #define MESSAGE(...)                                                           \
   do {                                                                         \
@@ -47,6 +52,11 @@
   } while(0)
 
 #define ASSERT(expr, msg)                                                      \
+  do {                                                                         \
+    ;                                                                          \
+  } while(0)
+
+#define UNIMPLEMENTED                                                          \
   do {                                                                         \
     ;                                                                          \
   } while(0)
