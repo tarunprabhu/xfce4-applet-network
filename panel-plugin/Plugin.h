@@ -43,8 +43,9 @@ private:
 
   struct {
     // Explicitly set options for the plugin itself
-    double   period;
-    unsigned border;
+    double     period;
+    UnitPrefix mode;
+    unsigned   border;
     unsigned spacePlugin; // Space between the main plugin label and the devices
     unsigned spaceInner;  // Space between the device dial and its label
     unsigned spaceOuter;  // Space between devices
@@ -66,8 +67,8 @@ private:
   void writeConfig(XfceRc*) const;
 
   Glib::RefPtr<Gdk::Pixbuf> getIcon(const std::string&, unsigned);
-  void setCSS();
-  
+  void                      setCSS();
+
 public:
   Plugin(XfcePanelPlugin*);
   Plugin(const Plugin&)  = delete;
@@ -79,7 +80,7 @@ public:
   XfcePanelPlugin* getXfcePanelPlugin();
   Gtk::Widget&     getXfceWidget();
 
-  PluginWidget& getUIWidget();
+  PluginWidget&    getUIWidget();
   Plugin::Devices& getDevices();
 
   const Icons&           getIcons() const;
@@ -101,16 +102,17 @@ public:
   void     moveDeviceUp(unsigned);
   void     moveDeviceDown(unsigned);
 
-  void     cbAbout();
-  void     cbConfigure();
-  void     cbReadConfig();
-  void     cbRefresh();
-  void     cbReorient(Gtk::Orientation);
-  void     cbResize(unsigned);
-  void     cbSave() const;
-  bool     cbTimerTick();
+  void cbAbout();
+  void cbConfigure();
+  void cbReadConfig();
+  void cbRefresh();
+  void cbReorient(Gtk::Orientation);
+  void cbResize(unsigned);
+  void cbSave() const;
+  bool cbTimerTick();
 
   Plugin& setPeriod(double);
+  Plugin& setMode(UnitPrefix);
   Plugin& setBorder(unsigned);
   Plugin& setSpacePlugin(unsigned);
   Plugin& setSpaceOuter(unsigned);
@@ -126,6 +128,7 @@ public:
   unsigned                      getSize() const;
   Gtk::Orientation              getOrientation() const;
   double                        getPeriod() const;
+  UnitPrefix                    getMode() const;
   unsigned                      getBorder() const;
   unsigned                      getSpacePlugin() const;
   unsigned                      getSpaceOuter() const;

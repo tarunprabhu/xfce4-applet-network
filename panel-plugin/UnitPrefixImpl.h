@@ -1,5 +1,5 @@
-#ifndef XFCE_APPLET_SPEED_UNIT_PREFIX_H
-#define XFCE_APPLET_SPEED_UNIT_PREFIX_H
+#ifndef XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H
+#define XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H
 
 #include "Array.h"
 
@@ -24,7 +24,7 @@ constexpr double pow(double base, int exp) {
 }
 
 template <typename Class, int ExpMin, int ExpMax, unsigned Base>
-class UnitPrefix {
+class UnitPrefixImpl : public Class {
 protected:
   static constexpr typename Class::Prefix prefix(int exp) {
     return static_cast<typename Class::Prefix>(ExpMin - exp);
@@ -51,7 +51,8 @@ public:
     return multiplier(exponent(prefix));
   }
 
-  static constexpr double calculate(double val, typename Class::Prefix prefix) {
+  template <typename T = double>
+  static constexpr T calculate(double val, typename Class::Prefix prefix) {
     return val * multiplier(prefix);
   }
 
@@ -78,4 +79,4 @@ public:
   }
 };
 
-#endif // XFCE_APPLET_SPEED_UNIT_PREFIX_H
+#endif // XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H

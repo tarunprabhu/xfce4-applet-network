@@ -1,10 +1,12 @@
 #ifndef XFCE_APPLED_SPEED_CONFIG_H
 #define XFCE_APPLED_SPEED_CONFIG_H
 
-#include "Metric.h"
+#include "BinaryPrefix.h"
+#include "MetricPrefix.h"
 
 #include <string>
 #include <vector>
+#include <tuple>
 
 class Config {
 public:
@@ -24,8 +26,15 @@ public:
     // Device config dialog-specific options
     class Device {
     public:
-      static const std::vector<unsigned>       Rates;
-      static const std::vector<Metric::Prefix> RatePrefixes;
+      static const std::vector<unsigned>                         Rates;
+      static const std::tuple<std::vector<BinaryPrefix::Prefix>,
+                              std::vector<MetricPrefix::Prefix>> RatePrefixes;
+
+      template <typename PrefixClass>
+      static std::vector<typename PrefixClass::Prefix> getRatePrefixes() {
+        return std::get<std::vector<typename PrefixClass::Prefix>>(
+            RatePrefixes);
+      }
     };
 
     // Plugin config dialog-specific options

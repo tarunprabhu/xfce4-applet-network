@@ -30,8 +30,8 @@ Device::Device(Plugin& plugin, DeviceClass clss)
   opts.dev              = Defaults::Device::Dev;
   opts.name             = Defaults::Device::Name;
   opts.dial             = Defaults::Device::Dial;
-  opts.rxMax            = Defaults::Device::RxMax;
-  opts.txMax            = Defaults::Device::TxMax;
+  opts.rxMax            = Defaults::Device::RxMax[plugin.getMode()];
+  opts.txMax            = Defaults::Device::TxMax[plugin.getMode()];
   opts.showNotAvailable = Defaults::Device::ShowNotAvailable;
   opts.showLabel        = Defaults::Device::ShowLabel;
   opts.label            = Defaults::Device::Label;

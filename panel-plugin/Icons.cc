@@ -1,7 +1,6 @@
 #include "Icons.h"
 
 #include "Debug.h"
-#include "Functional.h"
 #include "Plugin.h"
 #include "Utils.h"
 

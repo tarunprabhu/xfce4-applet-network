@@ -16,6 +16,7 @@ private:
   const Icons& icons;
 
   Gtk::SpinButton*   spinPeriod;
+  Gtk::ComboBoxText* comboMode;
   Gtk::Grid*         gridLabel;
   Gtk::CheckButton*  checkShowLabel;
   Gtk::Entry*        entryLabel;
@@ -50,7 +51,7 @@ private:
   Gtk::Container& createPluginAppearanceFrame();
   Gtk::Container& createTooltipAppearanceFrame();
   Gtk::Container& createLabelAppearanceFrame();
-  Gtk::Container& createDisplayPage();
+  Gtk::Container& createGeneralPage();
   Gtk::Container& createAppearancePage();
   Gtk::Container& createDevicesPage();
 
@@ -69,6 +70,7 @@ public:
   void cbDialogResponse(int);
 
   void cbSpinPeriodChanged();
+  void cbComboModeChanged();
   void cbCheckShowLabelToggled();
   void cbEntryLabelChanged();
   void cbColorLabelFgSet();

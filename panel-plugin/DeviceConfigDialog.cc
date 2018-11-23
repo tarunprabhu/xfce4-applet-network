@@ -8,7 +8,6 @@
 #include "Formatter.h"
 #include "GtkUtils.h"
 #include "Icons.h"
-#include "Metric.h"
 #include "Plugin.h"
 #include "PluginConfigDialog.h"
 #include "RTTI.h"
@@ -44,6 +43,84 @@ DeviceConfigDialog::DeviceConfigDialog(Device&                  device,
   TRACE_FUNC_ENTER;
 
   TRACE_FUNC_EXIT;
+}
+
+std::tuple<unsigned, UnitPrefixT>
+DeviceConfigDialog::split(uint64_t rate) const {
+  unsigned base   = 0;
+  UnitPrefixT   prefix;
+  switch(plugin.getMode()) {
+  case UnitPrefix::Binary:
+    std::tie(base, prefix.binary) = BinaryPrefix::split<unsigned>(rate);
+  case UnitPrefix::Metric:
+    std::tie(base, prefix.metric) = MetricPrefix::split<unsigned>(rate);
+  default:
+    g_error("Unsupported prefix mode: %s", enum_cstr(plugin.getMode()));
+    break;
+  }
+  return std::make_tuple(base, prefix);
+}
+
+uint64_t DeviceConfigDialog::calculate(const std::string& rate,
+                                       const std::string& mult) const {
+  switch(plugin.getMode()) {
+  case UnitPrefix::Binary:
+    return BinaryPrefix::calculate(std::stoul(rate), BinaryPrefix::parse(mult));
+  case UnitPrefix::Metric:
+    return MetricPrefix::calculate(std::stoul(rate), MetricPrefix::parse(mult));
+  default:
+    g_error("Unsupported prefix mode: %s", enum_cstr(plugin.getMode()));
+    break;
+  }
+  return -1;
+}
+
+std::string DeviceConfigDialog::str(UnitPrefixT prefix) const {
+  switch(plugin.getMode()) {
+  case UnitPrefix::Binary:
+    return BinaryPrefix::str(prefix.binary);
+  case UnitPrefix::Metric:
+    return MetricPrefix::str(prefix.metric);
+  default:
+    g_error("Unsupported prefix mode: %s", enum_cstr(plugin.getMode()));
+    break;
+  }
+  return "";
+}
+
+std::string DeviceConfigDialog::formatRate(UnitPrefixT prefix) const {
+  switch(plugin.getMode()) {
+  case UnitPrefix::Binary:
+    return Formatter::formatUnit(prefix.binary, Unit::Rate);
+  case UnitPrefix::Metric:
+    return Formatter::formatUnit(prefix.metric, Unit::Rate);
+  default:
+    g_error("Unsupported prefix mode: %s", enum_cstr(plugin.getMode()));
+    break;
+  }
+  return "";
+}
+
+std::vector<UnitPrefixT> DeviceConfigDialog::getRatePrefixes() const {
+  std::vector<UnitPrefixT> ret;
+  switch(plugin.getMode()) {
+  case UnitPrefix::Binary:
+    for(auto prefix : Config::Dialog::Device::getRatePrefixes<BinaryPrefix>()) {
+      ret.emplace_back();
+      ret.back().binary = prefix;
+    }
+    break;
+  case UnitPrefix::Metric:
+    for(auto prefix : Config::Dialog::Device::getRatePrefixes<MetricPrefix>()) {
+      ret.emplace_back();
+      ret.back().metric = prefix;
+    }
+    break;
+  default:
+    g_error("Unsupported prefix mode: %s", enum_cstr(plugin.getMode()));
+    break;
+  }
+  return ret;
 }
 
 void DeviceConfigDialog::cbDialogResponse(int response) {
@@ -128,10 +205,10 @@ void DeviceConfigDialog::cbComboDialChanged() {
 void DeviceConfigDialog::cbComboRxRateChanged() {
   TRACE_FUNC_ENTER;
 
-  uint64_t       rate   = std::stoul(comboRxRate->get_active_id());
-  Metric::Prefix prefix = Metric::parse(comboRxMultiplier->get_active_id());
+  std::string rate = comboRxRate->get_active_id().raw();
+  std::string mult = comboRxMultiplier->get_active_id().raw();
 
-  device.setRxMax(Metric::calculate(rate, prefix));
+  device.setRxMax(calculate(rate, mult));
 
   TRACE_FUNC_EXIT;
 }
@@ -139,10 +216,10 @@ void DeviceConfigDialog::cbComboRxRateChanged() {
 void DeviceConfigDialog::cbComboRxMultiplierChanged() {
   TRACE_FUNC_ENTER;
 
-  uint64_t       rate   = std::stoul(comboRxRate->get_active_id());
-  Metric::Prefix prefix = Metric::parse(comboRxMultiplier->get_active_id());
+  std::string rate = comboRxRate->get_active_id().raw();
+  std::string mult = comboRxMultiplier->get_active_id().raw();
 
-  device.setRxMax(Metric::calculate(rate, prefix));
+  device.setRxMax(calculate(rate, mult));
 
   TRACE_FUNC_EXIT;
 }
@@ -150,10 +227,10 @@ void DeviceConfigDialog::cbComboRxMultiplierChanged() {
 void DeviceConfigDialog::cbComboTxRateChanged() {
   TRACE_FUNC_ENTER;
 
-  uint64_t       rate   = std::stoul(comboTxRate->get_active_id());
-  Metric::Prefix prefix = Metric::parse(comboTxMultiplier->get_active_id());
+  std::string rate = comboTxRate->get_active_id().raw();
+  std::string mult = comboTxMultiplier->get_active_id().raw();
 
-  device.setTxMax(Metric::calculate(rate, prefix));
+  device.setTxMax(calculate(rate, mult));
 
   TRACE_FUNC_EXIT;
 }
@@ -161,10 +238,10 @@ void DeviceConfigDialog::cbComboTxRateChanged() {
 void DeviceConfigDialog::cbComboTxMultiplierChanged() {
   TRACE_FUNC_ENTER;
 
-  uint64_t       rate   = std::stoul(comboTxRate->get_active_id());
-  Metric::Prefix prefix = Metric::parse(comboTxMultiplier->get_active_id());
+  std::string rate = comboTxRate->get_active_id().raw();
+  std::string mult = comboTxMultiplier->get_active_id().raw();
 
-  device.setTxMax(Metric::calculate(rate, prefix));
+  device.setTxMax(calculate(rate, mult));
 
   TRACE_FUNC_EXIT;
 }
@@ -356,9 +433,9 @@ Gtk::Container& DeviceConfigDialog::addDialOptions() {
   Gtk::Label& labelRxLabel = make_label_for_dialog(
       "Max _incoming rate", "Maximum incoming rate on the dial");
 
-  unsigned       rxRate;
-  Metric::Prefix rxPrefix;
-  std::tie(rxRate, rxPrefix) = Metric::split<unsigned>(device.getRxMax());
+  unsigned    rxRate;
+  UnitPrefixT rxPrefix;
+  std::tie(rxRate, rxPrefix) = split(device.getRxMax());
 
   auto& gridRx = *Gtk::make_managed<Gtk::Grid>();
   gridRx.set_column_homogeneous(false);
@@ -369,18 +446,17 @@ Gtk::Container& DeviceConfigDialog::addDialOptions() {
   comboRxRate.set_active_id(std::to_string(rxRate));
 
   auto& comboRxMultiplier = *Gtk::make_managed<Gtk::ComboBoxText>();
-  for(Metric::Prefix prefix : Config::Dialog::Device::RatePrefixes)
-    comboRxMultiplier.append(Metric::str(prefix),
-                             Formatter::formatUnit(prefix, Unit::Rate));
-  comboRxMultiplier.set_active_id(Metric::str(rxPrefix));
+  for(UnitPrefixT prefix : getRatePrefixes())
+    comboRxMultiplier.append(str(prefix), formatRate(prefix));
+  comboRxMultiplier.set_active_id(str(rxPrefix));
 
   // Maximum outgoing rate
   Gtk::Label& labelTxLabel = make_label_for_dialog(
       "Max _outgoing rate", "Maximum outgoing rate on the dial");
 
-  unsigned       txRate;
-  Metric::Prefix txPrefix;
-  std::tie(txRate, txPrefix) = Metric::split<unsigned>(device.getTxMax());
+  unsigned    txRate;
+  UnitPrefixT txPrefix;
+  std::tie(txRate, txPrefix) = split(device.getTxMax());
 
   auto& gridTx = *Gtk::make_managed<Gtk::Grid>();
   gridTx.set_column_homogeneous(false);
@@ -391,10 +467,9 @@ Gtk::Container& DeviceConfigDialog::addDialOptions() {
   comboTxRate.set_active_id(std::to_string(txRate));
 
   auto& comboTxMultiplier = *Gtk::make_managed<Gtk::ComboBoxText>();
-  for(Metric::Prefix prefix : Config::Dialog::Device::RatePrefixes)
-    comboTxMultiplier.append(Metric::str(prefix),
-                             Formatter::formatUnit(prefix, Unit::Rate));
-  comboTxMultiplier.set_active_id(Metric::str(txPrefix));
+  for(UnitPrefixT prefix : getRatePrefixes())
+    comboTxMultiplier.append(str(prefix), formatRate(prefix));
+  comboTxMultiplier.set_active_id(str(txPrefix));
 
   // Determine when the dial should be shown
   Gtk::Label& labelVisibility = make_label_for_dialog("Visibility");

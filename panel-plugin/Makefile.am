@@ -15,7 +15,7 @@ libappletnetwork_la_LIBADD =		\
 	@GTKMM_LIBS@
 
 libappletnetwork_la_SOURCES =  \
-	Binary.cc \
+	BinaryPrefix.cc \
 	Config.cc \
 	Constants.cc \
 	CSSBuilder.cc \
@@ -31,7 +31,7 @@ libappletnetwork_la_SOURCES =  \
 	Formatter.cc \
 	GtkUtils.cc \
 	Icons.cc \
-	Metric.cc \
+	MetricPrefix.cc \
 	Network.cc \
 	NetworkStats.cc \
 	NetworkTooltip.cc \

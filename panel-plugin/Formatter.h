@@ -1,9 +1,8 @@
 #ifndef XFCE_APPLET_SPEED_FORMATTER_H
 #define XFCE_APPLET_SPEED_FORMATTER_H
 
-#include "Binary.h"
-#include "Metric.h"
 #include "Types.h"
+#include "UnitPrefixes.h"
 
 #include <string>
 
@@ -23,8 +22,8 @@ public:
                             Formatter::Mode = Mode::Metric,
                             unsigned        = 2);
 
-  static std::string formatUnit(Metric::Prefix, Unit);
-  static std::string formatUnit(Binary::Prefix, Unit);
+  template <typename PrefixKind>
+  static std::string formatUnit(PrefixKind, Unit);
 };
 
 #endif // XFCE_APPLET_SPEED_FORMATTER_H

@@ -1,8 +1,7 @@
 #include "Formatter.h"
 
-#include "Binary.h"
-#include "Metric.h"
 #include "Utils.h"
+#include "UnitPrefixes.h"
 
 #include <iomanip>
 #include <sstream>
@@ -43,12 +42,14 @@ static const std::map<Unit, std::string> UnitSuffix = {
 //   switch(mode) { ; }
 // }
 
-std::string Formatter::formatUnit(Metric::Prefix prefix, Unit unit) {
-  return concat("", Metric::str(prefix), UnitSuffix.at(unit));
+template <>
+std::string Formatter::formatUnit(MetricPrefix::Prefix prefix, Unit unit) {
+  return concat("", MetricPrefix::str(prefix), UnitSuffix.at(unit));
 }
 
-std::string Formatter::formatUnit(Binary::Prefix prefix, Unit unit) {
-  return concat("", Binary::str(prefix), UnitSuffix.at(unit));
+template <>
+std::string Formatter::formatUnit(BinaryPrefix::Prefix prefix, Unit unit) {
+  return concat("", BinaryPrefix::str(prefix), UnitSuffix.at(unit));
 }
 
 // std::string Formatter::format(double          value,

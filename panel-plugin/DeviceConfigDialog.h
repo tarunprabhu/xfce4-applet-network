@@ -3,10 +3,11 @@
 
 #include "IWidget.h"
 #include "Types.h"
+#include "UnitPrefixes.h"
 
 #include <gtkmm.h>
 
-#include <memory>
+#include <vector>
 
 class Device;
 class Icons;
@@ -61,6 +62,12 @@ private:
   Gtk::Container& addDeviceOptions();
   Gtk::Container& addDialOptions();
   Gtk::Container& addLabelOptions();
+
+  std::string                       str(UnitPrefixT) const;
+  std::string                       formatRate(UnitPrefixT) const;
+  std::vector<UnitPrefixT>          getRatePrefixes() const;
+  std::tuple<unsigned, UnitPrefixT> split(uint64_t) const;
+  uint64_t calculate(const std::string&, const std::string&) const;
 
 public:
   DeviceConfigDialog(Device&, PluginConfigDialog&, DeviceConfigDialog::Mode);

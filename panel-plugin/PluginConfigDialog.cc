@@ -84,6 +84,16 @@ void PluginConfigDialog::cbSpinPeriodChanged() {
   TRACE_FUNC_EXIT;
 }
 
+void PluginConfigDialog::cbComboModeChanged() {
+  TRACE_FUNC_ENTER;
+
+  auto mode = enum_parse<UnitPrefix>(comboMode->get_active_id().raw());
+
+  plugin.setMode(mode);
+  
+  TRACE_FUNC_EXIT;
+}
+
 void PluginConfigDialog::cbCheckShowLabelToggled() {
   TRACE_FUNC_ENTER;
 
@@ -426,7 +436,7 @@ bool PluginConfigDialog::cbTreeViewQueryTooltip(
   return false;
 }
 
-Gtk::Container& PluginConfigDialog::createDisplayPage() {
+Gtk::Container& PluginConfigDialog::createGeneralPage() {
   TRACE_FUNC_ENTER;
 
   auto& grid = *Gtk::make_managed<Gtk::Grid>();
@@ -449,6 +459,14 @@ Gtk::Container& PluginConfigDialog::createDisplayPage() {
   spinPeriod.set_numeric(true);
 
   auto& labelPeriodUnits = *Gtk::make_managed<Gtk::Label>("seconds");
+
+  auto& labelMode = make_label_for_dialog(
+      "_Mode", "Use binary (Ki, Mi, etc.) or metric (K, M, etc.) prefixes");
+
+  auto& comboMode = *Gtk::make_managed<Gtk::ComboBoxText>();
+  for(auto mode : UnitPrefix())
+    comboMode.append(enum_cstr(mode), enum_cstr(mode));
+  comboMode.set_active_id(enum_cstr(Defaults::Plugin::Mode));
 
   // Plugin label
   auto& checkLabel = *Gtk::make_managed<Gtk::CheckButton>("_Label", true);
@@ -486,6 +504,7 @@ Gtk::Container& PluginConfigDialog::createDisplayPage() {
 
   // Save widgets
   this->spinPeriod         = &spinPeriod;
+  this->comboMode          = &comboMode;
   this->gridLabel          = &gridLabel;
   this->entryLabel         = &entryLabel;
   this->colorLabelFg       = &colorLabelFg;
@@ -494,15 +513,19 @@ Gtk::Container& PluginConfigDialog::createDisplayPage() {
 
   // Attach mnemonic widgets
   labelPeriod.set_mnemonic_widget(spinPeriod);
+  labelMode.set_mnemonic_widget(comboMode);
 
   // Layout widgets
-  grid.attach(labelPeriod, 0, 0);
-  gridPeriod.attach(spinPeriod, 0, 0);
+  grid.attach_next_to(labelPeriod, Gtk::POS_TOP);
+  gridPeriod.attach_next_to(spinPeriod, Gtk::POS_LEFT);
   gridPeriod.attach_next_to(labelPeriodUnits, spinPeriod, Gtk::POS_RIGHT);
   grid.attach_next_to(gridPeriod, labelPeriod, Gtk::POS_RIGHT);
 
-  grid.attach(checkLabel, 1, 0);
-  gridLabel.attach(entryLabel, 0, 0);
+  grid.attach_next_to(labelMode, labelPeriod, Gtk::POS_BOTTOM);
+  grid.attach_next_to(comboMode, labelMode, Gtk::POS_RIGHT);
+
+  grid.attach_next_to(checkLabel, labelMode, Gtk::POS_BOTTOM);
+  gridLabel.attach_next_to(entryLabel, Gtk::POS_LEFT);
   gridLabel.attach_next_to(colorLabelFg, entryLabel, Gtk::POS_RIGHT);
   gridLabel.attach_next_to(colorLabelBg, colorLabelFg, Gtk::POS_RIGHT);
   gridLabel.attach_next_to(comboLabelPosition, colorLabelBg, Gtk::POS_RIGHT);
@@ -513,6 +536,7 @@ Gtk::Container& PluginConfigDialog::createDisplayPage() {
 
   // Connect signals
   SIGNAL_CONNECT_METHOD(spinPeriod, value_changed, this, cbSpinPeriodChanged);
+  SIGNAL_CONNECT_METHOD(comboMode, changed, this, cbComboModeChanged);
   SIGNAL_CONNECT_METHOD(checkLabel, toggled, this, cbCheckShowLabelToggled);
   SIGNAL_CONNECT_METHOD(entryLabel, changed, this, cbEntryLabelChanged);
   SIGNAL_CONNECT_METHOD(colorLabelFg, color_set, this, cbColorLabelFgSet);
@@ -633,22 +657,24 @@ Gtk::Container& PluginConfigDialog::createPluginAppearanceFrame() {
   labelSpaceInnerLabel.set_mnemonic_widget(scaleSpaceInner);
 
   // Layout widgets
-  grid.attach(labelBorderLabel, 0, 0);
+  grid.attach_next_to(labelBorderLabel, Gtk::POS_TOP);
   gridBorder.attach_next_to(scaleBorder, Gtk::POS_RIGHT);
   gridBorder.attach_next_to(labelBorder, scaleBorder, Gtk::POS_RIGHT);
   grid.attach_next_to(gridBorder, labelBorderLabel, Gtk::POS_RIGHT);
 
-  grid.attach(labelSpacePluginLabel, 0, 1);
+  grid.attach_next_to(labelSpacePluginLabel, labelBorderLabel, Gtk::POS_BOTTOM);
   gridSpacePlugin.attach_next_to(scaleSpacePlugin, Gtk::POS_RIGHT);
   gridSpacePlugin.attach_next_to(labelSpacePlugin, Gtk::POS_RIGHT);
   grid.attach_next_to(gridSpacePlugin, labelSpacePluginLabel, Gtk::POS_RIGHT);
 
-  grid.attach(labelSpaceOuterLabel, 0, 2);
+  grid.attach_next_to(labelSpaceOuterLabel, labelSpacePluginLabel,
+                      Gtk::POS_BOTTOM);
   gridSpaceOuter.attach_next_to(scaleSpaceOuter, Gtk::POS_RIGHT);
   gridSpaceOuter.attach_next_to(labelSpaceOuter, Gtk::POS_RIGHT);
   grid.attach_next_to(gridSpaceOuter, labelSpaceOuterLabel, Gtk::POS_RIGHT);
 
-  grid.attach(labelSpaceInnerLabel, 0, 3);
+  grid.attach_next_to(labelSpaceInnerLabel, labelSpaceOuterLabel,
+                      Gtk::POS_BOTTOM);
   gridSpaceInner.attach_next_to(scaleSpaceInner, Gtk::POS_RIGHT);
   gridSpaceInner.attach_next_to(labelSpaceInner, Gtk::POS_RIGHT);
   grid.attach_next_to(gridSpaceInner, labelSpaceInnerLabel, Gtk::POS_RIGHT);
@@ -696,7 +722,7 @@ Gtk::Container& PluginConfigDialog::createTooltipAppearanceFrame() {
   labelVerbosity.set_mnemonic_widget(comboVerbosity);
 
   // Layout widgets
-  grid.attach_next_to(labelVerbosity, Gtk::POS_RIGHT);
+  grid.attach_next_to(labelVerbosity, Gtk::POS_LEFT);
   grid.attach_next_to(comboVerbosity, labelVerbosity, Gtk::POS_RIGHT);
 
   frame.add(grid);
@@ -760,11 +786,11 @@ Gtk::Container& PluginConfigDialog::createLabelAppearanceFrame() {
   // Associate label mnemonics
 
   // Layout widgets
-  grid1.attach(buttonFont, 0, 0);
-  grid.attach(grid1, 0, 0);
+  grid1.attach_next_to(buttonFont, Gtk::POS_LEFT);
+  grid.attach_next_to(grid1, Gtk::POS_TOP);
   grid2.attach_next_to(checkBold, Gtk::POS_LEFT);
   grid2.attach_next_to(checkSmallCaps, checkBold, Gtk::POS_RIGHT);
-  grid.attach(grid2, 0, 1);
+  grid.attach_next_to(grid2, grid1, Gtk::POS_BOTTOM);
   frame.add(grid);
 
   // Show widgets
@@ -1034,10 +1060,10 @@ void PluginConfigDialog::init() {
   notebook.set_border_width(Config::Dialog::Border);
   notebook.show();
 
-  Gtk::Widget& pageDisplay = createDisplayPage();
-  notebook.append_page(pageDisplay, "Display");
-  notebook.set_tab_detachable(pageDisplay, false);
-  notebook.set_tab_reorderable(pageDisplay, false);
+  Gtk::Widget& pageGeneral = createGeneralPage();
+  notebook.append_page(pageGeneral, "General");
+  notebook.set_tab_detachable(pageGeneral, false);
+  notebook.set_tab_reorderable(pageGeneral, false);
 
   Gtk::Widget& pageAppearance = createAppearancePage();
   notebook.append_page(pageAppearance, "Appearance");

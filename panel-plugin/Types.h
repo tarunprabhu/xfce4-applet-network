@@ -87,12 +87,6 @@ ENUM_CREATE(DeviceClass,
             Network // The device is a network interface
 );
 
-ENUM_CREATE(Unit,
-            Bytes,   // <
-            Rate,    // <
-            Seconds, // <
-            None);
-
 // Since the disk kind and the network kind enums are different
 // Given the device type, we need to find a way to find the right enum for
 // its kind. We also want this to be indepdendent of the value itself so
@@ -107,6 +101,17 @@ template <> struct DeviceClassKind<DeviceClass::Disk> {
 template <> struct DeviceClassKind<DeviceClass::Network> {
   using type = NetworkKind;
 };
+
+ENUM_CREATE(Unit,
+            Bytes,   // <
+            Rate,    // <
+            Seconds, // <
+            None);
+
+ENUM_CREATE(UnitPrefix, // <
+            Binary,     // <
+            Metric      // <
+);
 
 template <typename Type, typename Dim1> using Array1 = Array<Type, Dim1>;
 

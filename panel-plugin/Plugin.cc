@@ -27,6 +27,7 @@ Plugin::Plugin(XfcePanelPlugin* xfce)
       static_cast<Gtk::Orientation>(xfce_panel_plugin_get_orientation(xfce));
 
   opts.period        = Defaults::Plugin::Period;
+  opts.mode          = Defaults::Plugin::Mode;
   opts.border        = Defaults::Plugin::Border;
   opts.spacePlugin   = Defaults::Plugin::SpacePlugin;
   opts.spaceOuter    = Defaults::Plugin::SpaceOuter;
@@ -249,6 +250,12 @@ Plugin& Plugin::setPeriod(double period) {
   return *this;
 }
 
+Plugin& Plugin::setMode(UnitPrefix mode) {
+  opts.mode = mode;
+
+  return *this;
+}
+
 Plugin& Plugin::setBorder(unsigned border) {
   opts.border = border;
 
@@ -340,6 +347,10 @@ Gtk::Orientation Plugin::getOrientation() const {
 
 double Plugin::getPeriod() const {
   return opts.period;
+}
+
+UnitPrefix Plugin::getMode() const {
+  return opts.mode;
 }
 
 unsigned Plugin::getBorder() const {
@@ -475,7 +486,7 @@ void Plugin::readConfig(XfceRc* rc) {
 
 void Plugin::setTimer() {
   if(timer == 0) {
-    // FIXME: 
+    // FIXME:
     // timer = g_timeout_add(getPeriod() * 1000, cb_timer_tick, this);
   }
 }
