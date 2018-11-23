@@ -5,7 +5,7 @@
 #include "Types.h"
 #include <net/if.h>
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <stdint.h>
 
@@ -22,37 +22,38 @@ public:
     // this number if in any way meaningful. In principle, there is no reason to
     // even have a limit, but then again, the plugin will probably slow to a
     // useless crawl well before we get to this limit
-    static constexpr unsigned         MaxDevices = 65535;
-    static constexpr double           Period     = 1.0; // sec
-    static constexpr unsigned         Border     = 1;   // px
-    static constexpr unsigned         Padding    = 1;   // px
-    static constexpr unsigned         Spacing    = 1;   // px
-    static constexpr bool             ShowLabel      = true;
-    static const char*                Label;
-    static constexpr unsigned         MaxLabelLength = 32;
-    static const GdkRGBA              LabelFg;
-    static const GdkRGBA              LabelBg;
-    static constexpr LabelPosition    LabelPos       = LabelPosition::Bottom;
-    static constexpr TooltipVerbosity Verbosity = TooltipVerbosity::Moderate;
+    static constexpr unsigned      MaxDevices  = 65535;
+    static constexpr double        Period      = 1.0; // sec
+    static constexpr unsigned      Border      = 1;   // px
+    static constexpr unsigned      SpacePlugin = 1;   // px
+    static constexpr unsigned      SpaceOuter  = 1;   // px
+    static constexpr unsigned      SpaceInner  = 1;   // px
+    static constexpr bool          ShowLabel   = true;
+    static const std::string       Label;
+    static constexpr unsigned      MaxLabelLength = 32;
+    static const Gdk::RGBA         LabelFgColor;
+    static const Gdk::RGBA         LabelBgColor;
+    static constexpr LabelPosition LabelPos  = LabelPosition::Bottom;
+    static constexpr Verbosity     Verbosity = Verbosity::Moderate;
   };
 
   // Defauls for all devices that are monitored
   class Device {
   public:
-    static const char*             Dev;
-    static constexpr unsigned      MaxDeviceLength = IFNAMSIZ;
-    static const char*             Name;
-    static constexpr unsigned      MaxNameLength = 32;
-    static constexpr DialKind      Dial          = DialKind::CombinedVertical;
-    static constexpr uint64_t      RxMax         = 1 * Metric::Multiplier::Mega;
-    static constexpr uint64_t      TxMax = 256 * Metric::Multiplier::Kilo;
-    static constexpr bool          ShowNotAvailable = false;
-    static constexpr bool          ShowLabel        = false;
-    static const char*             Label;
-    static constexpr unsigned      MaxLabelLength = 32;
-    static const GdkRGBA           LabelFg;
-    static const GdkRGBA           LabelBg;
-    static constexpr LabelPosition LabelPos       = LabelPosition::Bottom;
+    static const std::string   Dev;
+    static constexpr unsigned  MaxDeviceLength = IFNAMSIZ;
+    static const std::string   Name;
+    static constexpr unsigned  MaxNameLength = 32;
+    static constexpr DialKind  Dial          = DialKind::CombinedVertical;
+    static constexpr uint64_t  RxMax = Metric::calculate(1, Metric::Mega);
+    static constexpr uint64_t  TxMax = Metric::calculate(256, Metric::Kilo);
+    static constexpr bool      ShowNotAvailable = false;
+    static constexpr bool      ShowLabel        = false;
+    static const std::string   Label;
+    static constexpr unsigned  MaxLabelLength = 32;
+    static const Gdk::RGBA     LabelFgColor;
+    static const Gdk::RGBA     LabelBgColor;
+    static const LabelPosition LabelPos = LabelPosition::Bottom;
 
     // Defaults for the block devices that are monitored
     class Disk {

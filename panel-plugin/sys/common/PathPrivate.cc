@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <cstdlib>
 #include <unistd.h>
@@ -26,10 +26,6 @@ void PathPrivate::add(const std::string& s) {
 void PathPrivate::add(const char* cstr) {
   ss << separator << cstr;
 }
-
-// void PathPrivate::add(char* cstr) {
-//   ss << separator << cstr;
-// }
 
 void PathPrivate::finalize() {
   std::string s = ss.str();

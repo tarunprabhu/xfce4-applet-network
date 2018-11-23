@@ -4,13 +4,13 @@
 // a definition is needed and when the compiler will do the right thing
 // and inline the constant RHS
 
-const char*   Defaults::Plugin::Label   = "Speed Monitor";
-const GdkRGBA Defaults::Plugin::LabelFg = {0.0, 0.0, 0.0, 1.0}; // Opaque black
-const GdkRGBA Defaults::Plugin::LabelBg = {1.0, 1.0, 1.0, 0.0}; // Transparent
+const std::string Defaults::Plugin::Label("Speed Monitor");
+const Gdk::RGBA   Defaults::Plugin::LabelFgColor("rgba(0, 0, 0, 1.0)");
+const Gdk::RGBA   Defaults::Plugin::LabelBgColor("rgba(255, 255, 255, 0.0)");
 
 // Defauls for all devices that are monitored
-const char*   Defaults::Device::Dev     = "<unknown>";
-const char*   Defaults::Device::Name    = "<unknown>";
-const char*   Defaults::Device::Label   = "<unknown>";
-const GdkRGBA Defaults::Device::LabelFg = {0.0, 0.0, 0.0, 1.0}; // Opaque black
-const GdkRGBA Defaults::Device::LabelBg = {1.0, 1.0, 1.0, 0.0}; // Transparent
+const std::string Defaults::Device::Dev("<unknown>");
+const std::string Defaults::Device::Name("<unknown>");
+const std::string Defaults::Device::Label("<unknown>");
+const Gdk::RGBA   Defaults::Device::LabelFgColor("rgba(0, 0, 0, 1.0)");
+const Gdk::RGBA   Defaults::Device::LabelBgColor("rgba(255, 255, 255, 0.0)");

@@ -1,9 +1,5 @@
 #include "Utils.h"
 
-#include "Constants.h"
-
-#include <gtk/gtk.h>
-
 #include <array>
 #include <cxxabi.h>
 #include <sstream>
@@ -66,50 +62,6 @@ bool isValidStatus(DeviceStatus status, DeviceClass clss) {
     break;
   }
   return false;
-}
-
-Response convertResponse(int response) {
-  switch(response) {
-  case GTK_RESPONSE_NONE:
-    return Response::None;
-  case GTK_RESPONSE_DELETE_EVENT:
-    return Response::Delete;
-  case GTK_RESPONSE_OK:
-    return Response::OK;
-  case GTK_RESPONSE_CANCEL:
-    return Response::Cancel;
-  case GTK_RESPONSE_CLOSE:
-    return Response::Close;
-  case GTK_RESPONSE_APPLY:
-    return Response::Apply;
-  default:
-    g_error("Unsupported response kind: %d", response);
-    break;
-  }
-  
-  return Response::None;
-}
-
-gint convertResponse(Response response) {
-  switch(response) {
-  case Response::None:
-    return GTK_RESPONSE_NONE;
-  case Response::Delete:
-    return GTK_RESPONSE_DELETE_EVENT;
-  case Response::OK:
-    return GTK_RESPONSE_OK;
-  case Response::Cancel:
-    return GTK_RESPONSE_CANCEL;
-  case Response::Close:
-    return GTK_RESPONSE_CLOSE;
-  case Response::Apply:
-    return GTK_RESPONSE_APPLY;
-  default:
-    g_error("Unsupported response id: %s", enum_cstr(response));
-    break;
-  }
-
-  return GTK_RESPONSE_NONE;
 }
 
 // std::string getRateString(double rate) {

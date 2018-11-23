@@ -3,21 +3,20 @@
 #include "Debug.h"
 #include "Defaults.h"
 #include "Icons.h"
-#include "Plugin.h"
 #include "System.h"
+#include "XfceUtils.h"
 
 #include <sstream>
 
 Disk::Disk(Plugin& plugin)
-    : Device(plugin, DeviceClass::Disk), options(*this), stats(*this),
-      reader(stats), tooltip(*this), ui(*this) {
+    : Device(plugin, DeviceClass::Disk), stats(*this),
+      reader(stats), tooltip(*this) {
   TRACE_FUNC_ENTER;
+
+  opts.disk.showNotMounted = Defaults::Device::Disk::ShowNotMounted;
+  opts.disk.kind           = Defaults::Device::Disk::Kind;
   
   TRACE_FUNC_EXIT;
-}
-
-DiskOptions& Disk::getOptions() {
-  return options;
 }
 
 DiskStatsReader& Disk::getReader() {
@@ -32,14 +31,6 @@ DiskTooltip& Disk::getTooltip() {
   return tooltip;
 }
 
-DiskUI& Disk::getUI() {
-  return ui;
-}
-
-const DiskOptions& Disk::getOptions() const {
-  return options;
-}
-
 const DiskStats& Disk::getStats() const {
   return stats;
 }
@@ -48,24 +39,16 @@ const DiskTooltip& Disk::getTooltip() const {
   return tooltip;
 }
 
-const DiskUI& Disk::getUI() const {
-  return ui;
-}
-
 DiskKind Disk::getKind() const {
-  return options.kind;
-}
-
-const char* Disk::getKindCstr() const {
-  return enum_cstr(options.kind);
+  return opts.disk.kind;
 }
 
 bool Disk::getShowNotMounted() const {
-  return options.showNotMounted;
+  return opts.disk.showNotMounted;
 }
 
 Disk& Disk::setDevice(const std::string& device) {
-  options.dev = device;
+  opts.dev = device;
   setKind(System::getDeviceKind<DeviceClass::Disk>(device));
   stats.reset();
   reader.reset(device);
@@ -73,41 +56,33 @@ Disk& Disk::setDevice(const std::string& device) {
   return *this;
 }
 
-Disk& Disk::setKind(const std::string& kind) {
-  setKind(enum_parse<DiskKind>(kind));
-
-  return *this;
-}
-
 Disk& Disk::setKind(DiskKind kind) {
-  options.kind = kind;
+  opts.disk.kind = kind;
+  Device::setKind(enum_cstr(kind));
 
   return *this;
 }
 
 Disk& Disk::setShowNotMounted(bool show) {
-  options.showNotMounted = show;
+  opts.disk.showNotMounted = show;
 
   return *this;
 }
 
-void Disk::writeConfig(XfceRc* rc) const {
-  TRACE_FUNC_ENTER;
-
-  options.writeConfig(rc);
-
-  TRACE_FUNC_EXIT;
-}
-
 void Disk::readConfig(XfceRc* rc) {
-  TRACE_FUNC_ENTER;
-
-  options.readConfig(rc);
-
-  TRACE_FUNC_EXIT;
+  Device::readConfig(rc);
+  setKind(xfce_rc_read_enum_entry(rc, "kind", opts.disk.kind));
+  setShowNotMounted(
+      xfce_rc_read_bool_entry(rc, "not_mounted", opts.disk.showNotMounted));
 }
 
-GdkPixbuf* Disk::getIcon(IconKind iconKind) const {
+void Disk::writeConfig(XfceRc* rc) const {
+  Device::writeConfig(rc);
+  xfce_rc_write_enum_entry(rc, "kind", opts.disk.kind);
+  xfce_rc_write_bool_entry(rc, "not_mounted", opts.disk.showNotMounted);
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Disk::getIcon(IconKind iconKind) const {
   return icons.getIcon(getKind(), iconKind);
 }
 

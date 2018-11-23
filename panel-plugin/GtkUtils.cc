@@ -1,41 +1,19 @@
 #include "GtkUtils.h"
 
-#include "PluginConfig.h"
+#include "Config.h"
+#include "Enum.h"
 
-void gtk_widget_set_css(GtkWidget* widget, const std::string& css) {
-  GtkCssProvider* provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(provider, css.c_str(), css.length(), NULL);
-
-  gtk_widget_reset_style(widget);
-  GtkStyleContext* style = gtk_widget_get_style_context(widget);
-  gtk_style_context_add_provider(style, GTK_STYLE_PROVIDER(provider),
-                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-  // Cleanup
-  g_object_unref(provider);
+void gtk_widget_set_css(Gtk::Widget* widget, const std::string& css) {
+  return gtk_widget_set_css(*widget, css);
 }
 
-GtkWidget* gtk_box_new_for_dialog(GtkOrientation orientation) {
-  return gtk_box_new(orientation, PluginConfig::Spacing);
-}
+void gtk_widget_set_css(Gtk::Widget& widget, const std::string& css) {
+  Glib::RefPtr<Gtk::CssProvider> provider = Gtk::CssProvider::create();
+  provider->load_from_data(css);
 
-GtkWidget* gtk_frame_new_for_dialog(const char* name) {
-  GtkWidget* frame = gtk_frame_new(name);
-
-  gtk_container_set_border_width(GTK_CONTAINER(frame), PluginConfig::Border);
-  gtk_widget_set_css(frame, "label { font-weight: bold; }");
-
-  return frame;
-}
-
-GtkWidget* gtk_grid_new_for_dialog() {
-  GtkWidget* grid = gtk_grid_new();
-  
-  gtk_grid_set_row_spacing(GTK_GRID(grid), PluginConfig::Padding);
-  gtk_grid_set_column_spacing(GTK_GRID(grid), PluginConfig::Padding);
-  gtk_container_set_border_width(GTK_CONTAINER(grid), PluginConfig::Border);
-
-  return grid;
+  widget.reset_style();
+  Glib::RefPtr<Gtk::StyleContext> style = widget.get_style_context();
+  style->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
 
 GtkWidget* gtk_label_new_for_dialog(const char* mnemonic, const char* tooltip) {
@@ -90,25 +68,23 @@ gint gtk_tree_view_get_num_rows(GtkTreeView* tree) {
   return rows;
 }
 
-
-namespace Gtk {
-
 Gtk::Frame& make_frame_for_dialog(const std::string& title) {
   auto& frame = *Gtk::make_managed<Gtk::Frame>(title);
 
-  frame.set_border_width(PluginConfig::Border);
-  frame.set_label_align(PluginConfig::FrameAlignX, FrameAlignY);
-  gtk_widget_set_css(GTK_WIDGET(frame.gobj()), "label { font-weight: bold; }");
+  frame.set_border_width(Config::Dialog::Border);
+  frame.set_label_align(Config::Dialog::FrameAlignX,
+                        Config::Dialog::FrameAlignY);
+  gtk_widget_set_css(frame, "label { font-weight: bold; }");
 
   return frame;
 }
 
 Gtk::Grid& make_grid_for_dialog() {
   auto& grid = *Gtk::make_managed<Gtk::Grid>();
-  
-  grid.set_row_spacing(PluginConfig::Padding);
-  grid.set_column_spacing(PluginConfig::Padding);
-  grid.set_border_width(PluginConfig::Border);
+
+  grid.set_row_spacing(Config::Dialog::Spacing);
+  grid.set_column_spacing(Config::Dialog::Spacing);
+  grid.set_border_width(Config::Dialog::Border);
 
   return grid;
 }
@@ -124,12 +100,47 @@ Gtk::Label& make_label_for_dialog(const std::string& mnemonic,
 
   if(tooltip.length())
     label.set_tooltip_text(tooltip);
-  
+
   label.set_xalign(0);
   label.set_yalign(0.5);
 
   return label;
 }
 
+Gtk::Scale& make_scale_for_dialog(double step, double page) {
+  auto& scale = *Gtk::make_managed<Gtk::Scale>(Gtk::ORIENTATION_HORIZONTAL);
 
-} // namespace Gtk
+  scale.set_draw_value(false);
+  scale.set_has_origin(false);
+  scale.set_increments(step, page);
+
+  return scale;
+}
+
+template <>
+const char* enum_cstr<Gtk::ResponseType>(Gtk::ResponseType response) {
+  switch(response) {
+  case Gtk::RESPONSE_NONE:
+    return "None";
+  case Gtk::RESPONSE_DELETE_EVENT:
+    return "Delete";
+  case Gtk::RESPONSE_OK:
+    return "OK";
+  case Gtk::RESPONSE_CANCEL:
+    return "Cancel";
+  case Gtk::RESPONSE_CLOSE:
+    return "Close";
+  case Gtk::RESPONSE_YES:
+    return "Yes";
+  case Gtk::RESPONSE_NO:
+    return "No";
+  case Gtk::RESPONSE_APPLY:
+    return "Apply";
+  case Gtk::RESPONSE_HELP:
+    return "Help";
+  default:
+    g_error("Stringifying unknown signal: %d", response);
+    break;
+  }
+  return "<Unknown signal>";
+}

@@ -20,7 +20,11 @@ ENUM_CREATE(StatsRange, // <
 // The purpose of the icon. This is used to determine the size that will be
 // used. By not having the size hard-coded here, we can (comparatively) easily
 // change the icon size as desired
-ENUM_CREATE(IconKind, Dialog, Menu, Toolbar, Tooltip);
+ENUM_CREATE(IconKind, // <
+            Dialog,
+            Menu,
+            Toolbar,
+            Tooltip);
 
 ENUM_CREATE(LabelPosition, // <
             Left,          // <
@@ -37,7 +41,10 @@ ENUM_CREATE(DialKind,
             CombinedHorizontal // Two semi-circular horizontal dials
 );
 
-ENUM_CREATE(TooltipVerbosity, Limited, Moderate, Verbose);
+ENUM_CREATE(Verbosity, // <
+            Limited,
+            Moderate,
+            Verbose);
 
 ENUM_CREATE(DeviceStatus,
             // <begin common values>
@@ -80,19 +87,11 @@ ENUM_CREATE(DeviceClass,
             Network // The device is a network interface
 );
 
-ENUM_CREATE(StatsUnit,
+ENUM_CREATE(Unit,
             Bytes,   // <
             Rate,    // <
             Seconds, // <
-            Unitless);
-
-ENUM_CREATE(Response,
-            None,   // <
-            Delete, // The dialog is closed
-            OK,     // <
-            Cancel, // <
-            Close,  // <
-            Apply);
+            None);
 
 // Since the disk kind and the network kind enums are different
 // Given the device type, we need to find a way to find the right enum for

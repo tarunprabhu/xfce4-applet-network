@@ -1,9 +1,14 @@
 #ifndef XFCE_APPLET_SPEED_BINARY_H
 #define XFCE_APPLET_SPEED_BINARY_H
 
-class Binary {
+#include "Dict2.h"
+#include "UnitPrefix.h"
+
+#include <string>
+
+class BinaryImpl {
 public:
-  enum class Prefix {
+  enum Prefix {
     None, // 0 -- 10^3
     Kibi,
     Mebi,
@@ -11,29 +16,18 @@ public:
     Tebi,
     Pebi,
     Exbi,
+    Zebi,
+    Yobi,
+    Last_,
   };
+  
+public:
+  static const Dict2<Prefix, std::string> Prefixes;
+};
 
-  class Exponent {
-  public:
-    static const int None = 0;
-    static const int Kibi = 3;
-    static const int Mebi = 6;
-    static const int Gibi = 9;
-    static const int Tebi = 12;
-    static const int Pebi = 15;
-    static const int Exbi = 18;
-  };
-
-  class Multiplier {
-  public:
-    static constexpr double None = 1.0;
-    static constexpr double Kibi = None * 1024;
-    static constexpr double Mebi = Kibi * 1024;
-    static constexpr double Gibi = Mibi * 1024;
-    static constexpr double Tebi = Gibi * 1024;
-    static constexpr double Pebi = Tebi * 1024;
-    static constexpr double Exbi = Pebi * 1024;
-  };
+class Binary : public BinaryImpl, public UnitPrefix<BinaryImpl, 0, 24, 1024> {
+public:
+  using BinaryImpl::Prefix;
 };
 
 #endif // XFCE_APPLET_SPEED_BINARY_H

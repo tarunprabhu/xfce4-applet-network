@@ -1,12 +1,12 @@
-#ifndef XFCE_APPLET_SPEED_ENUM_IMPL_H
-#define XFCE_APPLET_SPEED_ENUM_IMPL_H
+#ifndef XFCE_APPLET_SPEED_ENUM_H
+#define XFCE_APPLET_SPEED_ENUM_H
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <string>
 #include <vector>
 
-namespace EnumImpl_ {
+namespace enum_impl {
 constexpr static unsigned len(const char* s, unsigned l = 0) {
   if(*s == '\0')
     return l;
@@ -43,7 +43,7 @@ initialize(char* buffer, unsigned i, unsigned* indices, unsigned* longest) {
   initialize(buffer, i + 1, indices, longest);
 }
 
-template <typename Enum, unsigned Length> class EnumNameGenerator {
+template <typename Enum, unsigned Length> class EnumNames {
 private:
   // The name of the enum. Useful for debugging
   const char* name;
@@ -63,8 +63,8 @@ private:
   unsigned longest;
 
 public:
-  constexpr EnumNameGenerator(const char* init, const char* initName)
-      : name(initName), buffer(""), indices{}, longest(0) {
+  constexpr EnumNames(const char* init, const char* initName)
+      : name(initName), buffer{}, indices{}, longest(0) {
     copy(buffer, init);
     indices[0] = 0;
     initialize(buffer, 1, &indices[1], &longest);
@@ -91,7 +91,7 @@ public:
   }
 };
 
-} // namespace EnumImpl_
+} // namespace enum_impl_
 
 template <typename DestTy, typename Enum> constexpr DestTy EnumAs(Enum e) {
   return static_cast<DestTy>(e);
@@ -145,21 +145,21 @@ template <typename Enum> Enum enum_parse(const std::string& s) {
   };                                                                           \
                                                                                \
   template <> inline const char* enum_cstr(Name e) {                           \
-    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
-        #Labels, #Name);                                                       \
+    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
+                                                                      #Name);  \
     return gen.cstr(e);                                                        \
   }                                                                            \
                                                                                \
   template <> inline Name enum_parse<Name>(const char* s) {                    \
-    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
-        #Labels, #Name);                                                       \
+    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
+                                                                      #Name);  \
     return gen.parse(s);                                                       \
   }                                                                            \
                                                                                \
   template <> inline unsigned enum_name_longest<Name>() {                      \
-    constexpr EnumImpl_::EnumNameGenerator<Name, EnumImpl_::len(#Labels)> gen( \
-        #Labels, #Name);                                                       \
+    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
+                                                                      #Name);  \
     return gen.getLongest();                                                   \
   }
 
-#endif // XFCE_APPLET_SPEED_ENUM_IMPL_H
+#endif // XFCE_APPLET_SPEED_ENUM_H

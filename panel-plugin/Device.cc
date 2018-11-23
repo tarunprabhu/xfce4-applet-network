@@ -1,13 +1,14 @@
 #include "Device.h"
 
+#include "CSSBuilder.h"
 #include "Debug.h"
 #include "Defaults.h"
 #include "DeviceTooltip.h"
-#include "DeviceUI.h"
 #include "Devices.h"
 #include "Plugin.h"
+#include "XfceUtils.h"
 
-std::unique_ptr<Device> Device::makeNew(DeviceClass clss, Plugin& plugin) {
+std::unique_ptr<Device> Device::create(DeviceClass clss, Plugin& plugin) {
   switch(clss) {
   case DeviceClass::Disk:
     return std::unique_ptr<Device>(new Disk(plugin));
@@ -24,11 +25,31 @@ Device::Device(Plugin& plugin, DeviceClass clss)
     : plugin(plugin), icons(plugin.getIcons()), clss(clss) {
   TRACE_FUNC_ENTER;
 
+  widgetUI = DeviceWidget::create(*this);
+  
+  opts.dev              = Defaults::Device::Dev;
+  opts.name             = Defaults::Device::Name;
+  opts.dial             = Defaults::Device::Dial;
+  opts.rxMax            = Defaults::Device::RxMax;
+  opts.txMax            = Defaults::Device::TxMax;
+  opts.showNotAvailable = Defaults::Device::ShowNotAvailable;
+  opts.showLabel        = Defaults::Device::ShowLabel;
+  opts.label            = Defaults::Device::Label;
+  opts.labelFgColor     = Defaults::Device::LabelFgColor;
+  opts.labelBgColor     = Defaults::Device::LabelBgColor;
+  opts.labelPosition    = Defaults::Device::LabelPos;
+
+  setCSS();
+
   TRACE_FUNC_EXIT;
 }
 
 Plugin& Device::getPlugin() {
   return plugin;
+}
+
+DeviceWidget& Device::getUIWidget() {
+  return *widgetUI.get();
 }
 
 const Plugin& Device::getPlugin() const {
@@ -48,114 +69,178 @@ DeviceClass Device::getClass() const {
 }
 
 const std::string& Device::getDevice() const {
-  return getOptions().dev;
+  return opts.dev;
+}
+
+const std::string& Device::getKindString() const {
+  return opts.kind;
 }
 
 const std::string& Device::getName() const {
-  return getOptions().name;
+  return opts.name;
 }
 
 DialKind Device::getDial() const {
-  return getOptions().dial;
+  return opts.dial;
 }
 
 uint64_t Device::getRxMax() const {
-  return getOptions().rxMax;
+  return opts.rxMax;
 }
 
 uint64_t Device::getTxMax() const {
-  return getOptions().txMax;
+  return opts.txMax;
 }
 
 bool Device::getShowNotAvailable() const {
-  return getOptions().showNotAvailable;
+  return opts.showNotAvailable;
 }
 
 bool Device::getShowLabel() const {
-  return getOptions().showLabel;
+  return opts.showLabel;
 }
 
 const std::string& Device::getLabel() const {
-  return getOptions().label;
+  return opts.label;
 }
 
-const GdkRGBA& Device::getLabelFgColor() const {
-  return getOptions().labelFg;
+const Gdk::RGBA& Device::getLabelFgColor() const {
+  return opts.labelFgColor;
 }
 
-const GdkRGBA& Device::getLabelBgColor() const {
-  return getOptions().labelBg;
+const Gdk::RGBA& Device::getLabelBgColor() const {
+  return opts.labelBgColor;
 }
 
 LabelPosition Device::getLabelPosition() const {
-  return getOptions().labelPosition;
+  return opts.labelPosition;
+}
+
+const std::string& Device::getCSS() const {
+  return opts.css;
 }
 
 DeviceStatus Device::getStatus() const {
   return getStats().getStatus();
 }
 
+Device& Device::setKind(const std::string& kind) {
+  opts.kind = kind;
+  
+  return *this;
+}
+
 Device& Device::setName(const std::string& name) {
-  getOptions().name = name;
+  opts.name = name;
 
   return *this;
 }
 
 Device& Device::setDial(DialKind kind) {
-  getOptions().dial = kind;
-  getUI().setDial(kind);
-  
+  opts.dial = kind;
+  // getUI().setDial(kind);
+
   return *this;
 }
 
 Device& Device::setRxMax(uint64_t rate) {
-  getOptions().rxMax = rate;
-  getUI().setDial(getDial());
+  opts.rxMax = rate;
+  // getUI().setDial(getDial());
 
   return *this;
 }
 
 Device& Device::setTxMax(uint64_t rate) {
-  getOptions().txMax = rate;
-  getUI().setDial(getDial());
+  opts.txMax = rate;
+  // getUI().setDial(getDial());
 
   return *this;
 }
 
 Device& Device::setShowNotAvailable(bool show) {
-  getOptions().showNotAvailable = show;
+  opts.showNotAvailable = show;
 
   return *this;
 }
 
 Device& Device::setShowLabel(bool show) {
-  getOptions().showLabel = show;
+  opts.showLabel = show;
 
   return *this;
 }
 
 Device& Device::setLabel(const std::string& label) {
-  getOptions().label = label;
+  opts.label = label;
 
   return *this;
 }
 
-Device& Device::setLabelFgColor(const GdkRGBA& color) {
-  getOptions().labelFg = color;
-  getUI().setCSS();
+Device& Device::setLabelFgColor(const Gdk::RGBA& color) {
+  opts.labelFgColor = color;
+  setCSS();
 
   return *this;
 }
 
-Device& Device::setLabelBgColor(const GdkRGBA& color) {
-  getOptions().labelBg = color;
-  getUI().setCSS();
+Device& Device::setLabelBgColor(const Gdk::RGBA& color) {
+  opts.labelBgColor = color;
+  setCSS();
 
   return *this;
 }
 
 Device& Device::setLabelPosition(LabelPosition pos) {
-  getOptions().labelPosition = pos;
+  opts.labelPosition = pos;
 
   return *this;
+}
+
+void Device::setCSS() {
+  opts.css = CSSBuilder("label")
+                 .addBgColor(getLabelBgColor())
+                 .addFgColor(getLabelFgColor())
+                 .addFont(plugin.getFont())
+                 .endSelector()
+                 .commit();
+}
+
+void Device::readConfig(XfceRc* rc) {
+  TRACE_FUNC_ENTER;
+
+  setDevice(xfce_rc_read_string_entry(rc, "device", opts.dev));
+  setName(xfce_rc_read_string_entry(rc, "name", opts.name));
+  setDial(xfce_rc_read_enum_entry(rc, "dial", opts.dial));
+  setRxMax(xfce_rc_read_double_entry(rc, "rx", opts.rxMax));
+  setTxMax(xfce_rc_read_double_entry(rc, "tx", opts.txMax));
+  setShowNotAvailable(
+      xfce_rc_read_bool_entry(rc, "notavailable", opts.showNotAvailable));
+  setShowLabel(xfce_rc_read_bool_entry(rc, "show", opts.showLabel));
+  setLabel(xfce_rc_read_string_entry(rc, "label", opts.label));
+  setLabelFgColor(xfce_rc_read_color_entry(rc, "labelFg", opts.labelFgColor));
+  setLabelBgColor(xfce_rc_read_color_entry(rc, "labelBg", opts.labelBgColor));
+  setLabelPosition(xfce_rc_read_enum_entry(rc, "labelPos", opts.labelPosition));
+
+  TRACE_FUNC_EXIT;
+}
+
+void Device::writeConfig(XfceRc* rc) const {
+  TRACE_FUNC_ENTER;
+
+  xfce_rc_write_string_entry(rc, "device", opts.dev);
+  xfce_rc_write_string_entry(rc, "name", opts.name);
+  xfce_rc_write_enum_entry(rc, "dial", opts.dial);
+  xfce_rc_write_double_entry(rc, "rx", opts.rxMax);
+  xfce_rc_write_double_entry(rc, "tx", opts.txMax);
+  xfce_rc_write_bool_entry(rc, "notavailable", opts.showNotAvailable);
+  xfce_rc_write_bool_entry(rc, "show", opts.showLabel);
+  xfce_rc_write_string_entry(rc, "label", opts.label);
+  xfce_rc_write_color_entry(rc, "labelFg", opts.labelFgColor);
+  xfce_rc_write_color_entry(rc, "labelBg", opts.labelBgColor);
+  xfce_rc_write_enum_entry(rc, "labelPos", opts.labelPosition);
+
+  TRACE_FUNC_EXIT;
+}
+
+void Device::cbRefresh() {
+  widgetUI->cbRefresh();
 }

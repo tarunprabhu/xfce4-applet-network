@@ -1,10 +1,9 @@
-#include "PanelPlugin.h"
-
 #include "Debug.h"
 #include "Plugin.h"
-#include "Xfce.h"
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
+
+#include "Xfce.h"
 
 static void cb_about(XfcePanelPlugin*, gpointer data) {
   reinterpret_cast<Plugin*>(data)->cbAbout();
@@ -16,7 +15,8 @@ static void cb_configure(XfcePanelPlugin*, gpointer data) {
 
 static void
 cb_reorient(XfcePanelPlugin*, GtkOrientation orientation, gpointer data) {
-  reinterpret_cast<Plugin*>(data)->getUI().cbReorient(orientation);
+  reinterpret_cast<Plugin*>(data)->cbReorient(
+      static_cast<Gtk::Orientation>(orientation));
 }
 
 static void cb_free(XfcePanelPlugin*, gpointer data) {
@@ -30,7 +30,7 @@ static void cb_save(XfcePanelPlugin*, gpointer data) {
 }
 
 static void cb_resize(XfcePanelPlugin*, gint size, gpointer data) {
-  reinterpret_cast<Plugin*>(data)->getUI().cbResize(size);
+  reinterpret_cast<Plugin*>(data)->cbResize(size);
 }
 
 static gboolean cb_handle_event(XfcePanelPlugin*, gchar*, GValue*, gpointer) {

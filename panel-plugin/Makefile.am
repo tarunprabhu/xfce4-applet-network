@@ -6,41 +6,39 @@ plugin_LTLIBRARIES = libappletnetwork.la
 libappletnetwork_la_CPPFLAGS =									\
 	-DPACKAGE_LOCALE_DIR=\"$(localedir)\"			\
 	@LIBXFCE4UI_CFLAGS@												\
-	@LIBXFCE4PANEL_CFLAGS@  -g
+	@LIBXFCE4PANEL_CFLAGS@ \
+	@GTKMM_CFLAGS@
 
 libappletnetwork_la_LIBADD =		\
 	@LIBXFCE4UI_LIBS@						\
-	@LIBXFCE4PANEL_LIBS@
+	@LIBXFCE4PANEL_LIBS@ \
+	@GTKMM_LIBS@
 
 libappletnetwork_la_SOURCES =  \
+	Binary.cc \
+	Config.cc \
 	Constants.cc \
 	CSSBuilder.cc \
 	Defaults.cc \
 	Device.cc \
-	DeviceConfig.cc \
-	DeviceOptions.cc \
+	DeviceConfigDialog.cc \
 	DeviceTooltip.cc \
-	DeviceUI.cc \
+	DeviceWidget.cc \
 	DeviceStats.cc \
-# Dial.cc
-	DialOptions.cc \
 	Disk.cc \
-	DiskOptions.cc \
 	DiskStats.cc \
 	DiskTooltip.cc \
-	DiskUI.cc \
+	Formatter.cc \
 	GtkUtils.cc \
 	Icons.cc \
+	Metric.cc \
 	Network.cc \
-	NetworkOptions.cc \
 	NetworkStats.cc \
 	NetworkTooltip.cc \
-	NetworkUI.cc \
 	PanelPlugin.cc \
 	Plugin.cc \
-	PluginOptions.cc \
-	PluginConfig.cc \
-	PluginUI.cc \
+	PluginConfigDialog.cc \
+	PluginWidget.cc \
 	Utils.cc \
 	XfceUtils.cc \
 	main.c

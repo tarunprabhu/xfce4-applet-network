@@ -15,14 +15,19 @@ BreakBeforeBraces: Attach
 BreakBeforeTernaryOperators: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex:           '^<(libxfce4.+)/'
-    Priority:        2
-  - Regex:           '^<(gtk|glib)/'
-    Priority:        3
-  - Regex:           '<[[:alnum:].]+>'
-    Priority:        4
-  - Regex:           '.*'
-    Priority:        1
+  # The Xfce headers include X11/Xlib.h which defines macros which cause all
+  # sorts of conflicts including with gtkmm.h. So Xfce.h must always appear
+  # last because we take care of undef-ing all the nastiness in Xfce.h
+  - Regex:       '^"Xfce.h"$'
+    Priority:    8
+  - Regex:       '^<(libxfce4.+)/'
+    Priority:    2
+  - Regex:       '^<(gtk.+|glib.+)'
+    Priority:    3
+  - Regex:       '<[[:alnum:].]+>'
+    Priority:    4
+  - Regex:       '.*'
+    Priority:    1
 IndentCaseLabels: false
 IndentWidth: 2
 Language: Cpp

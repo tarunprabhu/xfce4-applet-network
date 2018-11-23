@@ -1,23 +1,24 @@
 #include "Network.h"
 
+#include "Debug.h"
 #include "Defaults.h"
 #include "Icons.h"
 #include "Plugin.h"
 #include "System.h"
 #include "Utils.h"
+#include "XfceUtils.h"
 
 #include <sstream>
 
 Network::Network(Plugin& plugin)
-    : Device(plugin, DeviceClass::Network), options(*this), stats(*this),
-      reader(stats), tooltip(*this), ui(*this) {
+    : Device(plugin, DeviceClass::Network), stats(*this), reader(stats),
+      tooltip(*this) {
   TRACE_FUNC_ENTER;
 
-  TRACE_FUNC_EXIT;
-}
+  opts.network.showNotConnected = Defaults::Device::Network::ShowNotConnected;
+  opts.network.kind             = Defaults::Device::Network::Kind;
 
-NetworkOptions& Network::getOptions() {
-  return options;
+  TRACE_FUNC_EXIT;
 }
 
 NetworkStatsReader& Network::getReader() {
@@ -32,14 +33,6 @@ NetworkTooltip& Network::getTooltip() {
   return tooltip;
 }
 
-NetworkUI& Network::getUI() {
-  return ui;
-}
-
-const NetworkOptions& Network::getOptions() const {
-  return options;
-}
-
 const NetworkStats& Network::getStats() const {
   return stats;
 }
@@ -48,24 +41,16 @@ const NetworkTooltip& Network::getTooltip() const {
   return tooltip;
 }
 
-const NetworkUI& Network::getUI() const {
-  return ui;
-}
-
 NetworkKind Network::getKind() const {
-  return options.kind;
-}
-
-const char* Network::getKindCstr() const {
-  return enum_cstr(options.kind);
+  return opts.network.kind;
 }
 
 bool Network::getShowNotConnected() const {
-  return options.showNotConnected;
+  return opts.network.showNotConnected;
 }
 
 Network& Network::setDevice(const std::string& device) {
-  options.dev = device;
+  opts.dev = device;
   setKind(System::getDeviceKind<DeviceClass::Network>(device));
   stats.reset();
   reader.reset(device);
@@ -73,41 +58,33 @@ Network& Network::setDevice(const std::string& device) {
   return *this;
 }
 
-Network& Network::setKind(const std::string& kind) {
-  setKind(enum_parse<NetworkKind>(kind));
-
-  return *this;
-}
-
 Network& Network::setKind(NetworkKind kind) {
-  options.kind = kind;
+  opts.network.kind = kind;
+  Device::setKind(enum_cstr(kind));
 
   return *this;
 }
 
 Network& Network::setShowNotConnected(bool show) {
-  options.showNotConnected = show;
+  opts.network.showNotConnected = show;
 
   return *this;
 }
 
-void Network::writeConfig(XfceRc* rc) const {
-  TRACE_FUNC_ENTER;
-
-  options.writeConfig(rc);
-
-  TRACE_FUNC_EXIT;
-}
-
 void Network::readConfig(XfceRc* rc) {
-  TRACE_FUNC_ENTER;
-
-  options.readConfig(rc);
-
-  TRACE_FUNC_EXIT;
+  Device::readConfig(rc);
+  setKind(xfce_rc_read_enum_entry(rc, "kind", opts.network.kind));
+  setShowNotConnected(xfce_rc_read_bool_entry(rc, "not_connected",
+                                              opts.network.showNotConnected));
 }
 
-GdkPixbuf* Network::getIcon(IconKind iconKind) const {
+void Network::writeConfig(XfceRc* rc) const {
+  Device::writeConfig(rc);
+  xfce_rc_write_enum_entry(rc, "kind", opts.network.kind);
+  xfce_rc_write_bool_entry(rc, "not_connected", opts.network.showNotConnected);
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Network::getIcon(IconKind iconKind) const {
   return icons.getIcon(getKind(), iconKind);
 }
 

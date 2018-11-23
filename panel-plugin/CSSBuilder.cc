@@ -2,8 +2,6 @@
 
 #include "Debug.h"
 
-#include <gtk/gtk.h>
-
 #define ERROR_IF_NOT_COMMITTED()                                               \
   do {                                                                         \
     if(not committed)                                                          \
@@ -63,18 +61,18 @@ CSSBuilder& CSSBuilder::addEndDeclaration() {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addColor(const GdkRGBA& color) {
+CSSBuilder& CSSBuilder::addColor(const Gdk::RGBA& color) {
   ss << "rgba(";
-  ss << ((unsigned)(color.red * 255)) << ", ";
-  ss << ((unsigned)(color.green * 255)) << ", ";
-  ss << ((unsigned)(color.blue * 255)) << ", ";
-  ss << color.alpha;
+  ss << ((unsigned)(color.get_red() * 255)) << ", ";
+  ss << ((unsigned)(color.get_green() * 255)) << ", ";
+  ss << ((unsigned)(color.get_blue() * 255)) << ", ";
+  ss << color.get_alpha();
   ss << ")";
 
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA& color) {
+CSSBuilder& CSSBuilder::addFgColor(const Gdk::RGBA& color) {
   ERROR_IF_COMMITTED();
 
   addBeginDeclaration("color");
@@ -84,7 +82,7 @@ CSSBuilder& CSSBuilder::addFgColor(const GdkRGBA& color) {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA& color) {
+CSSBuilder& CSSBuilder::addBgColor(const Gdk::RGBA& color) {
   ERROR_IF_COMMITTED();
 
   addBeginDeclaration("background-color");
@@ -94,38 +92,38 @@ CSSBuilder& CSSBuilder::addBgColor(const GdkRGBA& color) {
   return *this;
 }
 
-CSSBuilder& CSSBuilder::addFont(const PangoFontDescription* font) {
+CSSBuilder& CSSBuilder::addFont(const Pango::FontDescription& font) {
   ERROR_IF_COMMITTED();
 
-  addFontFamily(pango_font_description_get_family(font));
-  addFontSize(pango_font_description_get_size(font), "px");
+  addFontFamily(font.get_family().raw());
+  addFontSize(font.get_size(), "px");
 
-  switch(pango_font_description_get_style(font)) {
-  case PANGO_STYLE_NORMAL:
+  switch(font.get_style()) {
+  case Pango::STYLE_NORMAL:
     addFontStyle("normal");
     break;
-  case PANGO_STYLE_OBLIQUE:
+  case Pango::STYLE_OBLIQUE:
     addFontStyle("oblique");
     break;
-  case PANGO_STYLE_ITALIC:
+  case Pango::STYLE_ITALIC:
     addFontStyle("italic");
     break;
   default:
     break;
   }
 
-  switch(pango_font_description_get_variant(font)) {
-  case PANGO_VARIANT_NORMAL:
+  switch(font.get_variant()) {
+  case Pango::VARIANT_NORMAL:
     addFontVariant("normal");
     break;
-  case PANGO_VARIANT_SMALL_CAPS:
+  case Pango::VARIANT_SMALL_CAPS:
     addFontVariant("small-caps");
     break;
   default:
     break;
   }
 
-  addFontWeight(static_cast<unsigned>(pango_font_description_get_weight(font)));
+  addFontWeight(static_cast<unsigned>(font.get_weight()));
 
   return *this;
 }

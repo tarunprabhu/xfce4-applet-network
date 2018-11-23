@@ -3,7 +3,7 @@
 
 #include "DeviceTooltip.h"
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 class Disk;
 class DiskStats;
@@ -17,15 +17,14 @@ protected:
   virtual void updateIcon() override;
   virtual void updateText() override;
 
-  virtual GtkWidget* createUI() override;
-  virtual void clearUI() override;
-
 public:
   DiskTooltip(Disk&);
   DiskTooltip(const DiskTooltip&)  = delete;
   DiskTooltip(const DiskTooltip&&) = delete;
   virtual ~DiskTooltip()           = default;
 
+  virtual void init() override;
+  
   DiskTooltip& operator=(const DiskTooltip&) = delete;
 };
 

@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_SPEED_DEBUG_H
 #define XFCE_APPLET_SPEED_DEBUG_H
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <cstdio>
 

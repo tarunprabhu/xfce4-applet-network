@@ -39,7 +39,7 @@ public:
     return *this;
   }
 
-  constexpr Array<T, Enum&> operator=(const Array<T, Enum>& other) {
+  constexpr Array<T, Enum>& operator=(const Array<T, Enum>& other) {
     size_type i = 0;
     for(const T& e : other)
       impl[i++] = e;

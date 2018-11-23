@@ -1,19 +1,19 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_H
 #define XFCE_APPLET_SPEED_DEVICE_H
 
+#include "DeviceWidget.h"
 #include "Types.h"
 #include "UniqueID.h"
-#include "Xfce.h"
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <memory>
 #include <string>
 
-class DeviceOptions;
+#include "Xfce.h"
+
 class DeviceStats;
 class DeviceTooltip;
-class DeviceUI;
 class StatsReader;
 class Icons;
 class Plugin;
@@ -24,9 +24,45 @@ protected:
   const Icons& icons;
   UniqueID     id;
   DeviceClass  clss;
+  Glib::RefPtr<DeviceWidget> widgetUI;
 
-public:
+  struct {
+    // Explicitly chosen options
+    std::string dev;
+    std::string kind;
+    std::string name;
+    DialKind    dial;
+    uint64_t    rxMax;            // Rate is in B/s
+    uint64_t    txMax;            // Rate is in B/s
+    bool        showNotAvailable; // Show the dial and (maybe) label when
+                                  // device is unavailable
+    bool          showLabel;      // Show a label above/below the dial
+    std::string   label;          // The label to display with the dial
+    Gdk::RGBA     labelFgColor;   // Label text color
+    Gdk::RGBA     labelBgColor;   // Label background color
+    LabelPosition labelPosition;  // Position of the label relative to the dial
+
+    // Device specific options
+    union {
+      struct {
+        bool     showNotMounted;
+        DiskKind kind;
+      } disk;
+
+      struct {
+        bool        showNotConnected;
+        NetworkKind kind;
+      } network;
+    };
+
+    // Derived options
+    std::string css;
+  } opts;
+
+protected:
   Device(Plugin&, DeviceClass);
+  
+public:
   Device(const Device&)  = delete;
   Device(const Device&&) = delete;
   virtual ~Device()      = default;
@@ -34,21 +70,18 @@ public:
   Device& operator=(const Device&) = delete;
 
   Plugin&                      getPlugin();
+  DeviceWidget&                getUIWidget();
   const Plugin&                getPlugin() const;
   const Icons&                 getIcons() const;
   const UniqueID&              getUniqueID() const;
   virtual StatsReader&         getReader()        = 0;
-  virtual DeviceOptions&       getOptions()       = 0;
   virtual DeviceStats&         getStats()         = 0;
   virtual DeviceTooltip&       getTooltip()       = 0;
-  virtual DeviceUI&            getUI()            = 0;
-  virtual const DeviceOptions& getOptions() const = 0;
   virtual const DeviceStats&   getStats() const   = 0;
   virtual const DeviceTooltip& getTooltip() const = 0;
-  virtual const DeviceUI&      getUI() const      = 0;
 
   virtual Device& setDevice(const std::string&) = 0;
-  virtual Device& setKind(const std::string&)   = 0;
+  Device&         setKind(const std::string&);
   Device&         setName(const std::string&);
   Device&         setDial(DialKind);
   Device&         setRxMax(uint64_t);
@@ -56,32 +89,36 @@ public:
   Device&         setShowNotAvailable(bool);
   Device&         setShowLabel(bool);
   Device&         setLabel(const std::string&);
-  Device&         setLabelFgColor(const GdkRGBA&);
-  Device&         setLabelBgColor(const GdkRGBA&);
+  Device&         setLabelFgColor(const Gdk::RGBA&);
+  Device&         setLabelBgColor(const Gdk::RGBA&);
   Device&         setLabelPosition(LabelPosition);
+  void            setCSS();
 
-  DeviceClass         getClass() const;
-  const std::string&  getDevice() const;
-  virtual const char* getKindCstr() const = 0;
-  const std::string&  getName() const;
-  DialKind            getDial() const;
-  uint64_t            getRxMax() const;
-  uint64_t            getTxMax() const;
-  bool                getShowNotAvailable() const;
-  bool                getShowLabel() const;
-  const std::string&  getLabel() const;
-  const GdkRGBA&      getLabelFgColor() const;
-  const GdkRGBA&      getLabelBgColor() const;
-  LabelPosition       getLabelPosition() const;
+  DeviceClass        getClass() const;
+  const std::string& getDevice() const;
+  const std::string& getKindString() const;
+  const std::string& getName() const;
+  DialKind           getDial() const;
+  uint64_t           getRxMax() const;
+  uint64_t           getTxMax() const;
+  bool               getShowNotAvailable() const;
+  bool               getShowLabel() const;
+  const std::string& getLabel() const;
+  const Gdk::RGBA&   getLabelFgColor() const;
+  const Gdk::RGBA&   getLabelBgColor() const;
+  LabelPosition      getLabelPosition() const;
+  const std::string& getCSS() const;
 
   DeviceStatus getStatus() const;
 
-  virtual void       readConfig(XfceRc*)        = 0;
-  virtual void       writeConfig(XfceRc*) const = 0;
-  virtual GdkPixbuf* getIcon(IconKind) const    = 0;
+  virtual void                      readConfig(XfceRc*);
+  virtual void                      writeConfig(XfceRc*) const;
+  virtual Glib::RefPtr<Gdk::Pixbuf> getIcon(IconKind) const = 0;
 
+  void cbRefresh();
+  
 public:
-  static std::unique_ptr<Device> makeNew(DeviceClass, Plugin&);
+  static std::unique_ptr<Device> create(DeviceClass, Plugin&);
 };
 
 #endif // XFCE_APPLET_SPEED_DEVICE_H

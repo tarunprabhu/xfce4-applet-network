@@ -1,10 +1,9 @@
 #ifndef XFCE_APPLET_SPEED_UTILS_H
 #define XFCE_APPLET_SPEED_UTILS_H
 
-#include "Array.h"
 #include "Types.h"
 
-#include <gtk/gtk.h>
+#include <gtkmm.h>
 
 #include <cstring>
 #include <functional>
@@ -38,6 +37,18 @@ std::string concat(const std::string& sep, const T& s1, Ts... s) {
   return ss.str();
 }
 
+// constexpr functions that we probably want at compile time
+static inline constexpr unsigned digits(unsigned num) {
+  unsigned digits = 0;
+  do {
+    num /= 10;
+    digits += 1;
+  } while(num);
+
+  return digits;
+}
+
+
 // Nullify
 template <typename T,
           typename std::enable_if_t<std::is_pointer<T>::value, int> = 0>
@@ -59,15 +70,12 @@ template <typename T> void unref(T*& ptr) {
   }
 }
 
+
 template <typename DeviceKind> bool isValidStatus(DeviceStatus);
 bool isValidStatus(DeviceStatus, DeviceClass);
-
-Response convertResponse(gint);
-gint convertResponse(Response);
 
 std::string demangle(const std::type_info&);
 std::string demangle(const std::string&);
 
-std::string getRateString(double);
 
 #endif // XFCE_APPLET_SPEED_UTILS_H
