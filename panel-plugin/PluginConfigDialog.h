@@ -34,13 +34,13 @@ private:
   Gtk::Label* labelSpaceInner;
 
   Gtk::ComboBoxText* comboVerbosity;
-  
+
   Gtk::FontButton*  buttonFont;
   Gtk::CheckButton* checkBold;
   Gtk::CheckButton* checkSmallCaps;
 
   Gtk::TreeView*                     treeDevices;
-  Gtk::ToolButton*                   toolitemAdd;
+  Gtk::ToolItem*                     toolitemAdd;
   Gtk::ToolButton*                   toolitemRemove;
   Gtk::ToolButton*                   toolitemMoveUp;
   Gtk::ToolButton*                   toolitemMoveDown;
@@ -57,6 +57,8 @@ private:
 
   void appendDevice(const Device&);
 
+  int cbAddDeviceImpl(DeviceClass);
+  
 public:
   PluginConfigDialog(Plugin&);
   PluginConfigDialog(const PluginConfigDialog&)  = delete;
@@ -82,11 +84,12 @@ public:
   void cbScaleSpaceInnerChanged();
   void cbComboVerbosityChanged();
   void cbFontFontSet();
-  void cbToggleBoldToggled();
-  void cbToggleSmallCapsToggled();
-  void cbTreeRowActivated(GtkTreePath*, GtkTreeViewColumn*);
+  void cbCheckBoldToggled();
+  void cbCheckSmallCapsToggled();
+  void cbMenuItemAddDiskActivated();
+  void cbMenuItemAddNetworkActivated();
+  void cbTreeRowActivated(const Gtk::TreePath&, Gtk::TreeViewColumn*);
   void cbTreeCursorChanged();
-  void cbToolItemAddClicked();
   void cbToolItemRemoveClicked();
   void cbToolItemMoveUpClicked();
   void cbToolItemMoveDownClicked();

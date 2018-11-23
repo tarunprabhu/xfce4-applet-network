@@ -16,58 +16,6 @@ void gtk_widget_set_css(Gtk::Widget& widget, const std::string& css) {
   style->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
 
-GtkWidget* gtk_label_new_for_dialog(const char* mnemonic, const char* tooltip) {
-  GtkWidget* label = nullptr;
-
-  if(mnemonic)
-    label = gtk_label_new_with_mnemonic(mnemonic);
-  else
-    label = gtk_label_new(NULL);
-  gtk_label_set_xalign(GTK_LABEL(label), 0);
-  if(tooltip)
-    gtk_widget_set_tooltip_text(label, tooltip);
-
-  return label;
-}
-
-void gtk_box_pack(GtkBox*    box,
-                  GtkWidget* child,
-                  gboolean   expand,
-                  gboolean   fill,
-                  guint      padding) {
-  gtk_box_pack_start(box, child, expand, fill, padding);
-}
-
-gint gtk_tree_view_get_selected_row(GtkTreeView* tree) {
-  GtkTreeIter       iter;
-  GtkTreeModel*     model     = NULL;
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(tree);
-  gtk_tree_selection_get_selected(selection, &model, &iter);
-  GtkTreePath* path    = gtk_tree_model_get_path(model, &iter);
-  gint*        indices = gtk_tree_path_get_indices(path);
-  gint         row     = indices[0];
-
-  gtk_tree_path_free(path);
-
-  return row;
-}
-
-GtkTreeIter gtk_tree_view_get_selected_iter(GtkTreeView* tree) {
-  GtkTreeIter       iter;
-  GtkTreeSelection* selection = gtk_tree_view_get_selection(tree);
-
-  gtk_tree_selection_get_selected(selection, NULL, &iter);
-
-  return iter;
-}
-
-gint gtk_tree_view_get_num_rows(GtkTreeView* tree) {
-  GtkTreeModel* model = gtk_tree_view_get_model(tree);
-  int           rows  = gtk_tree_model_iter_n_children(model, NULL);
-
-  return rows;
-}
-
 Gtk::Frame& make_frame_for_dialog(const std::string& title) {
   auto& frame = *Gtk::make_managed<Gtk::Frame>(title);
 
