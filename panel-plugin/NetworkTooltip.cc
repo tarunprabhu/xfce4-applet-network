@@ -12,7 +12,7 @@ NetworkTooltip::NetworkTooltip(Network& network)
   TRACE_FUNC_EXIT;
 }
 
-void NetworkTooltip::init() {
+NetworkTooltip& NetworkTooltip::init() {
   TRACE_FUNC_ENTER;
 
   DeviceTooltip::init();
@@ -20,6 +20,8 @@ void NetworkTooltip::init() {
   // TODO: Implement this
 
   TRACE_FUNC_EXIT;
+
+  return *this;
 }
 
 void NetworkTooltip::updateIcon() {

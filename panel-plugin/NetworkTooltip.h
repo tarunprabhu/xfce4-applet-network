@@ -23,7 +23,7 @@ public:
   NetworkTooltip(const NetworkTooltip&&) = delete;
   virtual ~NetworkTooltip()              = default;
 
-  virtual void init() override;
+  virtual NetworkTooltip& init() override;
   
   NetworkTooltip& operator=(const NetworkTooltip&) = delete;
 };

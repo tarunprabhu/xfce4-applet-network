@@ -1,27 +1,51 @@
 #include "Array.h"
+#include "CSSBuilder.h"
 #include "Config.h"
 #include "Debug.h"
-#include "Defaults.h"
 #include "Device.h"
 #include "DeviceConfigDialog.h"
 #include "DeviceStats.h"
-#include "GtkUtils.h"
+#include "GtkmmUtils.h"
 #include "Icons.h"
 #include "Plugin.h"
 #include "Utils.h"
+#include "Widgets.h"
 
+#include <iomanip>
 #include <sstream>
 
 #include "Xfce.h"
 
 // Local types
-// Enum for the columns of the device list
-ENUM_CREATE(DeviceListColumn,
-            DeviceIcon, // <
-            Name,       // Device name (this is the user-friendly name)
-            Device,     // The name of the device on the system
-            StatusIcon, // <
-            Status);
+class DeviceListColumns : public Gtk::TreeModel::ColumnRecord {
+public:
+  Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> iconDevice;
+  Gtk::TreeModelColumn<Glib::ustring>             name;
+  Gtk::TreeModelColumn<Glib::ustring>             dev;
+  Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> iconStatus;
+  Gtk::TreeModelColumn<DeviceStatus>              status;
+
+public:
+  DeviceListColumns() {
+    add(iconDevice);
+    add(name);
+    add(dev);
+    add(iconStatus);
+    add(status);
+  }
+};
+
+// Local constants
+static const DeviceListColumns deviceListColumns;
+
+// Local utils
+std::string formatPixels(unsigned val, unsigned width) {
+  std::stringstream ss;
+
+  ss << std::setw(width) << val << " px";
+
+  return ss.str();
+}
 
 PluginConfigDialog::PluginConfigDialog(Plugin& plugin)
     : plugin(plugin), icons(plugin.getIcons()) {
@@ -31,42 +55,51 @@ PluginConfigDialog::PluginConfigDialog(Plugin& plugin)
 }
 
 void PluginConfigDialog::appendDevice(const Device& device) {
-  GtkTreeIter               iter;
-  constexpr unsigned        maxName   = Defaults::Device::MaxNameLength;
-  constexpr unsigned        maxDevice = Defaults::Device::MaxDeviceLength;
-  DeviceStatus              status    = device.getStatus();
-  GtkTreeView*              tree      = GTK_TREE_VIEW(treeDevices);
-  GtkTreeModel*             model     = gtk_tree_view_get_model(tree);
-  GtkListStore*             list      = GTK_LIST_STORE(model);
-  Glib::RefPtr<Gdk::Pixbuf> pbDevice  = device.getIcon(IconKind::Toolbar);
-  Glib::RefPtr<Gdk::Pixbuf> pbStatus  = icons.getIcon(status);
-  char                      name[maxName + 1];
-  char                      dev[maxDevice + 1];
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_static(treeDevices->get_model())
+           .get();
+  constexpr unsigned maxName   = Config::Device::NameLengthMax;
+  constexpr unsigned maxDevice = Config::Device::DeviceLengthMax;
+  char               name[maxName + 1];
+  char               dev[maxDevice + 1];
+
+  Gtk::ListStore::iterator iter = list.append();
 
   g_snprintf(name, maxName, "%-*s", maxName, device.getName().c_str());
   g_snprintf(dev, maxDevice, "%-*s", maxDevice, device.getDevice().c_str());
-  gtk_list_store_append(list, &iter);
-  gtk_list_store_set(list, &iter,                                   // <
-                     DeviceListColumn::DeviceIcon, pbDevice.get(),  // <
-                     DeviceListColumn::Name, name,                  // <
-                     DeviceListColumn::Device, dev,                 // <
-                     DeviceListColumn::StatusIcon, pbStatus.get(),  // <
-                     DeviceListColumn::Status, EnumAs<int>(status), // <
-                     -1);
+  DeviceStatus              status   = device.getStatus();
+  Glib::RefPtr<Gdk::Pixbuf> pbDevice = device.getIcon(IconKind::Toolbar);
+  Glib::RefPtr<Gdk::Pixbuf> pbStatus = icons.getIcon(status);
+
+  (*iter)[deviceListColumns.iconDevice] = pbDevice;
+  (*iter)[deviceListColumns.name]       = name;
+  (*iter)[deviceListColumns.dev]        = dev;
+  (*iter)[deviceListColumns.iconStatus] = pbStatus;
+  (*iter)[deviceListColumns.status]     = status;
 }
 
-void PluginConfigDialog::cbDialogResponse(int response) {
+std::string PluginConfigDialog::getLabelPreviewCSS() {
+  return CSSBuilder("label")
+      .addFont(plugin.getFont())
+      .addFgColor(plugin.getLabelFgColor())
+      .addBgColor(plugin.getLabelBgColor())
+      .commit(true);
+}
+
+void PluginConfigDialog::cbDialogResponse(int resp) {
   TRACE_FUNC_ENTER;
 
+  auto response = static_cast<Gtk::ResponseType>(resp);
   switch(response) {
-  case GTK_RESPONSE_DELETE_EVENT:
-  case GTK_RESPONSE_OK:
-  case GTK_RESPONSE_NONE:
+  case Gtk::RESPONSE_DELETE_EVENT:
+  case Gtk::RESPONSE_OK:
+  case Gtk::RESPONSE_NONE:
     plugin.writeConfig();
     plugin.cbRefresh();
     break;
   default:
-    g_error("Unsupported signal in PluginConfig: %s", enum_cstr(response));
+    g_error("Unsupported signal in PluginConfig: %s",
+            enum_str(response).c_str());
     break;
   }
   xfce_panel_plugin_unblock_menu(plugin.getXfcePanelPlugin());
@@ -85,16 +118,6 @@ void PluginConfigDialog::cbSpinPeriodChanged() {
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfigDialog::cbComboModeChanged() {
-  TRACE_FUNC_ENTER;
-
-  auto mode = enum_parse<UnitPrefix>(comboMode->get_active_id().raw());
-
-  plugin.setMode(mode);
-
-  TRACE_FUNC_EXIT;
-}
-
 void PluginConfigDialog::cbCheckShowLabelToggled() {
   TRACE_FUNC_ENTER;
 
@@ -104,7 +127,7 @@ void PluginConfigDialog::cbCheckShowLabelToggled() {
   plugin.cbRefresh();
 
   // Update other elements in the config dialog
-  gridLabel->set_sensitive(show);
+  gridSensitive->set_sensitive(show);
 
   TRACE_FUNC_EXIT;
 }
@@ -117,6 +140,10 @@ void PluginConfigDialog::cbEntryLabelChanged() {
   plugin.setLabel(label);
   plugin.cbRefresh();
 
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
+  labelPreview->set_text(label);
+  
   TRACE_FUNC_EXIT;
 }
 
@@ -127,6 +154,9 @@ void PluginConfigDialog::cbColorLabelFgSet() {
 
   plugin.setLabelFgColor(color);
   plugin.cbRefresh();
+
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
 
   TRACE_FUNC_EXIT;
 }
@@ -139,17 +169,47 @@ void PluginConfigDialog::cbColorLabelBgSet() {
   plugin.setLabelBgColor(color);
   plugin.cbRefresh();
 
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
+
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfigDialog::cbComboLabelPositionChanged() {
+void PluginConfigDialog::cbRadioLabelToggledImpl(LabelPosition pos) {
+  bool active = radioLabelPositions[pos]->get_active();
+
+  if(active)
+    plugin.setLabelPosition(pos);
+}
+
+void PluginConfigDialog::cbRadioLabelLeftToggled() {
   TRACE_FUNC_ENTER;
 
-  auto labelPosition =
-      enum_parse<LabelPosition>(comboLabelPosition->get_active_id().raw());
+  cbRadioLabelToggledImpl(LabelPosition::Left);
 
-  plugin.setLabelPosition(labelPosition);
-  plugin.cbRefresh();
+  TRACE_FUNC_EXIT;
+}
+
+void PluginConfigDialog::cbRadioLabelTopToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Top);
+
+  TRACE_FUNC_EXIT;
+}
+
+void PluginConfigDialog::cbRadioLabelRightToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Right);
+
+  TRACE_FUNC_EXIT;
+}
+
+void PluginConfigDialog::cbRadioLabelBottomToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Bottom);
 
   TRACE_FUNC_EXIT;
 }
@@ -173,7 +233,8 @@ void PluginConfigDialog::cbScaleBorderChanged() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelBorder->set_text(concat(" ", border, "px"));
+  labelBorder->set_text(
+      formatPixels(border, digits(Config::Plugin::BorderMax)));
 
   TRACE_FUNC_EXIT;
 }
@@ -187,7 +248,8 @@ void PluginConfigDialog::cbScaleSpacePluginChanged() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelSpacePlugin->set_text(concat(" ", space, "px"));
+  labelSpacePlugin->set_text(
+      formatPixels(space, digits(Config::Plugin::SpacePluginMax)));
 
   TRACE_FUNC_EXIT;
 }
@@ -201,7 +263,8 @@ void PluginConfigDialog::cbScaleSpaceOuterChanged() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelSpaceOuter->set_text(concat(" ", space, "px"));
+  labelSpaceOuter->set_text(
+      formatPixels(space, digits(Config::Plugin::SpaceOuterMax)));
 
   TRACE_FUNC_EXIT;
 }
@@ -215,30 +278,34 @@ void PluginConfigDialog::cbScaleSpaceInnerChanged() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelSpaceInner->set_text(concat(" ", space, "px"));
+  labelSpaceInner->set_text(
+      formatPixels(space, digits(Config::Plugin::SpaceInnerMax)));
 
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfigDialog::cbFontFontSet() {
+void PluginConfigDialog::cbFontButtonFontSet() {
   TRACE_FUNC_ENTER;
 
-  // // FIXME: This must be updated at some point because eventually,
-  // // GtkFontButton will inherit from GtkFontChooser and we can use
-  // // get_font_desc()
-  // Pango::FontDescription font(fontFont.get_font_name());
+  // FIXME: This must be updated at some point because eventually,
+  // GtkFontButton will inherit from GtkFontChooser and we can use
+  // get_font_desc()
+  Pango::FontDescription font(buttonFont->get_font_name());
 
-  // plugin.setFont(font);
-  // plugin.cbRefresh();
+  plugin.setFont(font);
+  plugin.cbRefresh();
+
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
 
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfigDialog::cbCheckBoldToggled() {
+void PluginConfigDialog::cbToggleBoldToggled() {
   TRACE_FUNC_ENTER;
 
   Pango::FontDescription font = plugin.getFont();
-  if(checkBold->get_active())
+  if(toggleBold->get_active())
     font.set_weight(Pango::WEIGHT_BOLD);
   else
     font.set_weight(Pango::WEIGHT_NORMAL);
@@ -246,20 +313,30 @@ void PluginConfigDialog::cbCheckBoldToggled() {
   plugin.setFont(font);
   plugin.cbRefresh();
 
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
+  toggleBold->set_css(
+      CSSBuilder("button").addFontWeight(font.get_weight()).commit(true));
+
   TRACE_FUNC_EXIT;
 }
 
-void PluginConfigDialog::cbCheckSmallCapsToggled() {
+void PluginConfigDialog::cbToggleCapsToggled() {
   TRACE_FUNC_ENTER;
 
   Pango::FontDescription font = plugin.getFont();
-  if(checkSmallCaps->get_active())
+  if(toggleCaps->get_active())
     font.set_variant(Pango::VARIANT_SMALL_CAPS);
   else
     font.set_variant(Pango::VARIANT_NORMAL);
 
   plugin.setFont(font);
   plugin.cbRefresh();
+
+  // Update other gui elements
+  labelPreview->set_css(getLabelPreviewCSS());
+  toggleCaps->set_css(
+      CSSBuilder("button").addFontVariant(font.get_variant()).commit(true));
 
   TRACE_FUNC_EXIT;
 }
@@ -268,12 +345,14 @@ void PluginConfigDialog::cbTreeRowActivated(const Gtk::TreePath& path,
                                             Gtk::TreeViewColumn*) {
   TRACE_FUNC_ENTER;
 
-  int                row    = (*path)[0];
-  Device&            device = plugin.getDeviceAt(row);
-  DeviceConfigDialog config(device, *this, DeviceConfigDialog::Mode::Edit);
+  int     row    = (*path)[0];
+  Device& device = plugin.getDeviceAt(row);
 
   // Blocking call
-  config.run();
+  DeviceConfigDialog(device, *this, DeviceConfigDialog::Mode::Edit)
+      .init()
+      .run();
+
   plugin.writeConfig();
   plugin.cbRefresh();
 
@@ -288,30 +367,39 @@ void PluginConfigDialog::cbTreeCursorChanged() {
   toolitemMoveDown->set_sensitive(false);
   toolitemConfig->set_sensitive(false);
 
-  // int row = gtk_tree_view_get_selected_row(tree);
-  // if(row >= 0) {
-  //   gtk_widget_set_sensitive(toolitemRemove, TRUE);
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_static(treeDevices->get_model())
+           .get();
+  Gtk::TreeModel::iterator iter = treeDevices->get_selection()->get_selected();
+  Gtk::TreePath            path = list.get_path(iter);
+  int                      rows = list.children().size();
+  int                      row  = path[0];
+  if(row >= 0) {
+    toolitemRemove->set_sensitive(true);
 
-  //   if(row != 0)
-  //     gtk_widget_set_sensitive(toolitemMoveUp, TRUE);
+    if(row != 0)
+      toolitemMoveUp->set_sensitive(true);
 
-  //   if(row != (gtk_tree_view_get_num_rows(tree) - 1))
-  //     gtk_widget_set_sensitive(toolitemMoveDown, TRUE);
-  // }
+    if(row != (rows - 1))
+      toolitemMoveDown->set_sensitive(true);
+  }
 
   TRACE_FUNC_EXIT;
 }
 
 int PluginConfigDialog::cbAddDeviceImpl(DeviceClass clss) {
-  std::unique_ptr<Device> pDevice = Device::create(DeviceClass::Disk, plugin);
-
-  DeviceConfigDialog config(*pDevice.get(), *this,
-                            DeviceConfigDialog::Mode::Add);
+  std::unique_ptr<Device> pDevice = Device::create(clss, plugin);
 
   // Blocking call
-  int response = config.run();
+  int resp =
+      DeviceConfigDialog(*pDevice.get(), *this, DeviceConfigDialog::Mode::Add)
+          .init()
+          .run();
+
+  auto response = static_cast<Gtk::ResponseType>(resp);
   switch(response) {
   case Gtk::RESPONSE_OK:
+    pDevice->getWidget().init();
     appendDevice(*pDevice.get());
     plugin.appendDevice(std::move(pDevice));
     break;
@@ -321,7 +409,7 @@ int PluginConfigDialog::cbAddDeviceImpl(DeviceClass clss) {
     // The unique_ptr will go out of scope, so no need to delete the device
     break;
   default:
-    g_error("Unhandled signal: %s", enum_cstr(response));
+    g_error("Unhandled signal: %s", enum_str(response).c_str());
     break;
   }
 
@@ -336,9 +424,9 @@ void PluginConfigDialog::cbMenuItemAddDiskActivated() {
   int response = cbAddDeviceImpl(DeviceClass::Disk);
   if(response == Gtk::RESPONSE_OK)
     plugin.cbRefresh();
-  
+
   toolitemAdd->set_sensitive(true);
-  
+
   TRACE_FUNC_EXIT;
 }
 
@@ -350,24 +438,25 @@ void PluginConfigDialog::cbMenuItemAddNetworkActivated() {
   int response = cbAddDeviceImpl(DeviceClass::Network);
   if(response == Gtk::RESPONSE_OK)
     plugin.cbRefresh();
-  
+
   toolitemAdd->set_sensitive(true);
-  
+
   TRACE_FUNC_EXIT;
 }
 
 void PluginConfigDialog::cbToolItemRemoveClicked() {
   TRACE_FUNC_ENTER;
 
-  // GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
-  // GtkTreeModel* model = gtk_tree_view_get_model(tree);
-  // GtkListStore* list  = GTK_LIST_STORE(model);
-  // int           row   = gtk_tree_view_get_selected_row(tree);
-  // GtkTreeIter   iter  = gtk_tree_view_get_selected_iter(tree);
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_static(treeDevices->get_model())
+           .get();
+  Gtk::TreeModel::iterator iter = treeDevices->get_selection()->get_selected();
+  Gtk::TreePath            path = list.get_path(iter);
+  int                      row  = path[0];
 
-  // gtk_list_store_remove(list, &iter);
-  // plugin.removeDeviceAt(row);
-  // plugin.cbRefresh();
+  list.erase(iter);
+  plugin.removeDeviceAt(row);
+  plugin.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
@@ -375,23 +464,30 @@ void PluginConfigDialog::cbToolItemRemoveClicked() {
 void PluginConfigDialog::cbToolItemMoveUpClicked() {
   TRACE_FUNC_ENTER;
 
-  // GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
-  // GtkTreeModel* model = gtk_tree_view_get_model(tree);
-  // GtkListStore* list  = GTK_LIST_STORE(model);
-  // int           row   = gtk_tree_view_get_selected_row(tree);
-  // GtkTreeIter   curr  = gtk_tree_view_get_selected_iter(tree);
-  // GtkTreeIter   prev  = curr;
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_static(treeDevices->get_model())
+           .get();
+  Gtk::TreeModel::iterator iter = treeDevices->get_selection()->get_selected();
+  Gtk::TreePath            path = list.get_path(iter);
+  int                      rows = list.children().size();
+  int                      row  = path[0];
+  std::vector<int>         order(rows);
 
-  // gtk_tree_model_iter_previous(model, &prev);
-  // gtk_list_store_move_before(list, &curr, &prev);
+  for(int i = 0; i < rows - 1; i++)
+    order[i] = i;
+  order[row - 1] = row;
+  order[row]     = row - 1;
+  for(int i = row + 1; i < rows; i++)
+    order[i] = i;
 
-  // plugin.moveDeviceUp(row);
-  // plugin.cbRefresh();
+  list.reorder(order);
+  plugin.moveDeviceUp(row);
+  plugin.cbRefresh();
 
-  // // Update gui
-  // if(row == 1)
-  //   toolitemMoveUp->set_sensitive(false);
-  // toolitemMoveDown->set_sensitive(true);
+  // Update gui
+  if(row == 1)
+    toolitemMoveUp->set_sensitive(false);
+  toolitemMoveDown->set_sensitive(true);
 
   TRACE_FUNC_EXIT;
 }
@@ -399,23 +495,30 @@ void PluginConfigDialog::cbToolItemMoveUpClicked() {
 void PluginConfigDialog::cbToolItemMoveDownClicked() {
   TRACE_FUNC_ENTER;
 
-  // GtkTreeView*  tree  = GTK_TREE_VIEW(treeDevices);
-  // GtkTreeModel* model = gtk_tree_view_get_model(tree);
-  // GtkListStore* list  = GTK_LIST_STORE(model);
-  // int           row   = gtk_tree_view_get_selected_row(tree);
-  // GtkTreeIter   curr  = gtk_tree_view_get_selected_iter(tree);
-  // GtkTreeIter   next  = curr;
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_dynamic(treeDevices->get_model())
+           .get();
+  Gtk::TreeModel::iterator iter = treeDevices->get_selection()->get_selected();
+  Gtk::TreePath            path = list.get_path(iter);
+  int                      rows = list.children().size();
+  int                      row  = path[0];
+  std::vector<int>         order(rows);
 
-  // gtk_tree_model_iter_next(model, &next);
-  // gtk_list_store_move_after(list, &curr, &next);
+  for(int i = 0; i < rows; i++)
+    order[i] = i;
+  order[row]     = row + 1;
+  order[row + 1] = row;
+  for(int i = row + 2; i < rows; i++)
+    order[i] = i;
 
-  // plugin.moveDeviceDown(row);
-  // plugin.cbRefresh();
+  list.reorder(order);
+  plugin.moveDeviceDown(row);
+  plugin.cbRefresh();
 
-  // // Update gui
-  // if(row == gtk_tree_view_get_num_rows(tree) - 2)
-  //   toolitemMoveDown->set_sensitive(false);
-  // toolitemMoveUp->set_sensitive(true);
+  // Update gui
+  if(row == rows - 2)
+    toolitemMoveDown->set_sensitive(false);
+  toolitemMoveUp->set_sensitive(true);
 
   TRACE_FUNC_EXIT;
 }
@@ -423,23 +526,30 @@ void PluginConfigDialog::cbToolItemMoveDownClicked() {
 void PluginConfigDialog::cbToolItemConfigClicked() {
   TRACE_FUNC_ENTER;
 
-  // int          row    = gtk_tree_view_get_selected_row(tree);
-  // Device&      device = plugin.getDeviceAt(row);
-  // DeviceConfigDialog config(device, *this, DeviceConfigDialog::Mode::Edit);
+  auto& list =
+      *Glib::RefPtr<Gtk::ListStore>::cast_static(treeDevices->get_model())
+           .get();
+  Gtk::TreeModel::iterator iter = treeDevices->get_selection()->get_selected();
+  Gtk::TreePath            path = list.get_path(iter);
+  int                      row  = path[0];
+  Device&                  device = plugin.getDeviceAt(row);
 
-  // // Blocking call
-  // config.run();
-  // plugin.writeConfig();
-  // plugin.cbRefresh();
+  // Blocking call
+  DeviceConfigDialog(device, *this, DeviceConfigDialog::Mode::Edit)
+      .init()
+      .run();
+
+  plugin.writeConfig();
+  plugin.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }
 
 bool PluginConfigDialog::cbTreeViewQueryTooltip(
     int x, int y, bool kbMode, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
-  GtkTreeIter   iter;
-  GtkTreeModel* model = NULL;
-  GtkTreePath*  path  = NULL;
+  // GtkTreeIter   iter;
+  // GtkTreeModel* model = NULL;
+  // GtkTreePath*  path  = NULL;
 
   // if(gtk_tree_view_get_tooltip_context(tree, &x, &y, kbMode, &model, &path,
   //                                      &iter)) {
@@ -450,7 +560,7 @@ bool PluginConfigDialog::cbTreeViewQueryTooltip(
   //   gtk_tree_view_set_tooltip_cell(tree, tooltip, path, col, NULL);
 
   //   gtk_tree_model_get(model, &iter, DeviceListColumn::Status, &status, -1);
-  //   gtk_tooltip_set_text(tooltip, enum_cstr(status));
+  //   gtk_tooltip_set_text(tooltip, enum_str(status));
 
   //   return true;
   // }
@@ -458,53 +568,130 @@ bool PluginConfigDialog::cbTreeViewQueryTooltip(
   return false;
 }
 
-Gtk::Container& PluginConfigDialog::createGeneralPage() {
+Gtk::Container& PluginConfigDialog::createMiscFrame() {
   TRACE_FUNC_ENTER;
 
-  auto& grid = *Gtk::make_managed<Gtk::Grid>();
+  Gtk::Frame& frame = Gtk::make_managed<FrameWidget>("Common")->init();
+
+  Gtk::Grid& grid = Gtk::make_managed<GridWidget>()->init();
+  grid.set_row_homogeneous(false);
+  grid.set_column_homogeneous(false);
 
   // Period
-  Gtk::Label& labelPeriod = make_label_for_dialog(
-      "_Update interval", "How often to update the dials");
+  Gtk::Label& labelPeriod =
+      Gtk::make_managed<LabelWidget>("_Interval (sec)",
+                                     "How often to update the dials")
+          ->init();
 
   auto& gridPeriod = *Gtk::make_managed<Gtk::Grid>();
   gridPeriod.set_column_homogeneous(false);
+  gridPeriod.set_column_spacing(Config::Dialog::Spacing);
 
-  double spinFirst = Config::Dialog::Plugin::PeriodMin;
-  double spinLast  = Config::Dialog::Plugin::PeriodMax;
-  double spinStep  = Config::Dialog::Plugin::PeriodStep;
+  double                        periodMin  = Config::Plugin::PeriodMin;
+  double                        periodMax  = Config::Plugin::PeriodMax;
+  double                        periodStep = Config::Plugin::PeriodStep;
+  Glib::RefPtr<Gtk::Adjustment> adj        = Gtk::Adjustment::create(
+      plugin.getPeriod(), periodMin, periodMax, periodStep, periodStep);
 
-  auto& spinPeriod = *Gtk::make_managed<Gtk::SpinButton>();
-  spinPeriod.set_range(spinFirst, spinLast);
-  spinPeriod.set_increments(spinStep, spinStep);
+  auto& spinPeriod = *Gtk::make_managed<Gtk::SpinButton>(adj, periodStep, 1);
+  spinPeriod.set_increments(periodStep, periodStep);
+  spinPeriod.set_range(periodMin, periodMax);
   spinPeriod.set_snap_to_ticks(true);
   spinPeriod.set_numeric(true);
+  spinPeriod.set_wrap(false);
+  spinPeriod.set_update_policy(Gtk::UPDATE_IF_VALID);
 
-  auto& labelPeriodUnits = *Gtk::make_managed<Gtk::Label>("seconds");
+  // Verbosity
+  Gtk::Label& labelVerbosity =
+      Gtk::make_managed<LabelWidget>("_Verbosity", "Tooltip verbosity")->init();
 
-  auto& labelMode = make_label_for_dialog(
-      "_Mode", "Use binary (Ki, Mi, etc.) or metric (K, M, etc.) prefixes");
+  auto& comboVerbosity = *Gtk::make_managed<Gtk::ComboBoxText>();
+  for(auto verbosity : Verbosity())
+    comboVerbosity.append(enum_str(verbosity), enum_str(verbosity));
+  comboVerbosity.set_active_id(enum_str(plugin.getVerbosity()));
 
-  auto& comboMode = *Gtk::make_managed<Gtk::ComboBoxText>();
-  for(auto mode : UnitPrefix())
-    comboMode.append(enum_cstr(mode), enum_cstr(mode));
-  comboMode.set_active_id(enum_cstr(Defaults::Plugin::Mode));
+  // Save widgets
+  this->spinPeriod     = &spinPeriod;
+  this->comboVerbosity = &comboVerbosity;
 
-  // Plugin label
-  auto& checkLabel = *Gtk::make_managed<Gtk::CheckButton>("_Label", true);
-  checkLabel.set_active(plugin.getShowLabel());
-  checkLabel.set_tooltip_text("Label to be displayed with the plugin");
+  // Associate label mnemonics
+  labelPeriod.set_mnemonic_widget(spinPeriod);
+  labelVerbosity.set_mnemonic_widget(comboVerbosity);
+
+  // Layout widgets
+  int row = -1;
+
+  row += 1;
+  grid.attach(labelPeriod, 0, row);
+  grid.attach(spinPeriod, 1, row);
+
+  row += 1;
+  grid.attach(labelVerbosity, 0, row);
+  grid.attach(comboVerbosity, 1, row);
+
+  frame.add(grid);
+
+  // Show widgets
+  frame.show_all();
+
+  // Connect signals
+  SIGNAL_CONNECT_METHOD(spinPeriod, value_changed, this, cbSpinPeriodChanged);
+
+  TRACE_FUNC_EXIT;
+
+  return frame;
+}
+
+Gtk::Container& PluginConfigDialog::createLabelFrame() {
+  TRACE_FUNC_ENTER;
+
+  Gtk::Frame& frame = Gtk::make_managed<FrameWidget>("Label")->init();
+
+  Gtk::Grid& grid = Gtk::make_managed<GridWidget>()->init();
+  grid.set_row_homogeneous(false);
+  grid.set_column_homogeneous(false);
 
   // Grid containing widgets that will be disabled if the show label check
   // button is toggled
-  auto& gridLabel = *Gtk::make_managed<Gtk::Grid>();
-  gridLabel.set_column_homogeneous(false);
-  gridLabel.set_column_spacing(Config::Dialog::Spacing);
-  gridLabel.set_sensitive(plugin.getShowLabel());
+  auto& gridSensitive = *Gtk::make_managed<Gtk::Grid>();
+  gridSensitive.set_row_spacing(Config::Dialog::Spacing);
+  gridSensitive.set_column_spacing(Config::Dialog::Spacing);
+  gridSensitive.set_row_homogeneous(false);
+  gridSensitive.set_column_homogeneous(false);
+  gridSensitive.set_sensitive(plugin.getShowLabel());
 
+  // Label preview
+  Gtk::Label& labelPreviewLabel =
+      Gtk::make_managed<LabelWidget>("Preview")->init();
+
+  auto& framePreview = *Gtk::make_managed<Gtk::Frame>();
+
+  LabelWidget& labelPreview = *Gtk::make_managed<LabelWidget>();
+  labelPreview.set_text(plugin.getLabel());
+  labelPreview.set_max_width_chars(Config::Plugin::LabelLengthMax);
+  labelPreview.set_halign(Gtk::ALIGN_CENTER);
+  labelPreview.set_valign(Gtk::ALIGN_CENTER);
+  labelPreview.set_margin_top(Config::Dialog::Border);
+  labelPreview.set_margin_bottom(Config::Dialog::Border);
+  labelPreview.set_css(CSSBuilder("label")
+                           .addFont(plugin.getFont())
+                           .addFgColor(plugin.getLabelFgColor())
+                           .addBgColor(plugin.getLabelBgColor())
+                           .commit(true));
+
+  // Label
+  Gtk::Label& labelLabel =
+      Gtk::make_managed<LabelWidget>("_Label",
+                                     "The label to display with the devices")
+          ->init();
+
+  auto& gridLabel = *Gtk::make_managed<Gtk::Grid>();
+  gridLabel.set_column_spacing(Config::Dialog::Spacing);
+  gridLabel.set_column_homogeneous(false);
+
+  // Label text
   auto& entryLabel = *Gtk::make_managed<Gtk::Entry>();
-  entryLabel.set_width_chars(Defaults::Device::MaxLabelLength);
-  entryLabel.set_max_width_chars(Defaults::Device::MaxLabelLength);
+  entryLabel.set_max_length(Config::Plugin::LabelLengthMax);
   entryLabel.set_text(plugin.getLabel());
 
   // Foreground color
@@ -519,187 +706,211 @@ Gtk::Container& PluginConfigDialog::createGeneralPage() {
   colorLabelBg.set_use_alpha(true);
   colorLabelBg.set_tooltip_text("Background color of the label");
 
-  auto& comboLabelPosition = *Gtk::make_managed<Gtk::ComboBoxText>();
-  for(auto pos : LabelPosition())
-    comboLabelPosition.append(enum_cstr(pos), enum_cstr(pos));
-  comboLabelPosition.set_active_id(enum_cstr(plugin.getLabelPosition()));
+  // Label position
+  Gtk::Label& labelLabelPosition =
+      Gtk::make_managed<LabelWidget>(
+          "_Position", "Position of the label relative to the devices")
+          ->init();
+
+  Gtk::Grid& gridPosition = *Gtk::make_managed<Gtk::Grid>();
+  gridPosition.set_column_spacing(Config::Dialog::Spacing);
+  gridPosition.set_column_homogeneous(false);
+
+  Gtk::RadioButton::Group                 group;
+  Array<Gtk::RadioButton*, LabelPosition> radioLabelPositions(nullptr);
+  for(auto pos : LabelPosition()) {
+    std::string label = "_" + enum_str(pos);
+    auto& radio = *Gtk::make_managed<Gtk::RadioButton>(group, label, true);
+    radioLabelPositions[pos] = &radio;
+  }
+
+  auto& checkShowLabel =
+      *Gtk::make_managed<Gtk::CheckButton>("Sho_w label", true);
+  checkShowLabel.set_tooltip_text("Show a label in the plugin");
+  checkShowLabel.set_active(plugin.getShowLabel());
+  checkShowLabel.set_margin_top(Config::Dialog::Spacing);
 
   // Save widgets
-  this->spinPeriod         = &spinPeriod;
-  this->comboMode          = &comboMode;
-  this->gridLabel          = &gridLabel;
-  this->entryLabel         = &entryLabel;
-  this->colorLabelFg       = &colorLabelFg;
-  this->colorLabelBg       = &colorLabelBg;
-  this->comboLabelPosition = &comboLabelPosition;
+  this->gridSensitive       = &gridSensitive;
+  this->entryLabel          = &entryLabel;
+  this->colorLabelFg        = &colorLabelFg;
+  this->colorLabelBg        = &colorLabelBg;
+  this->radioLabelPositions = radioLabelPositions;
+  this->checkShowLabel      = &checkShowLabel;
+  this->labelPreview        = &labelPreview;
 
   // Attach mnemonic widgets
-  labelPeriod.set_mnemonic_widget(spinPeriod);
-  labelMode.set_mnemonic_widget(comboMode);
+  labelLabel.set_mnemonic_widget(entryLabel);
 
   // Layout widgets
-  grid.attach_next_to(labelPeriod, Gtk::POS_TOP);
-  gridPeriod.attach_next_to(spinPeriod, Gtk::POS_LEFT);
-  gridPeriod.attach_next_to(labelPeriodUnits, spinPeriod, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridPeriod, labelPeriod, Gtk::POS_RIGHT);
+  int row = -1;
 
-  grid.attach_next_to(labelMode, labelPeriod, Gtk::POS_BOTTOM);
-  grid.attach_next_to(comboMode, labelMode, Gtk::POS_RIGHT);
+  row += 1;
+  gridSensitive.attach(labelPreviewLabel, 0, row);
+  framePreview.add(labelPreview);
+  gridSensitive.attach(framePreview, 1, row);
 
-  grid.attach_next_to(checkLabel, labelMode, Gtk::POS_BOTTOM);
-  gridLabel.attach_next_to(entryLabel, Gtk::POS_LEFT);
-  gridLabel.attach_next_to(colorLabelFg, entryLabel, Gtk::POS_RIGHT);
-  gridLabel.attach_next_to(colorLabelBg, colorLabelFg, Gtk::POS_RIGHT);
-  gridLabel.attach_next_to(comboLabelPosition, colorLabelBg, Gtk::POS_RIGHT);
-  grid.attach_next_to(checkLabel, gridLabel, Gtk::POS_RIGHT);
+  row += 1;
+  gridSensitive.attach(labelLabel, 0, row);
+  gridLabel.attach(entryLabel, 0, 0);
+  gridLabel.attach(colorLabelFg, 1, 0);
+  gridLabel.attach(colorLabelBg, 2, 0);
+  gridSensitive.attach(gridLabel, 1, row);
+
+  row += 1;
+  gridSensitive.attach(labelLabelPosition, 0, row);
+  gridPosition.attach(*radioLabelPositions[LabelPosition::Left], 0, 0);
+  gridPosition.attach(*radioLabelPositions[LabelPosition::Top], 1, 0);
+  gridPosition.attach(*radioLabelPositions[LabelPosition::Right], 2, 0);
+  gridPosition.attach(*radioLabelPositions[LabelPosition::Bottom], 3, 0);
+  gridSensitive.attach(gridPosition, 1, row);
+
+  grid.attach(gridSensitive, 0, 0);
+  grid.attach(checkShowLabel, 0, 1);
+
+  frame.add(grid);
 
   // Show widgets
-  grid.show_all();
+  frame.show_all();
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
+    for(LabelPosition pos : {LabelPosition::Top, LabelPosition::Bottom})
+      radioLabelPositions[pos]->hide();
+  } else {
+    for(LabelPosition pos : {LabelPosition::Left, LabelPosition::Right})
+      radioLabelPositions[pos]->hide();
+  }
 
   // Connect signals
-  SIGNAL_CONNECT_METHOD(spinPeriod, value_changed, this, cbSpinPeriodChanged);
-  SIGNAL_CONNECT_METHOD(comboMode, changed, this, cbComboModeChanged);
-  SIGNAL_CONNECT_METHOD(checkLabel, toggled, this, cbCheckShowLabelToggled);
   SIGNAL_CONNECT_METHOD(entryLabel, changed, this, cbEntryLabelChanged);
   SIGNAL_CONNECT_METHOD(colorLabelFg, color_set, this, cbColorLabelFgSet);
   SIGNAL_CONNECT_METHOD(colorLabelBg, color_set, this, cbColorLabelBgSet);
-  SIGNAL_CONNECT_METHOD(comboLabelPosition, changed, this,
-                        cbComboLabelPositionChanged);
+  SIGNAL_CONNECT_METHOD(radioLabelPositions[LabelPosition::Left], toggled, this,
+                        cbRadioLabelLeftToggled);
+  SIGNAL_CONNECT_METHOD(radioLabelPositions[LabelPosition::Top], toggled, this,
+                        cbRadioLabelTopToggled);
+  SIGNAL_CONNECT_METHOD(radioLabelPositions[LabelPosition::Right], toggled,
+                        this, cbRadioLabelRightToggled);
+  SIGNAL_CONNECT_METHOD(radioLabelPositions[LabelPosition::Bottom], toggled,
+                        this, cbRadioLabelBottomToggled);
+  SIGNAL_CONNECT_METHOD(checkShowLabel, toggled, this, cbCheckShowLabelToggled);
 
   TRACE_FUNC_EXIT;
 
-  return grid;
+  return frame;
 }
 
-Gtk::Container& PluginConfigDialog::createPluginAppearanceFrame() {
+std::tuple<Gtk::Label*, Gtk::Grid*, Gtk::Scale*, Gtk::Label*>
+PluginConfigDialog::createSlider(const std::string& tag,
+                                 const std::string& tooltip,
+                                 unsigned           val,
+                                 unsigned           upper) {
+  auto& grid = *Gtk::make_managed<Gtk::Grid>();
+  grid.set_column_homogeneous(false);
+
+  Gtk::Label& labelLabel = Gtk::make_managed<LabelWidget>(tag, tooltip)->init();
+
+  Gtk::Scale& scale = Gtk::make_managed<ScaleWidget>(val, 0, upper)->init();
+  for(unsigned i = 0; i < upper; i++)
+    scale.add_mark(i, Gtk::POS_BOTTOM, "");
+  scale.set_size_request(upper * Config::Dialog::SliderStepWidth);
+
+  unsigned    digits = ::digits(upper);
+  unsigned    width  = digits + 3;
+  std::string text   = formatPixels(val, digits);
+
+  auto& label = *Gtk::make_managed<Gtk::Label>(text);
+  label.set_max_width_chars(width);
+  label.set_width_chars(width);
+
+  // Associate mnemonic widgets
+  labelLabel.set_mnemonic_widget(scale);
+
+  // Layout widgets
+  grid.attach(scale, 0, 0);
+  grid.attach(label, 1, 0);
+
+  return std::make_tuple(&labelLabel, &grid, &scale, &label);
+}
+
+Gtk::Container& PluginConfigDialog::createSpacingFrame() {
   TRACE_FUNC_ENTER;
 
-  Gtk::Frame& frame = make_frame_for_dialog("Plugin");
+  Gtk::Frame& frame = Gtk::make_managed<FrameWidget>("Spacing")->init();
 
-  Gtk::Grid& grid = make_grid_for_dialog();
+  Gtk::Grid& grid = Gtk::make_managed<GridWidget>()->init();
   grid.set_column_homogeneous(false);
 
   // Border
-  Gtk::Label& labelBorderLabel =
-      make_label_for_dialog("_Border", "Border around the plugin");
+  Gtk::Label* labelBorderLabel;
+  Gtk::Grid*  gridBorder;
+  Gtk::Scale* scaleBorder;
+  Gtk::Label* labelBorder;
+  std::tie(labelBorderLabel, gridBorder, scaleBorder, labelBorder) =
+      createSlider("_Border", "Border around the plugin", plugin.getBorder(),
+                   Config::Plugin::BorderMax);
 
-  auto& gridBorder = *Gtk::make_managed<Gtk::Grid>();
-  gridBorder.set_column_homogeneous(false);
+  // Space between the plugin label and the monitors
+  Gtk::Label* labelSpacePluginLabel;
+  Gtk::Grid*  gridSpacePlugin;
+  Gtk::Scale* scaleSpacePlugin;
+  Gtk::Label* labelSpacePlugin;
+  std::tie(labelSpacePluginLabel, gridSpacePlugin, scaleSpacePlugin,
+           labelSpacePlugin) =
+      createSlider("Pa_dding",
+                   "Space between the plugin label and the device monitors",
+                   plugin.getSpacePlugin(), Config::Plugin::SpacePluginMax);
 
-  auto& scaleBorder = make_scale_for_dialog(1, 1);
-  for(unsigned i = 0; i < Config::Dialog::Plugin::BorderMax; i++)
-    scaleBorder.add_mark(i, Gtk::POS_BOTTOM, nullptr);
-  scaleBorder.set_value(plugin.getBorder());
-  scaleBorder.set_size_request(Config::Dialog::Plugin::BorderMax *
-                               Config::Dialog::SliderStepWidth);
+  // Space between the device monitors
+  Gtk::Label* labelSpaceOuterLabel;
+  Gtk::Grid*  gridSpaceOuter;
+  Gtk::Scale* scaleSpaceOuter;
+  Gtk::Label* labelSpaceOuter;
+  std::tie(labelSpaceOuterLabel, gridSpaceOuter, scaleSpaceOuter,
+           labelSpaceOuter) =
+      createSlider("Device _spacing", "Space between the device monitors",
+                   plugin.getSpaceOuter(), Config::Plugin::SpaceOuterMax);
 
-  std::string borderText  = concat(" ", plugin.getBorder(), "px");
-  auto&       labelBorder = *Gtk::make_managed<Gtk::Label>(borderText);
-  labelBorder.set_width_chars(digits(Config::Dialog::Plugin::BorderMax) + 3);
-  labelBorder.set_xalign(1.0);
-
-  // Space plugin
-  Gtk::Label& labelSpacePluginLabel = make_label_for_dialog(
-      "_Plugin outer",
-      "Space between the plugin label and the device monitors");
-
-  auto& gridSpacePlugin = *Gtk::make_managed<Gtk::Grid>();
-  gridSpacePlugin.set_column_homogeneous(false);
-
-  auto& scaleSpacePlugin = make_scale_for_dialog();
-  for(unsigned i = 0; i < Config::Dialog::Plugin::SpacePluginMax; i++)
-    scaleSpacePlugin.add_mark(i, Gtk::POS_BOTTOM, nullptr);
-  scaleSpacePlugin.set_value(plugin.getSpacePlugin());
-  scaleSpacePlugin.set_size_request(Config::Dialog::Plugin::SpacePluginMax *
-                                    Config::Dialog::SliderStepWidth);
-
-  std::string spacePluginText  = concat(" ", plugin.getSpacePlugin(), "px");
-  auto&       labelSpacePlugin = *Gtk::make_managed<Gtk::Label>();
-  labelSpacePlugin.set_text(spacePluginText);
-  labelSpacePlugin.set_width_chars(
-      digits(Config::Dialog::Plugin::SpacePluginMax) + 3);
-  labelSpacePlugin.set_xalign(1.0);
-
-  // Space outer
-  Gtk::Label& labelSpaceOuterLabel = make_label_for_dialog(
-      "Device _outer", "Space between the device monitors");
-
-  auto& gridSpaceOuter = *Gtk::make_managed<Gtk::Grid>();
-  gridSpaceOuter.set_column_homogeneous(false);
-
-  auto& scaleSpaceOuter = make_scale_for_dialog();
-  for(unsigned i = 0; i < Config::Dialog::Plugin::SpaceOuterMax; i++)
-    scaleSpaceOuter.add_mark(i, Gtk::POS_BOTTOM, nullptr);
-  scaleSpaceOuter.set_value(plugin.getSpaceOuter());
-  scaleSpaceOuter.set_size_request(Config::Dialog::Plugin::SpaceOuterMax *
-                                   Config::Dialog::SliderStepWidth);
-
-  std::string spaceOuterText  = concat(" ", plugin.getSpaceOuter(), "px");
-  auto&       labelSpaceOuter = *Gtk::make_managed<Gtk::Label>();
-  labelSpaceOuter.set_text(spaceOuterText);
-  labelSpaceOuter.set_width_chars(
-      digits(Config::Dialog::Plugin::SpaceOuterMax) + 3);
-  labelSpaceOuter.set_xalign(1.0);
-
-  // Space inner
-  Gtk::Label& labelSpaceInnerLabel = make_label_for_dialog(
-      "Device _inner", "Space between a device monitor and its label");
-
-  auto& gridSpaceInner = *Gtk::make_managed<Gtk::Grid>();
-  gridSpaceInner.set_column_homogeneous(false);
-
-  auto& scaleSpaceInner = make_scale_for_dialog();
-  for(unsigned i = 0; i < Config::Dialog::Plugin::SpaceInnerMax; i++)
-    scaleSpaceInner.add_mark(i, Gtk::POS_BOTTOM, nullptr);
-  scaleSpaceInner.set_value(plugin.getSpaceInner());
-  scaleSpaceInner.set_size_request(Config::Dialog::Plugin::SpaceInnerMax *
-                                   Config::Dialog::SliderStepWidth);
-
-  std::string spaceInnerText  = concat(" ", plugin.getSpaceInner(), "px");
-  auto&       labelSpaceInner = *Gtk::make_managed<Gtk::Label>();
-  labelSpaceInner.set_text(spaceInnerText);
-  labelSpaceInner.set_width_chars(
-      digits(Config::Dialog::Plugin::SpaceInnerMax) + 3);
-  labelSpaceInner.set_xalign(1.0);
+  // Space between the device dial and the label
+  Gtk::Label* labelSpaceInnerLabel;
+  Gtk::Grid*  gridSpaceInner;
+  Gtk::Scale* scaleSpaceInner;
+  Gtk::Label* labelSpaceInner;
+  std::tie(labelSpaceInnerLabel, gridSpaceInner, scaleSpaceInner,
+           labelSpaceInner) =
+      createSlider("Device _padding",
+                   "Space between a device monitor and its label",
+                   plugin.getSpaceInner(), Config::Plugin::SpaceInnerMax);
 
   // Save widgets
-  this->scaleBorder      = &scaleBorder;
-  this->scaleSpacePlugin = &scaleSpacePlugin;
-  this->scaleSpaceOuter  = &scaleSpaceOuter;
-  this->scaleSpaceInner  = &scaleSpaceInner;
-  this->labelBorder      = &labelBorder;
-  this->labelSpacePlugin = &labelSpacePlugin;
-  this->labelSpaceOuter  = &labelSpaceOuter;
-  this->labelSpaceInner  = &labelSpaceInner;
+  this->scaleBorder      = scaleBorder;
+  this->scaleSpacePlugin = scaleSpacePlugin;
+  this->scaleSpaceOuter  = scaleSpaceOuter;
+  this->scaleSpaceInner  = scaleSpaceInner;
+  this->labelBorder      = labelBorder;
+  this->labelSpacePlugin = labelSpacePlugin;
+  this->labelSpaceOuter  = labelSpaceOuter;
+  this->labelSpaceInner  = labelSpaceInner;
 
   // Attach mnemonic widgets
-  labelBorderLabel.set_mnemonic_widget(scaleBorder);
-  labelSpacePluginLabel.set_mnemonic_widget(scaleSpacePlugin);
-  labelSpaceOuterLabel.set_mnemonic_widget(scaleSpaceOuter);
-  labelSpaceInnerLabel.set_mnemonic_widget(scaleSpaceInner);
 
   // Layout widgets
-  grid.attach_next_to(labelBorderLabel, Gtk::POS_TOP);
-  gridBorder.attach_next_to(scaleBorder, Gtk::POS_RIGHT);
-  gridBorder.attach_next_to(labelBorder, scaleBorder, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridBorder, labelBorderLabel, Gtk::POS_RIGHT);
+  int row = -1;
 
-  grid.attach_next_to(labelSpacePluginLabel, labelBorderLabel, Gtk::POS_BOTTOM);
-  gridSpacePlugin.attach_next_to(scaleSpacePlugin, Gtk::POS_RIGHT);
-  gridSpacePlugin.attach_next_to(labelSpacePlugin, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridSpacePlugin, labelSpacePluginLabel, Gtk::POS_RIGHT);
+  row += 1;
+  grid.attach(*labelBorderLabel, 0, row);
+  grid.attach(*gridBorder, 1, row);
 
-  grid.attach_next_to(labelSpaceOuterLabel, labelSpacePluginLabel,
-                      Gtk::POS_BOTTOM);
-  gridSpaceOuter.attach_next_to(scaleSpaceOuter, Gtk::POS_RIGHT);
-  gridSpaceOuter.attach_next_to(labelSpaceOuter, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridSpaceOuter, labelSpaceOuterLabel, Gtk::POS_RIGHT);
+  row += 1;
+  grid.attach(*labelSpacePluginLabel, 0, row);
+  grid.attach(*gridSpacePlugin, 1, row);
 
-  grid.attach_next_to(labelSpaceInnerLabel, labelSpaceOuterLabel,
-                      Gtk::POS_BOTTOM);
-  gridSpaceInner.attach_next_to(scaleSpaceInner, Gtk::POS_RIGHT);
-  gridSpaceInner.attach_next_to(labelSpaceInner, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridSpaceInner, labelSpaceInnerLabel, Gtk::POS_RIGHT);
+  row += 1;
+  grid.attach(*labelSpaceOuterLabel, 0, row);
+  grid.attach(*gridSpaceOuter, 1, row);
+
+  row += 1;
+  grid.attach(*labelSpaceInnerLabel, 0, row);
+  grid.attach(*gridSpaceInner, 1, row);
 
   frame.add(grid);
 
@@ -720,152 +931,93 @@ Gtk::Container& PluginConfigDialog::createPluginAppearanceFrame() {
   return frame;
 }
 
-Gtk::Container& PluginConfigDialog::createTooltipAppearanceFrame() {
+Gtk::Container& PluginConfigDialog::createFontFrame() {
   TRACE_FUNC_ENTER;
 
-  Gtk::Frame& frame = make_frame_for_dialog("Tooltip");
+  const Pango::FontDescription& font = plugin.getFont();
+  Glib::ustring                 desc = font.to_string();
 
-  Gtk::Grid& grid = make_grid_for_dialog();
+  Gtk::Frame& frame = Gtk::make_managed<FrameWidget>("Font")->init();
+
+  Gtk::Grid& grid = Gtk::make_managed<GridWidget>()->init();
   grid.set_column_homogeneous(false);
-
-  // Verbosity
-  Gtk::Label& labelVerbosity =
-      make_label_for_dialog("Verbosity", "Tooltip verbosity");
-
-  auto& comboVerbosity = *Gtk::make_managed<Gtk::ComboBoxText>();
-  for(Verbosity verbosity : Verbosity())
-    comboVerbosity.append(enum_cstr(verbosity), enum_cstr(verbosity));
-  comboVerbosity.set_active_id(enum_cstr(plugin.getVerbosity()));
-
-  // Save widgets
-  this->comboVerbosity = &comboVerbosity;
-
-  // Associate label mnemonics
-  labelVerbosity.set_mnemonic_widget(comboVerbosity);
-
-  // Layout widgets
-  grid.attach_next_to(labelVerbosity, Gtk::POS_LEFT);
-  grid.attach_next_to(comboVerbosity, labelVerbosity, Gtk::POS_RIGHT);
-
-  frame.add(grid);
-
-  // Show widgets
-  frame.show_all();
-
-  // Connect signals
-  SIGNAL_CONNECT_METHOD(comboVerbosity, changed, this, cbComboVerbosityChanged);
-
-  TRACE_FUNC_EXIT;
-
-  return frame;
-}
-
-Gtk::Container& PluginConfigDialog::createLabelAppearanceFrame() {
-  TRACE_FUNC_ENTER;
-
-  // const Pango::FontDescription* font = plugin.getFont();
-  // std::unique_ptr<char> pDesc(pango_font_description_to_string(font));
-
-  Gtk::Frame& frame = make_frame_for_dialog("Label");
-
-  Gtk::Grid& grid = make_grid_for_dialog();
-
-  auto& grid1 = *Gtk::make_managed<Gtk::Grid>();
-  grid1.set_column_homogeneous(false);
+  grid.set_column_homogeneous(false);
 
   // Font
   auto& buttonFont = *Gtk::make_managed<Gtk::FontButton>();
-  // buttonFont.set_font_name(pDesc.get());
-
-  auto& grid2 = *Gtk::make_managed<Gtk::Grid>();
-  grid2.set_column_homogeneous(false);
-  grid2.set_column_spacing(Config::Dialog::Spacing);
+  buttonFont.set_use_font(false);
+  buttonFont.set_use_size(false);
+  buttonFont.set_show_size(true);
+  buttonFont.set_show_style(false);
+  buttonFont.set_font_name(desc);
 
   // Weight
-  // TODO: FIX THIS
-  // gboolean isBold =
-  //     pango_font_description_get_weight(font) == PANGO_WEIGHT_BOLD;
-  bool  isBold    = true;
-  auto& checkBold = *Gtk::make_managed<Gtk::CheckButton>("_Bold", true);
-  checkBold.set_active(isBold);
-  checkBold.set_tooltip_text("Use bold font");
+  bool  isBold     = font.get_weight() == Pango::WEIGHT_BOLD;
+  auto& toggleBold = *Gtk::make_managed<ToggleButtonWidget>("Bo_ld", true);
+  toggleBold.set_active(isBold);
+  toggleBold.set_tooltip_text("Use bold font");
+  toggleBold.set_css(
+      CSSBuilder("button").addFontWeight(font.get_weight()).commit(true));
 
   // Variant
-  // TODO: Fix THIS
-  // gboolean isSmallCaps =
-  //     pango_font_description_get_variant(font) == PANGO_VARIANT_SMALL_CAPS;
-  bool  isSmallCaps = true;
-  auto& checkSmallCaps =
-      *Gtk::make_managed<Gtk::CheckButton>("Small _caps", true);
-  checkSmallCaps.set_active(isSmallCaps);
-  checkSmallCaps.set_tooltip_text("Use small caps");
+  bool  isSmallCaps = font.get_variant() == Pango::VARIANT_SMALL_CAPS;
+  auto& toggleCaps  = *Gtk::make_managed<ToggleButtonWidget>("_Caps", true);
+  toggleCaps.set_active(isSmallCaps);
+  toggleCaps.set_tooltip_text("Use small caps");
+  toggleCaps.set_css(
+      CSSBuilder("button").addFontVariant(font.get_variant()).commit(true));
 
   // Save widgets
-  this->buttonFont     = &buttonFont;
-  this->checkBold      = &checkBold;
-  this->checkSmallCaps = &checkSmallCaps;
+  this->buttonFont = &buttonFont;
+  this->toggleBold = &toggleBold;
+  this->toggleCaps = &toggleCaps;
 
   // Associate label mnemonics
 
   // Layout widgets
-  grid1.attach_next_to(buttonFont, Gtk::POS_LEFT);
-  grid.attach_next_to(grid1, Gtk::POS_TOP);
-  grid2.attach_next_to(checkBold, Gtk::POS_LEFT);
-  grid2.attach_next_to(checkSmallCaps, checkBold, Gtk::POS_RIGHT);
-  grid.attach_next_to(grid2, grid1, Gtk::POS_BOTTOM);
+  int row = -1;
+
+  row += 1;
+  grid.attach(buttonFont, 0, row);
+  grid.attach(toggleBold, 1, row);
+  grid.attach(toggleCaps, 2, row);
+
   frame.add(grid);
 
   // Show widgets
   frame.show_all();
 
   // Connect signals
-  SIGNAL_CONNECT_METHOD(buttonFont, font_set, this, cbFontFontSet);
-  SIGNAL_CONNECT_METHOD(checkBold, toggled, this, cbCheckBoldToggled);
-  SIGNAL_CONNECT_METHOD(checkSmallCaps, toggled, this, cbCheckSmallCapsToggled);
+  SIGNAL_CONNECT_METHOD(buttonFont, font_set, this, cbFontButtonFontSet);
+  SIGNAL_CONNECT_METHOD(toggleBold, toggled, this, cbToggleBoldToggled);
+  SIGNAL_CONNECT_METHOD(toggleCaps, toggled, this, cbToggleCapsToggled);
 
   TRACE_FUNC_EXIT;
 
   return frame;
 }
 
-Gtk::Container& PluginConfigDialog::createAppearancePage() {
+Gtk::Container& PluginConfigDialog::createOptionsPage() {
   TRACE_FUNC_ENTER;
+
+  Gtk::Container& frameMisc    = createMiscFrame();
+  Gtk::Container& frameFont    = createFontFrame();
+  Gtk::Container& frameLabel   = createLabelFrame();
+  Gtk::Container& frameSpacing = createSpacingFrame();
 
   Gtk::Grid& page = *Gtk::make_managed<Gtk::Grid>();
   page.set_row_homogeneous(false);
   page.set_column_homogeneous(false);
+  page.attach(frameMisc, 0, 0);
+  page.attach(frameFont, 0, 1);
+  page.attach(frameLabel, 0, 2);
+  page.attach(frameSpacing, 0, 3);
   page.show();
-
-  Gtk::Container& framePlugin  = createPluginAppearanceFrame();
-  Gtk::Container& frameTooltip = createTooltipAppearanceFrame();
-  Gtk::Container& frameLabel   = createLabelAppearanceFrame();
-
-  page.attach_next_to(framePlugin, Gtk::POS_TOP);
-  page.attach_next_to(frameTooltip, framePlugin, Gtk::POS_BOTTOM);
-  page.attach_next_to(frameLabel, frameTooltip, Gtk::POS_BOTTOM);
 
   TRACE_FUNC_EXIT;
 
   return page;
 }
-
-class DeviceListColumns : public Gtk::TreeModel::ColumnRecord {
-public:
-  Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> iconDevice;
-  Gtk::TreeModelColumn<Glib::ustring>             name;
-  Gtk::TreeModelColumn<Glib::ustring>             dev;
-  Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> iconStatus;
-  Gtk::TreeModelColumn<DeviceStatus>              status;
-
-public:
-  DeviceListColumns() {
-    add(iconDevice);
-    add(name);
-    add(dev);
-    add(iconStatus);
-    add(status);
-  }
-};
 
 Gtk::Container& PluginConfigDialog::createDevicesPage() {
   TRACE_FUNC_ENTER;
@@ -876,8 +1028,7 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
   grid.set_column_homogeneous(false);
   grid.set_column_spacing(Config::Dialog::Spacing);
 
-  Glib::RefPtr<Gtk::ListStore> list =
-      Gtk::ListStore::create(DeviceListColumns());
+  Glib::RefPtr<Gtk::ListStore> list = Gtk::ListStore::create(deviceListColumns);
 
   Gtk::CellRendererPixbuf rendererIcon;
   Gtk::TreeViewColumn     columnIcon("", rendererIcon);
@@ -915,18 +1066,21 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
 
   Array<Gtk::MenuItem*, DeviceClass> items;
   for(DeviceClass clss : DeviceClass()) {
-    auto& item = *Gtk::make_managed<Gtk::MenuItem>();
-
-    Gtk::Grid& grid = make_grid_for_dialog();
+    auto& grid = *Gtk::make_managed<Gtk::Grid>();
+    grid.set_column_spacing(Config::Dialog::Spacing);
+    grid.set_row_homogeneous(true);
     grid.set_column_homogeneous(false);
 
     auto& image = *Gtk::make_managed<Gtk::Image>(icons.getIconName(clss),
                                                  Gtk::ICON_SIZE_MENU);
-    auto& label = *Gtk::make_managed<Gtk::Label>(enum_cstr(clss), false);
+    auto& label = *Gtk::make_managed<Gtk::Label>(enum_str(clss), false);
 
-    grid.attach_next_to(label, Gtk::POS_LEFT);
-    grid.attach_next_to(image, label, Gtk::POS_RIGHT);
+    grid.attach_next_to(image, Gtk::POS_LEFT);
+    grid.attach_next_to(label, image, Gtk::POS_RIGHT);
+
+    auto& item = *Gtk::make_managed<Gtk::MenuItem>();
     item.add(grid);
+    item.show_all();
 
     menu.append(item);
     items[clss] = &item;
@@ -944,6 +1098,7 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
   toolitemAdd.set_expand(false);
   toolitemAdd.set_tooltip_text("Add new device");
   toolitemAdd.set_sensitive(true);
+  toolitemAdd.add(menubtn);
 
   auto& toolitemRemove = *Gtk::make_managed<Gtk::ToolButton>();
   toolitemRemove.set_icon_name("gtk-remove");
@@ -1021,7 +1176,7 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
   return grid;
 }
 
-void PluginConfigDialog::init() {
+PluginConfigDialog& PluginConfigDialog::init() {
   TRACE_FUNC_ENTER;
 
   XfcePanelPlugin* xfce       = plugin.getXfcePanelPlugin();
@@ -1033,22 +1188,15 @@ void PluginConfigDialog::init() {
   notebook.popup_disable();
   notebook.set_border_width(Config::Dialog::Border);
 
-  Gtk::Widget& pageGeneral = createGeneralPage();
-  notebook.append_page(pageGeneral, "General");
-  notebook.set_tab_detachable(pageGeneral, false);
-  notebook.set_tab_reorderable(pageGeneral, false);
-
-  Gtk::Widget& pageAppearance = createAppearancePage();
-  notebook.append_page(pageAppearance, "Appearance");
-  notebook.set_tab_detachable(pageAppearance, false);
-  notebook.set_tab_reorderable(pageAppearance, false);
+  Gtk::Widget& pageOptions = createOptionsPage();
+  notebook.append_page(pageOptions, "_Options", true);
+  notebook.set_tab_detachable(pageOptions, false);
+  notebook.set_tab_reorderable(pageOptions, false);
 
   Gtk::Widget& devicesPage = createDevicesPage();
-  notebook.append_page(devicesPage, "Devices");
+  notebook.append_page(devicesPage, "_Devices", true);
   notebook.set_tab_detachable(devicesPage, false);
   notebook.set_tab_reorderable(devicesPage, false);
-
-  notebook.show();
 
   // // Populate the devices. This must be done now because appendDevice()
   // // checks the treeDevices widget which will only be set after
@@ -1056,6 +1204,9 @@ void PluginConfigDialog::init() {
   // // is called
   // for(const auto& device : plugin.getDevices())
   //   appendDevice(*device.get());
+
+  // Show widgets
+  notebook.show();
 
   xfce_panel_plugin_block_menu(xfce);
 
@@ -1080,4 +1231,6 @@ void PluginConfigDialog::init() {
   // Everything has been created. Now populate the dialog
 
   TRACE_FUNC_EXIT;
+
+  return *this;
 }

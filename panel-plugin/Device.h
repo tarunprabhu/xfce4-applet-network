@@ -20,40 +20,29 @@ class Plugin;
 
 class Device {
 protected:
+  DeviceClass  clss;
   Plugin&      plugin;
   const Icons& icons;
   UniqueID     id;
-  DeviceClass  clss;
-  Glib::RefPtr<DeviceWidget> widgetUI;
+  DeviceWidget widget;
 
+private:
   struct {
     // Explicitly chosen options
-    std::string dev;
-    std::string kind;
-    std::string name;
-    DialKind    dial;
-    uint64_t    rxMax;            // Rate is in B/s
-    uint64_t    txMax;            // Rate is in B/s
-    bool        showNotAvailable; // Show the dial and (maybe) label when
-                                  // device is unavailable
-    bool          showLabel;      // Show a label above/below the dial
-    std::string   label;          // The label to display with the dial
-    Gdk::RGBA     labelFgColor;   // Label text color
-    Gdk::RGBA     labelBgColor;   // Label background color
-    LabelPosition labelPosition;  // Position of the label relative to the dial
-
-    // Device specific options
-    union {
-      struct {
-        bool     showNotMounted;
-        DiskKind kind;
-      } disk;
-
-      struct {
-        bool        showNotConnected;
-        NetworkKind kind;
-      } network;
-    };
+    std::string    dev;
+    std::string    kind;
+    std::string    name;
+    DialKind       dial;
+    UnitPrefixKind mode;
+    uint64_t       rxMax;            // Rate is in B/s
+    uint64_t       txMax;            // Rate is in B/s
+    bool           showNotAvailable; // Show the dial and (maybe) label when
+                                     // device is unavailable
+    bool          showLabel;         // Show a label above/below the dial
+    std::string   label;             // The label to display with the dial
+    Gdk::RGBA     labelFgColor;      // Label text color
+    Gdk::RGBA     labelBgColor;      // Label background color
+    LabelPosition labelPosition; // Position of the label relative to the dial
 
     // Derived options
     std::string css;
@@ -61,7 +50,10 @@ protected:
 
 protected:
   Device(Plugin&, DeviceClass);
-  
+
+  Device& setDeviceBase(const std::string&);
+  Device& setKindBase(const std::string&);
+
 public:
   Device(const Device&)  = delete;
   Device(const Device&&) = delete;
@@ -70,7 +62,7 @@ public:
   Device& operator=(const Device&) = delete;
 
   Plugin&                      getPlugin();
-  DeviceWidget&                getUIWidget();
+  DeviceWidget&                getWidget();
   const Plugin&                getPlugin() const;
   const Icons&                 getIcons() const;
   const UniqueID&              getUniqueID() const;
@@ -81,9 +73,10 @@ public:
   virtual const DeviceTooltip& getTooltip() const = 0;
 
   virtual Device& setDevice(const std::string&) = 0;
-  Device&         setKind(const std::string&);
+  virtual Device& setKind(const std::string&)   = 0;
   Device&         setName(const std::string&);
   Device&         setDial(DialKind);
+  Device&         setMode(UnitPrefixKind);
   Device&         setRxMax(uint64_t);
   Device&         setTxMax(uint64_t);
   Device&         setShowNotAvailable(bool);
@@ -99,6 +92,7 @@ public:
   const std::string& getKindString() const;
   const std::string& getName() const;
   DialKind           getDial() const;
+  UnitPrefixKind     getMode() const;
   uint64_t           getRxMax() const;
   uint64_t           getTxMax() const;
   bool               getShowNotAvailable() const;
@@ -116,7 +110,7 @@ public:
   virtual Glib::RefPtr<Gdk::Pixbuf> getIcon(IconKind) const = 0;
 
   void cbRefresh();
-  
+
 public:
   static std::unique_ptr<Device> create(DeviceClass, Plugin&);
 };

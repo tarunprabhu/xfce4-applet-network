@@ -22,6 +22,11 @@ public:
 public:
   constexpr Array() { ; }
 
+  Array(const T& init) {
+    for(size_type i = 0; i < size(); i++)
+      impl[i] = init;
+  }
+  
   Array(const Array<T, Enum>& other) {
     size_type i = 0;
     for(const T& e : other)

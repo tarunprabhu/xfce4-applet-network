@@ -2,23 +2,24 @@
 #define XFCE_APPLET_SPEED_PLUGIN_WIDGET_H
 
 #include "Array.h"
-#include "IWidget.h"
 #include "Types.h"
+#include "Widget.h"
+#include "Widgets.h"
 
 #include <gtkmm.h>
 
 class Device;
 class Plugin;
 
-class PluginWidget : public Gtk::EventBox, public IWidget {
+class PluginWidget : public Widget<Gtk::EventBox> {
 private:
   Plugin& plugin;
 
   // TODO: The label could be to the left, right, top or bottom of the
   // network monitors
-  Array<Gtk::Label*, LabelPosition> labels; // Labels displayed with the plugin
-  Gtk::Grid*                        main;   // Main grid
-  Gtk::Grid*                        grid;   // Container for the device dials
+  Array<LabelWidget*, LabelPosition> labels; // Labels displayed with the plugin
+  Gtk::Grid*                         main;   // Main grid
+  Gtk::Grid*                         grid;   // Container for the device dials
 
 public:
   PluginWidget(Plugin&);
@@ -28,13 +29,10 @@ public:
 
   PluginWidget& operator=(const Plugin&) = delete;
 
-  virtual void init() override;
+  virtual PluginWidget& init() override;
 
   void cbReorient(Gtk::Orientation);
   void cbResize(unsigned);
-
-  unsigned       getSize() const;
-  Gtk::Orientation getOrientation() const;
 
   virtual void cbRefresh();
 

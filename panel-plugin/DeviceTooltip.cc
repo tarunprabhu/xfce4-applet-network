@@ -2,13 +2,13 @@
 
 #include "Config.h"
 #include "Debug.h"
-#include "GtkUtils.h"
+#include "GtkmmUtils.h"
 #include "Plugin.h"
 
 #include <sstream>
 
 DeviceTooltip::DeviceTooltip(Device& device)
-    : Gtk::Window(Gtk::WINDOW_POPUP), device(device),
+    : Widget(Gtk::WINDOW_POPUP), device(device),
       plugin(device.getPlugin()), icons(plugin.getIcons()), icon(nullptr) {
   TRACE_FUNC_ENTER;
 
@@ -31,7 +31,7 @@ void DeviceTooltip::update(bool force) {
   }
 }
 
-void DeviceTooltip::init() {
+DeviceTooltip& DeviceTooltip::init() {
   TRACE_FUNC_ENTER;
   
   auto& grid = *Gtk::make_managed<Gtk::Grid>();
@@ -65,6 +65,8 @@ void DeviceTooltip::init() {
   hide();
   
   TRACE_FUNC_EXIT;
+
+  return *this;
 }
 
 void DeviceTooltip::cbRefresh() {

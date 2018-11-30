@@ -1,9 +1,10 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_CONFIG_DIALOG_H
 #define XFCE_APPLET_SPEED_DEVICE_CONFIG_DIALOG_H
 
-#include "IWidget.h"
 #include "Types.h"
-#include "UnitPrefixes.h"
+#include "UnitPrefix.h"
+#include "Widget.h"
+#include "Widgets.h"
 
 #include <gtkmm.h>
 
@@ -14,7 +15,7 @@ class Icons;
 class Plugin;
 class PluginConfigDialog;
 
-class DeviceConfigDialog : public Gtk::Dialog, public IWidget {
+class DeviceConfigDialog : public Widget<Gtk::Dialog> {
 public:
   enum class Mode {
     Add,  // Add a new device to the list
@@ -28,46 +29,46 @@ private:
   const Icons&        icons;
   Mode                mode;
 
-  Gtk::Button*       buttonSave;
-  Gtk::Button*       buttonCancel;
+  // Widgets that control device options
   Gtk::ComboBoxText* comboDevice;
   Gtk::ComboBoxText* comboKind;
   Gtk::Image*        imageDevice;
   Gtk::Entry*        entryName;
+
+  // Widgets that control dial options
   Gtk::ComboBoxText* comboDial;
+  Gtk::ComboBoxText* comboMode;
   Gtk::ComboBoxText* comboRxRate;
   Gtk::ComboBoxText* comboRxMultiplier;
   Gtk::ComboBoxText* comboTxRate;
   Gtk::ComboBoxText* comboTxMultiplier;
   Gtk::CheckButton*  checkShowNotAvailable;
-  Gtk::CheckButton*  checkShowLabel;
-  Gtk::Entry*        entryLabel;
-  Gtk::ColorButton*  colorLabelFg;
-  Gtk::ColorButton*  colorLabelBg;
-  Gtk::ComboBoxText* comboLabelPosition;
-  Gtk::Grid*         gridLabel;
+  Gtk::CheckButton*  checkShowNotMounted;
+  Gtk::CheckButton*  checkShowNotConnected;
 
-  // Widgets exclusively for disks
-  Gtk::CheckButton* checkShowNotMounted;
+  // Widgets that control label options
+  Gtk::Grid*                              gridSensitive;
+  LabelWidget*                            labelPreview;
+  Gtk::Entry*                             entryLabel;
+  Gtk::ColorButton*                       colorLabelFg;
+  Gtk::ColorButton*                       colorLabelBg;
+  Array<Gtk::RadioButton*, LabelPosition> radioLabelPositions;
+  Gtk::CheckButton*                       checkShowLabel;
 
-  // Widgets exclusively for networks
-  Gtk::CheckButton* checkShowNotConnected;
-
-  // Frames
-  Gtk::Frame* frameDeviceOptions;
-  Gtk::Frame* frameDialOptions;
-  Gtk::Frame* frameLabelOptions;
+  // Dialog buttons
+  Gtk::Button* buttonSave;
+  Gtk::Button* buttonCancel;
 
 private:
   Gtk::Container& addDeviceOptions();
   Gtk::Container& addDialOptions();
   Gtk::Container& addLabelOptions();
 
-  std::string                       str(UnitPrefixT) const;
-  std::string                       formatRate(UnitPrefixT) const;
-  std::vector<UnitPrefixT>          getRatePrefixes() const;
-  std::tuple<unsigned, UnitPrefixT> split(uint64_t) const;
   uint64_t calculate(const std::string&, const std::string&) const;
+
+  std::string getLabelPreviewCSS();
+
+  void cbRadioLabelToggledImpl(LabelPosition);
 
 public:
   DeviceConfigDialog(Device&, PluginConfigDialog&, DeviceConfigDialog::Mode);
@@ -77,7 +78,7 @@ public:
 
   DeviceConfigDialog& operator=(const DeviceConfigDialog&) = delete;
 
-  virtual void init() override;
+  virtual DeviceConfigDialog& init() override;
 
   void cbDialogResponse(int);
 
@@ -85,6 +86,7 @@ public:
   void cbComboKindChanged();
   void cbEntryNameChanged();
   void cbComboDialChanged();
+  void cbComboModeChanged();
   void cbComboRxRateChanged();
   void cbComboRxMultiplierChanged();
   void cbComboTxRateChanged();
@@ -92,10 +94,15 @@ public:
   void cbCheckShowNotAvailableToggled();
   void cbCheckShowNotConnectedToggled();
   void cbCheckShowNotMountedToggled();
-  void cbCheckShowLabelToggled();
   void cbEntryLabelChanged();
   void cbColorLabelFgSet();
   void cbColorLabelBgSet();
+  void cbRadioLabelLeftToggled();
+  void cbRadioLabelTopToggled();
+  void cbRadioLabelRightToggled();
+  void cbRadioLabelBottomToggled();
+  void cbCheckShowLabelToggled();
+
   void cbComboLabelPositionChanged();
 };
 

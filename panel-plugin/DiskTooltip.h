@@ -23,7 +23,7 @@ public:
   DiskTooltip(const DiskTooltip&&) = delete;
   virtual ~DiskTooltip()           = default;
 
-  virtual void init() override;
+  virtual DiskTooltip& init() override;
   
   DiskTooltip& operator=(const DiskTooltip&) = delete;
 };

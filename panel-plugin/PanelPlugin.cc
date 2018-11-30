@@ -40,6 +40,7 @@ static gboolean cb_handle_event(XfcePanelPlugin*, gchar*, GValue*, gpointer) {
 extern "C" void panel_plugin_construct(XfcePanelPlugin* xfce) {
   TRACE_FUNC_ENTER;
 
+  Gtk::Main::init_gtkmm_internals();
   Plugin* plugin = new Plugin(xfce);
   plugin->readConfig();
 

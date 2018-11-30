@@ -4,14 +4,10 @@
 #include "DeviceStats.h"
 #include "DeviceTooltip.h"
 #include "Devices.h"
-#include "GtkUtils.h"
+#include "GtkmmUtils.h"
 #include "Icons.h"
 #include "Plugin.h"
 #include "RTTI.h"
-
-Glib::RefPtr<DeviceWidget> DeviceWidget::create(Device& device) {
-  return Glib::RefPtr<DeviceWidget>(new DeviceWidget(device));
-}
 
 DeviceWidget::DeviceWidget(Device& device)
     : device(device), plugin(device.getPlugin()), icons(plugin.getIcons()) {
@@ -30,7 +26,7 @@ bool DeviceWidget::cbDrawingAreaCanvasDraw(cairo_t* cairo) {
   return false;
 }
 
-void DeviceWidget::init() {
+DeviceWidget& DeviceWidget::init() {
   TRACE_FUNC_ENTER;
 
   set_border_width(0);
@@ -40,9 +36,9 @@ void DeviceWidget::init() {
   set_column_homogeneous(false);
   property_has_tooltip().set_value(true);
 
-  Array<Gtk::Label*, LabelPosition> labels;
+  Array<LabelWidget*, LabelPosition> labels;
   for(auto pos : LabelPosition())
-    labels[pos] = Gtk::make_managed<Gtk::Label>(device.getLabel(), false);
+    labels[pos] = Gtk::make_managed<LabelWidget>(device.getLabel(), false);
   // auto& canvas      = *Gtk::make_managed<Gtk::DrawingArea>();
 
   auto& imageDevice = *Gtk::make_managed<Gtk::Image>();
@@ -70,10 +66,12 @@ void DeviceWidget::init() {
 
   // Connect signals
   // SIGNAL_CONNECT_METHOD(canvas, draw, this, cbDrawingAreaCanvasDraw);
-  SIGNAL_CONNECT_METHOD(this, query_tooltip, device.getTooltip(),
-                        cbQueryTooltip);
+  // SIGNAL_CONNECT_METHOD(this, query_tooltip, device.getTooltip(),
+  //                       cbQueryTooltip);
 
   TRACE_FUNC_EXIT;
+
+  return *this;
 }
 
 void DeviceWidget::cbRefresh() {
@@ -81,7 +79,7 @@ void DeviceWidget::cbRefresh() {
 
   // Hide everything before showing only those widgets that we should
   hide();
-  for(Gtk::Label* label : labels)
+  for(LabelWidget* label : labels)
     if(label)
       label->hide();
 
@@ -110,10 +108,10 @@ void DeviceWidget::cbRefresh() {
 
   if(showDial) {
     if(device.getShowLabel()) {
-      Gtk::Label* label = labels[device.getLabelPosition()];
-      label->set_text(device.getLabel());
-      gtk_widget_set_css(label, device.getCSS());
-      label->show();
+      LabelWidget& label = *labels[device.getLabelPosition()];
+      label.set_text(device.getLabel());
+      label.set_css(device.getCSS());
+      label.show();
     }
   }
 

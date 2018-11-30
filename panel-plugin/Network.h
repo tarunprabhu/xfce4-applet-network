@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include "Xfce.h"
-
 class Plugin;
 
 class Network : public Device {
@@ -18,6 +16,12 @@ protected:
   NetworkStats       stats;
   NetworkStatsReader reader;
   NetworkTooltip     tooltip;
+
+private:
+  struct {
+    bool        showNotConnected;
+    NetworkKind kind;
+  } opts;
 
 public:
   Network(Plugin&);
@@ -35,7 +39,7 @@ public:
   virtual Glib::RefPtr<Gdk::Pixbuf> getIcon(IconKind) const override;
 
   virtual Network& setDevice(const std::string&) override;
-  Network&         setKind(NetworkKind);
+  virtual Network& setKind(const std::string&) override;
   Network&         setShowNotConnected(bool);
 
   NetworkKind getKind() const;

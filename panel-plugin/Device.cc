@@ -15,23 +15,22 @@ std::unique_ptr<Device> Device::create(DeviceClass clss, Plugin& plugin) {
   case DeviceClass::Network:
     return std::unique_ptr<Device>(new Network(plugin));
   default:
-    g_error("Unsupported device class: %s", enum_cstr(clss));
+    g_error("Unsupported device class: %s", enum_str(clss).c_str());
     break;
   }
   return std::unique_ptr<Device>(nullptr);
 }
 
 Device::Device(Plugin& plugin, DeviceClass clss)
-    : plugin(plugin), icons(plugin.getIcons()), clss(clss) {
+    : clss(clss), plugin(plugin), icons(plugin.getIcons()), widget(*this) {
   TRACE_FUNC_ENTER;
-
-  widgetUI = DeviceWidget::create(*this);
   
   opts.dev              = Defaults::Device::Dev;
   opts.name             = Defaults::Device::Name;
   opts.dial             = Defaults::Device::Dial;
-  opts.rxMax            = Defaults::Device::RxMax[plugin.getMode()];
-  opts.txMax            = Defaults::Device::TxMax[plugin.getMode()];
+  opts.mode             = Defaults::Device::Mode;
+  opts.rxMax            = Defaults::Device::RxMax[getMode()];
+  opts.txMax            = Defaults::Device::TxMax[getMode()];
   opts.showNotAvailable = Defaults::Device::ShowNotAvailable;
   opts.showLabel        = Defaults::Device::ShowLabel;
   opts.label            = Defaults::Device::Label;
@@ -40,7 +39,7 @@ Device::Device(Plugin& plugin, DeviceClass clss)
   opts.labelPosition    = Defaults::Device::LabelPos;
 
   setCSS();
-
+  
   TRACE_FUNC_EXIT;
 }
 
@@ -48,8 +47,8 @@ Plugin& Device::getPlugin() {
   return plugin;
 }
 
-DeviceWidget& Device::getUIWidget() {
-  return *widgetUI.get();
+DeviceWidget& Device::getWidget() {
+  return widget;
 }
 
 const Plugin& Device::getPlugin() const {
@@ -82,6 +81,10 @@ const std::string& Device::getName() const {
 
 DialKind Device::getDial() const {
   return opts.dial;
+}
+
+UnitPrefixKind Device::getMode() const {
+  return opts.mode;
 }
 
 uint64_t Device::getRxMax() const {
@@ -124,7 +127,13 @@ DeviceStatus Device::getStatus() const {
   return getStats().getStatus();
 }
 
-Device& Device::setKind(const std::string& kind) {
+Device& Device::setDeviceBase(const std::string& dev) {
+  opts.dev = dev;
+
+  return *this;
+}
+
+Device& Device::setKindBase(const std::string& kind) {
   opts.kind = kind;
   
   return *this;
@@ -139,6 +148,12 @@ Device& Device::setName(const std::string& name) {
 Device& Device::setDial(DialKind kind) {
   opts.dial = kind;
   // getUI().setDial(kind);
+
+  return *this;
+}
+
+Device& Device::setMode(UnitPrefixKind mode) {
+  opts.mode = mode;
 
   return *this;
 }
@@ -200,8 +215,7 @@ void Device::setCSS() {
                  .addBgColor(getLabelBgColor())
                  .addFgColor(getLabelFgColor())
                  .addFont(plugin.getFont())
-                 .endSelector()
-                 .commit();
+                 .commit(true);
 }
 
 void Device::readConfig(XfceRc* rc) {
@@ -210,6 +224,7 @@ void Device::readConfig(XfceRc* rc) {
   setDevice(xfce_rc_read_string_entry(rc, "device", opts.dev));
   setName(xfce_rc_read_string_entry(rc, "name", opts.name));
   setDial(xfce_rc_read_enum_entry(rc, "dial", opts.dial));
+  setMode(xfce_rc_read_enum_entry(rc, "mode", opts.mode));
   setRxMax(xfce_rc_read_double_entry(rc, "rx", opts.rxMax));
   setTxMax(xfce_rc_read_double_entry(rc, "tx", opts.txMax));
   setShowNotAvailable(
@@ -229,6 +244,7 @@ void Device::writeConfig(XfceRc* rc) const {
   xfce_rc_write_string_entry(rc, "device", opts.dev);
   xfce_rc_write_string_entry(rc, "name", opts.name);
   xfce_rc_write_enum_entry(rc, "dial", opts.dial);
+  xfce_rc_write_enum_entry(rc, "mode", opts.mode);
   xfce_rc_write_double_entry(rc, "rx", opts.rxMax);
   xfce_rc_write_double_entry(rc, "tx", opts.txMax);
   xfce_rc_write_bool_entry(rc, "notavailable", opts.showNotAvailable);
@@ -242,5 +258,5 @@ void Device::writeConfig(XfceRc* rc) const {
 }
 
 void Device::cbRefresh() {
-  widgetUI->cbRefresh();
+  widget.cbRefresh();
 }

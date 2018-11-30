@@ -194,7 +194,7 @@ std::vector<std::string> System::getDevices(DeviceClass clss) {
   case DeviceClass::Network:
     return getNetworkDevices();
   default:
-    g_error("Unsupported device class: %s", enum_cstr(clss));
+    g_error("Unsupported device class: %s", enum_str(clss).c_str());
     break;
   }
 

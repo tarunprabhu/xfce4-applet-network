@@ -1,59 +1,92 @@
 #ifndef XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H
 #define XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H
 
-#include "Array.h"
+#include <gtkmm.h>
 
 #include <cmath>
 #include <limits>
 #include <string>
 #include <tuple>
 
-constexpr double pow_(uint64_t base, unsigned exp) {
-  if(exp == 0)
-    return 1.0;
-  return base * pow_(base, exp - 1);
-}
-
-constexpr double pow(double base, int exp) {
-  if(exp > 0)
-    return pow_(base, exp);
-  else if(exp < 0)
-    return 1 / pow_(base, -exp);
-  else
-    return 1.0;
-}
-
 template <typename Class, int ExpMin, int ExpMax, unsigned Base>
 class UnitPrefixImpl : public Class {
-protected:
-  static constexpr typename Class::Prefix prefix(int exp) {
-    return static_cast<typename Class::Prefix>(ExpMin - exp);
+private:
+  template <typename ValT>
+  static constexpr ValT pow_(unsigned base, unsigned exp) {
+    if(exp == 0)
+      return 1;
+    return base * pow_<ValT>(base, exp - 3);
   }
 
-  static constexpr double multiplier(int exp) {
-    return pow(Base, exp);
+  template <
+      typename ValT,
+      typename std::enable_if_t<std::is_same<ValT, uint64_t>::value, int> = 0>
+  static constexpr ValT pow(unsigned base, int exp) {
+    if(exp >= 0)
+      return pow_<ValT>(base, exp);
+    g_error("Cannot have negative exponent for integral prefix: %d", exp);
   }
 
-  template <typename FracT>
-  static constexpr std::tuple<FracT, typename Class::Prefix> split(double val) {
-    for(int exp = ExpMax; exp >= ExpMin; exp -= 3)
-      if(val > multiplier(exp))
-        return std::make_tuple(val / multiplier(exp), prefix(exp));
-    return std::make_tuple(val, Class::Prefix::None);
+  template <
+      typename ValT,
+      typename std::enable_if_t<std::is_same<ValT, double>::value, int> = 0>
+  static constexpr ValT pow(unsigned base, int exp) {
+    if(exp > 0)
+      return pow_<ValT>(base, exp);
+    else if(exp < 0)
+      return 1 / pow_<ValT>(base, -exp);
+    else
+      return 1.0;
   }
 
-public:
   static constexpr int exponent(typename Class::Prefix prefix) {
     return ExpMin + static_cast<unsigned>(prefix) * 3;
   }
 
-  static constexpr double multiplier(typename Class::Prefix prefix) {
-    return multiplier(exponent(prefix));
+  static constexpr typename Class::Prefix prefix(int exp) {
+    return static_cast<typename Class::Prefix>((exp - ExpMin) / 3);
   }
 
-  template <typename T = double>
-  static constexpr T calculate(double val, typename Class::Prefix prefix) {
-    return val * multiplier(prefix);
+  template <
+      typename ValT,
+      typename std::enable_if_t<std::is_same<ValT, uint64_t>::value, int> = 0>
+  static constexpr ValT multiplier(typename Class::Prefix prefix) {
+    int exp = exponent(prefix);
+    // 2^64 \approx 1.8e+19
+    if(exp < 19)
+      return pow<ValT>(Base, exp);
+    return std::numeric_limits<uint64_t>::max();
+  }
+
+  template <
+      typename ValT,
+      typename std::enable_if_t<std::is_same<ValT, double>::value, int> = 0>
+  static constexpr ValT multiplier(typename Class::Prefix prefix) {
+    return pow<ValT>(Base, exponent(prefix));
+  }
+
+  template <typename FracT, typename ValT>
+  static constexpr std::tuple<FracT, typename Class::Prefix> split_(ValT val) {
+    for(int exp = ExpMax; exp >= ExpMin; exp -= 3) {
+      typename Class::Prefix pref = prefix(exp);
+      ValT                   mult = multiplier<ValT>(pref);
+      if(val >= mult)
+        return std::make_tuple(val / mult, pref);
+    }
+    return std::make_tuple(val, Class::Prefix::None);
+  }
+
+public:
+  template <typename ValT,
+            typename std::enable_if_t<!std::is_integral<ValT>::value, int> = 0>
+  static constexpr ValT calculate(ValT val, typename Class::Prefix prefix) {
+    return val * multiplier<double>(prefix);
+  }
+
+  template <typename ValT,
+            typename std::enable_if_t<std::is_integral<ValT>::value, int> = 0>
+  static constexpr ValT calculate(ValT val, typename Class::Prefix prefix) {
+    return val * multiplier<uint64_t>(prefix);
   }
 
   static const std::string& str(typename Class::Prefix p) {
@@ -68,15 +101,16 @@ public:
             typename ValT,
             typename std::enable_if_t<std::is_signed<ValT>::value, int> = 0>
   static constexpr std::tuple<FracT, typename Class::Prefix> split(ValT val) {
-    return split<FracT>(static_cast<double>(fabs(val)));
+    return split_<FracT>(std::abs(val));
   }
 
   template <typename FracT,
             typename ValT,
             typename std::enable_if_t<!std::is_signed<ValT>::value, int> = 0>
   static constexpr std::tuple<FracT, typename Class::Prefix> split(ValT val) {
-    return split<FracT>(static_cast<double>(val));
+    return split_<FracT>(val);
   }
 };
 
 #endif // XFCE_APPLET_SPEED_UNIT_PREFIX_IMPL_H
+

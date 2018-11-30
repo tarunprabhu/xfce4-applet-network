@@ -38,7 +38,7 @@ std::string concat(const std::string& sep, const T& s1, Ts... s) {
 }
 
 // constexpr functions that we probably want at compile time
-static inline constexpr unsigned digits(unsigned num) {
+static inline constexpr unsigned digits(uint64_t num) {
   unsigned digits = 0;
   do {
     num /= 10;

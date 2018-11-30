@@ -4,8 +4,6 @@
 #include "Plugin.h"
 #include "Utils.h"
 
-#include "Xfce.h"
-
 void Icons::create(const char* inp) {
   MESSAGE("Create plugin icon");
 
@@ -63,10 +61,10 @@ void Icons::create(const std::map<IconKind, unsigned>& inp) {
 Icons::Icons(Plugin& plugin) : theme(nullptr) {
   TRACE_FUNC_ENTER;
 
-  Gtk::Widget&              widget = plugin.getXfceWidget();
-  Glib::RefPtr<Gdk::Screen> screen = widget.get_screen();
+  Gtk::Widget&              xfce   = plugin.getXfceWidget();
+  Glib::RefPtr<Gdk::Screen> screen = xfce.get_screen();
   theme                            = Gtk::IconTheme::get_for_screen(screen);
-
+  
   create({{IconKind::Dialog, 32},
           {IconKind::Menu, 16},
           {IconKind::Toolbar, 24},
@@ -120,7 +118,7 @@ Glib::RefPtr<Gdk::Pixbuf> Icons::makeIcon(const char* name, IconKind kind) {
 Glib::RefPtr<Gdk::Pixbuf>
 Icons::makeCompositeIcon(Glib::RefPtr<Gdk::Pixbuf> base,
                          Glib::RefPtr<Gdk::Pixbuf> overlay,
-                         DeviceStatus            status) {
+                         DeviceStatus              status) {
   Glib::RefPtr<Gdk::Pixbuf> copy      = base->copy();
   int                       baseHt    = copy->get_height();
   int                       overlayHt = overlay->get_height();
@@ -143,7 +141,7 @@ Icons::makeCompositeIcon(Glib::RefPtr<Gdk::Pixbuf> base,
                        baseHt - overlayHt, 1.0, 1.0, Gdk::INTERP_HYPER, 255);
     break;
   default:
-    g_error("Unhandled device status: %s", enum_cstr(status));
+    g_error("Unhandled device status: %s", enum_str(status).c_str());
   }
 
   return copy;

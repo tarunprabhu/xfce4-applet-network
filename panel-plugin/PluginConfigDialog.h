@@ -1,8 +1,9 @@
 #ifndef XFCE_APPLET_SPEED_PLUGIN_CONFIG_DIALOG_H
 #define XFCE_APPLET_SPEED_PLUGIN_CONFIG_DIALOG_H
 
-#include "IWidget.h"
 #include "Types.h"
+#include "Widget.h"
+#include "Widgets.h"
 
 #include <gtkmm.h>
 
@@ -10,20 +11,30 @@ class Device;
 class Icons;
 class Plugin;
 
-class PluginConfigDialog : public Gtk::Dialog, public IWidget {
+class PluginConfigDialog : public Widget<Gtk::Dialog> {
 private:
   Plugin&      plugin;
   const Icons& icons;
 
-  Gtk::SpinButton*   spinPeriod;
-  Gtk::ComboBoxText* comboMode;
-  Gtk::Grid*         gridLabel;
-  Gtk::CheckButton*  checkShowLabel;
-  Gtk::Entry*        entryLabel;
-  Gtk::ColorButton*  colorLabelFg;
-  Gtk::ColorButton*  colorLabelBg;
-  Gtk::ComboBoxText* comboLabelPosition;
+  // Widgets that control global options
+  Gtk::SpinButton*                        spinPeriod;
+  Gtk::ComboBoxText*                      comboVerbosity;
 
+  // Widgets that control font options
+  Gtk::FontButton*    buttonFont;
+  ToggleButtonWidget* toggleBold;
+  ToggleButtonWidget* toggleCaps;
+
+  // Widgets that control label options
+  Gtk::Grid*                              gridSensitive;
+  LabelWidget*                            labelPreview;
+  Gtk::Entry*                             entryLabel;
+  Gtk::ColorButton*                       colorLabelFg;
+  Gtk::ColorButton*                       colorLabelBg;
+  Array<Gtk::RadioButton*, LabelPosition> radioLabelPositions;
+  Gtk::CheckButton*                       checkShowLabel;
+
+  // Widgets that control spacing options
   Gtk::Scale* scaleBorder;
   Gtk::Scale* scaleSpacePlugin;
   Gtk::Scale* scaleSpaceOuter;
@@ -33,12 +44,7 @@ private:
   Gtk::Label* labelSpaceOuter;
   Gtk::Label* labelSpaceInner;
 
-  Gtk::ComboBoxText* comboVerbosity;
-
-  Gtk::FontButton*  buttonFont;
-  Gtk::CheckButton* checkBold;
-  Gtk::CheckButton* checkSmallCaps;
-
+  // Widgets that control the device list
   Gtk::TreeView*                     treeDevices;
   Gtk::ToolItem*                     toolitemAdd;
   Gtk::ToolButton*                   toolitemRemove;
@@ -48,17 +54,21 @@ private:
   Array<Gtk::MenuItem*, DeviceClass> menuItems;
 
 private:
-  Gtk::Container& createPluginAppearanceFrame();
-  Gtk::Container& createTooltipAppearanceFrame();
-  Gtk::Container& createLabelAppearanceFrame();
-  Gtk::Container& createGeneralPage();
-  Gtk::Container& createAppearancePage();
+  std::tuple<Gtk::Label*, Gtk::Grid*, Gtk::Scale*, Gtk::Label*>
+                  createSlider(const std::string&, const std::string&, unsigned, unsigned);
+  Gtk::Container& createMiscFrame();
+  Gtk::Container& createLabelFrame();
+  Gtk::Container& createSpacingFrame();
+  Gtk::Container& createFontFrame();
+  Gtk::Container& createOptionsPage();
   Gtk::Container& createDevicesPage();
 
   void appendDevice(const Device&);
+  std::string getLabelPreviewCSS();
 
-  int cbAddDeviceImpl(DeviceClass);
-  
+  void cbRadioLabelToggledImpl(LabelPosition);
+  int  cbAddDeviceImpl(DeviceClass);
+
 public:
   PluginConfigDialog(Plugin&);
   PluginConfigDialog(const PluginConfigDialog&)  = delete;
@@ -67,25 +77,27 @@ public:
 
   PluginConfigDialog& operator=(const PluginConfigDialog&) = delete;
 
-  virtual void init() override;
+  virtual PluginConfigDialog& init() override;
 
   void cbDialogResponse(int);
 
   void cbSpinPeriodChanged();
-  void cbComboModeChanged();
   void cbCheckShowLabelToggled();
   void cbEntryLabelChanged();
   void cbColorLabelFgSet();
   void cbColorLabelBgSet();
-  void cbComboLabelPositionChanged();
+  void cbRadioLabelLeftToggled();
+  void cbRadioLabelTopToggled();
+  void cbRadioLabelRightToggled();
+  void cbRadioLabelBottomToggled();
   void cbScaleBorderChanged();
   void cbScaleSpacePluginChanged();
   void cbScaleSpaceOuterChanged();
   void cbScaleSpaceInnerChanged();
   void cbComboVerbosityChanged();
-  void cbFontFontSet();
-  void cbCheckBoldToggled();
-  void cbCheckSmallCapsToggled();
+  void cbFontButtonFontSet();
+  void cbToggleBoldToggled();
+  void cbToggleCapsToggled();
   void cbMenuItemAddDiskActivated();
   void cbMenuItemAddNetworkActivated();
   void cbTreeRowActivated(const Gtk::TreePath&, Gtk::TreeViewColumn*);

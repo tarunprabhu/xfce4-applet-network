@@ -11,25 +11,25 @@
 #define DEBUG_FUNCNAME __func__
 #endif // defined(__GNUC__)
 
-#define ERROR(args...)                                                         \
+#define ERROR(...)                                                             \
   do {                                                                         \
     fprintf(stderr, "[%s:%d]: ", __FILE__, __LINE__);                          \
-    fprintf(stderr, args);                                                     \
+    fprintf(stderr, __VA_ARGS__);                                              \
     fprintf(stderr, "\n");                                                     \
     g_error("FATAL ERROR");                                                    \
   } while(0)
 
-#define WARNING(args...)                                                       \
+#define WARNING(...)                                                           \
   do {                                                                         \
-    g_warning(args);                                                           \
+    g_warning(__VA_ARGS__);                                                    \
   } while(0)
 
 #if defined(ENABLE_DEBUG)
 
-#define MESSAGE(args...)                                                       \
+#define MESSAGE(...)                                                           \
   do {                                                                         \
     fprintf(stderr, "MESSAGE [%s:%d]: ", __FILE__, __LINE__);                  \
-    fprintf(stderr, args);                                                     \
+    fprintf(stderr, __VA_ARGS__);                                              \
     fprintf(stderr, "\n");                                                     \
   } while(0)
 

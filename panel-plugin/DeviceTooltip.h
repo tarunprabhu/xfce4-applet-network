@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 #define XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 
-#include "IWidget.h"
+#include "Widget.h"
 
 #include <gtkmm.h>
 
@@ -11,16 +11,16 @@ class Device;
 class Icons;
 class Plugin;
 
-class DeviceTooltip : public Gtk::Window, public IWidget {
+class DeviceTooltip : public Widget<Gtk::Window> {
 protected:
   Device&                   device;
   const Plugin&             plugin;
   const Icons&              icons;
   Glib::RefPtr<Gdk::Pixbuf> icon;
 
-  Gtk::Image*  imageDevice; // Image for the device status icon
-  Gtk::Label*  labelTitle;  // Title containing device name
-  Gtk::Grid*   gridText;     // Box for text
+  Gtk::Image* imageDevice; // Image for the device status icon
+  Gtk::Label* labelTitle;  // Title containing device name
+  Gtk::Grid*  gridText;    // Box for text
 
 protected:
   DeviceTooltip(Device&);
@@ -46,8 +46,8 @@ public:
   // The implementation of this function will be called by all children
   // This function will create the common elements of the tooltip and the
   // children will be responsible for the rest
-  virtual void init() override;
-  
+  virtual DeviceTooltip& init() override;
+
   // This gets called when the device parameters change. This would involve
   // the title label being changed and anything else that depends on the
   // static device parameters

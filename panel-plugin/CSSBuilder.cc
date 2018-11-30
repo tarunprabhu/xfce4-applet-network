@@ -2,13 +2,13 @@
 
 #include "Debug.h"
 
-#define ERROR_IF_NOT_COMMITTED()                                               \
+#define ERROR_IF_NOT_COMMITTED                                                 \
   do {                                                                         \
     if(not committed)                                                          \
       ERROR("Cannot call this function on uncommitted CSS builder");           \
   } while(0)
 
-#define ERROR_IF_COMMITTED()                                                   \
+#define ERROR_IF_COMMITTED                                                     \
   do {                                                                         \
     if(committed)                                                              \
       ERROR("Cannot call this function on committed CSS builder object");      \
@@ -42,7 +42,9 @@ CSSBuilder& CSSBuilder::init() {
   return *this;
 }
 
-const std::string& CSSBuilder::commit() {
+const std::string& CSSBuilder::commit(bool close) {
+  if(close)
+    endSelector();
   css       = ss.str();
   committed = true;
 
@@ -73,7 +75,7 @@ CSSBuilder& CSSBuilder::addColor(const Gdk::RGBA& color) {
 }
 
 CSSBuilder& CSSBuilder::addFgColor(const Gdk::RGBA& color) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("color");
   addColor(color);
@@ -83,7 +85,7 @@ CSSBuilder& CSSBuilder::addFgColor(const Gdk::RGBA& color) {
 }
 
 CSSBuilder& CSSBuilder::addBgColor(const Gdk::RGBA& color) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("background-color");
   addColor(color);
@@ -93,43 +95,22 @@ CSSBuilder& CSSBuilder::addBgColor(const Gdk::RGBA& color) {
 }
 
 CSSBuilder& CSSBuilder::addFont(const Pango::FontDescription& font) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addFontFamily(font.get_family().raw());
-  addFontSize(font.get_size(), "px");
-
-  switch(font.get_style()) {
-  case Pango::STYLE_NORMAL:
-    addFontStyle("normal");
-    break;
-  case Pango::STYLE_OBLIQUE:
-    addFontStyle("oblique");
-    break;
-  case Pango::STYLE_ITALIC:
-    addFontStyle("italic");
-    break;
-  default:
-    break;
-  }
-
-  switch(font.get_variant()) {
-  case Pango::VARIANT_NORMAL:
-    addFontVariant("normal");
-    break;
-  case Pango::VARIANT_SMALL_CAPS:
-    addFontVariant("small-caps");
-    break;
-  default:
-    break;
-  }
-
-  addFontWeight(static_cast<unsigned>(font.get_weight()));
+  if(font.get_size_is_absolute())
+    g_error("Unsupported mode for font size: absolute");
+  else
+    addFontSize((double)font.get_size() / (double)Pango::SCALE, "px");
+  addFontStyle(font.get_style());
+  addFontVariant(font.get_variant());
+  addFontWeight(font.get_weight());
 
   return *this;
 }
 
 CSSBuilder& CSSBuilder::addFontFamily(const std::string& family) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-family");
   ss << family;
@@ -139,7 +120,7 @@ CSSBuilder& CSSBuilder::addFontFamily(const std::string& family) {
 }
 
 CSSBuilder& CSSBuilder::addFontSize(double size, const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-size");
   ss << size << units;
@@ -149,7 +130,7 @@ CSSBuilder& CSSBuilder::addFontSize(double size, const std::string& units) {
 }
 
 CSSBuilder& CSSBuilder::addFontSize(const std::string& size) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-size");
   ss << size;
@@ -159,7 +140,7 @@ CSSBuilder& CSSBuilder::addFontSize(const std::string& size) {
 }
 
 CSSBuilder& CSSBuilder::addFontStyle(const std::string& style) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-style");
   ss << style;
@@ -168,8 +149,26 @@ CSSBuilder& CSSBuilder::addFontStyle(const std::string& style) {
   return *this;
 }
 
+CSSBuilder& CSSBuilder::addFontStyle(Pango::Style style) {
+  ERROR_IF_COMMITTED;
+  
+  switch(style) {
+  case Pango::STYLE_NORMAL:
+    addFontStyle("normal");
+    break;
+  case Pango::STYLE_OBLIQUE:
+    addFontStyle("oblique");
+    break;
+  case Pango::STYLE_ITALIC:
+    addFontStyle("italic");
+    break;
+  }
+  
+  return *this;
+}
+
 CSSBuilder& CSSBuilder::addFontVariant(const std::string& variant) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-variant");
   ss << variant;
@@ -178,8 +177,23 @@ CSSBuilder& CSSBuilder::addFontVariant(const std::string& variant) {
   return *this;
 }
 
+CSSBuilder& CSSBuilder::addFontVariant(Pango::Variant variant) {
+  ERROR_IF_COMMITTED;
+
+  switch(variant) {
+  case Pango::VARIANT_NORMAL:
+    addFontVariant("normal");
+    break;
+  case Pango::VARIANT_SMALL_CAPS:
+    addFontVariant("small-caps");
+    break;
+  }
+
+  return *this;
+}
+
 CSSBuilder& CSSBuilder::addFontWeight(const std::string& weight) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-weight");
   ss << weight;
@@ -189,7 +203,7 @@ CSSBuilder& CSSBuilder::addFontWeight(const std::string& weight) {
 }
 
 CSSBuilder& CSSBuilder::addFontWeight(unsigned weight) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("font-weight");
   ss << weight;
@@ -198,8 +212,16 @@ CSSBuilder& CSSBuilder::addFontWeight(unsigned weight) {
   return *this;
 }
 
+CSSBuilder& CSSBuilder::addFontWeight(Pango::Weight weight) {
+  ERROR_IF_COMMITTED;
+
+  addFontWeight(static_cast<unsigned>(weight));
+  
+  return *this;
+}
+
 CSSBuilder& CSSBuilder::addMargin(unsigned margin, const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("margin");
   ss << margin << " " << units;
@@ -210,7 +232,7 @@ CSSBuilder& CSSBuilder::addMargin(unsigned margin, const std::string& units) {
 
 CSSBuilder& CSSBuilder::addMarginLeft(unsigned           margin,
                                       const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("margin-left");
   ss << margin << " " << units;
@@ -221,7 +243,7 @@ CSSBuilder& CSSBuilder::addMarginLeft(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginTop(unsigned           margin,
                                      const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("margin-top");
   ss << margin << " " << units;
@@ -232,7 +254,7 @@ CSSBuilder& CSSBuilder::addMarginTop(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginRight(unsigned           margin,
                                        const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("margin-right");
   ss << margin << " " << units;
@@ -243,7 +265,7 @@ CSSBuilder& CSSBuilder::addMarginRight(unsigned           margin,
 
 CSSBuilder& CSSBuilder::addMarginBottom(unsigned           margin,
                                         const std::string& units) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("margin-bottom");
   ss << margin << " " << units;
@@ -253,7 +275,7 @@ CSSBuilder& CSSBuilder::addMarginBottom(unsigned           margin,
 }
 
 CSSBuilder& CSSBuilder::addTextAlign(const std::string& align) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   addBeginDeclaration("text-align");
   ss << align;
@@ -263,7 +285,7 @@ CSSBuilder& CSSBuilder::addTextAlign(const std::string& align) {
 }
 
 CSSBuilder& CSSBuilder::addText(const std::string& text) {
-  ERROR_IF_COMMITTED();
+  ERROR_IF_COMMITTED;
 
   ss << text;
 
@@ -271,19 +293,7 @@ CSSBuilder& CSSBuilder::addText(const std::string& text) {
 }
 
 const std::string& CSSBuilder::str() const {
-  ERROR_IF_NOT_COMMITTED();
+  ERROR_IF_NOT_COMMITTED;
 
   return css;
-}
-
-const char* CSSBuilder::c_str() const {
-  return str().c_str();
-}
-
-std::string::size_type CSSBuilder::length() const {
-  return str().length();
-}
-
-std::string::size_type CSSBuilder::size() const {
-  return str().size();
 }

@@ -3,7 +3,7 @@
 #include "Debug.h"
 #include "Defaults.h"
 #include "Device.h"
-#include "GtkUtils.h"
+#include "GtkmmUtils.h"
 #include "Network.h"
 #include "Plugin.h"
 #include "XfceUtils.h"
@@ -14,7 +14,7 @@ PluginWidget::PluginWidget(Plugin& plugin) : plugin(plugin) {
   TRACE_FUNC_EXIT;
 }
 
-void PluginWidget::init() {
+PluginWidget& PluginWidget::init() {
   TRACE_FUNC_ENTER;
 
   auto& main = *Gtk::make_managed<Gtk::Grid>();
@@ -32,9 +32,9 @@ void PluginWidget::init() {
 
   // The networks are responsible for adding and removing themselves from
   // the plugin box in which they will be displayed
-  Array<Gtk::Label*, LabelPosition> labels;
+  Array<LabelWidget*, LabelPosition> labels;
   for(auto pos : LabelPosition())
-    labels[pos] = Gtk::make_managed<Gtk::Label>(plugin.getLabel(), false);
+    labels[pos] = Gtk::make_managed<LabelWidget>(plugin.getLabel(), false);
 
   // Save widgets
   this->labels = labels;
@@ -47,10 +47,10 @@ void PluginWidget::init() {
   main.attach_next_to(*labels[LabelPosition::Top], grid, Gtk::POS_TOP);
   main.attach_next_to(*labels[LabelPosition::Right], grid, Gtk::POS_RIGHT);
   main.attach_next_to(*labels[LabelPosition::Bottom], grid, Gtk::POS_BOTTOM);
-  add(grid);
+  add(main);
 
   // Show widgets
-  for(Gtk::Label* label : labels)
+  for(LabelWidget* label : labels)
     label->hide();
   if(plugin.getShowLabel())
     labels[plugin.getLabelPosition()]->show();
@@ -58,6 +58,8 @@ void PluginWidget::init() {
   // Connect signals
 
   TRACE_FUNC_EXIT;
+
+  return *this;
 }
 
 void PluginWidget::cbRefresh() {
@@ -75,10 +77,10 @@ void PluginWidget::cbRefresh() {
   grid->set_column_spacing(plugin.getSpaceOuter());
 
   if(plugin.getShowLabel()) {
-    Gtk::Label* label = labels[plugin.getLabelPosition()];
-    label->set_text(plugin.getLabel());
-    gtk_widget_set_css(label, plugin.getCSS());
-    label->show();
+    LabelWidget& label = *labels[plugin.getLabelPosition()];
+    label.set_text(plugin.getLabel());
+    label.set_css(plugin.getCSS());
+    label.show();
   }
 
   TRACE_FUNC_EXIT;
@@ -87,12 +89,12 @@ void PluginWidget::cbRefresh() {
 void PluginWidget::appendDevice(Device& device) {
   TRACE_FUNC_ENTER;
 
-  ASSERT(plugin.isInList(device), "Device not added to list of known devices");
-  ASSERT(pluign.indexOf(device) == plugin.getNumDevices() - 1,
+  ASSERT(plugin.isKnown(device), "Device not added to list of known devices");
+  ASSERT(plugin.indexOf(device) == plugin.getNumDevices() - 1,
          "Device should be the last in the list");
 
-  DeviceWidget& ui = device.getUIWidget();
-  if(getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
+  DeviceWidget& ui = device.getWidget();
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
     grid->attach(ui, plugin.getNumDevices() - 1, 0);
   else
     grid->attach(ui, 0, plugin.getNumDevices() - 1);
@@ -103,7 +105,7 @@ void PluginWidget::appendDevice(Device& device) {
 void PluginWidget::removeDeviceAt(unsigned pos) {
   TRACE_FUNC_ENTER;
 
-  if(getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
     grid->remove_column(pos);
   else
     grid->remove_column(pos);
@@ -118,7 +120,7 @@ void PluginWidget::moveDeviceUp(unsigned pos) {
   ASSERT(plugin.getNumDevices() > 1,
          "Cannot move device up (insufficient devices)");
 
-  if(getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
     Gtk::Widget& sibling = *grid->get_child_at(0, pos - 1);
     Gtk::Widget& child   = *grid->get_child_at(0, pos);
     grid->attach_next_to(child, sibling, Gtk::POS_LEFT);
@@ -141,7 +143,7 @@ void PluginWidget::moveDeviceDown(unsigned pos) {
   ASSERT(plugin.getNumDevices() > 1,
          "Cannot move device down (insufficient devices)");
 
-  if(getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
     Gtk::Widget& sibling = *grid->get_child_at(0, pos + 1);
     Gtk::Widget& child   = *grid->get_child_at(0, pos);
     grid->attach_next_to(child, sibling, Gtk::POS_RIGHT);

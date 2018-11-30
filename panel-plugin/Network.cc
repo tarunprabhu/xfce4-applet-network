@@ -15,8 +15,8 @@ Network::Network(Plugin& plugin)
       tooltip(*this) {
   TRACE_FUNC_ENTER;
 
-  opts.network.showNotConnected = Defaults::Device::Network::ShowNotConnected;
-  opts.network.kind             = Defaults::Device::Network::Kind;
+  opts.showNotConnected = Defaults::Device::Network::ShowNotConnected;
+  opts.kind             = Defaults::Device::Network::Kind;
 
   TRACE_FUNC_EXIT;
 }
@@ -42,46 +42,48 @@ const NetworkTooltip& Network::getTooltip() const {
 }
 
 NetworkKind Network::getKind() const {
-  return opts.network.kind;
+  return opts.kind;
 }
 
 bool Network::getShowNotConnected() const {
-  return opts.network.showNotConnected;
+  return opts.showNotConnected;
 }
 
 Network& Network::setDevice(const std::string& device) {
-  opts.dev = device;
-  setKind(System::getDeviceKind<DeviceClass::Network>(device));
+  NetworkKind kind = System::getDeviceKind<DeviceClass::Network>(device);
+  Device::setDeviceBase(device);
+  Device::setKindBase(enum_str(kind));
+  opts.kind = kind;
   stats.reset();
   reader.reset(device);
 
   return *this;
 }
 
-Network& Network::setKind(NetworkKind kind) {
-  opts.network.kind = kind;
-  Device::setKind(enum_cstr(kind));
+Network& Network::setKind(const std::string& kind) {
+  Device::setKindBase(kind);
+  opts.kind = enum_parse<NetworkKind>(kind);
 
   return *this;
 }
 
 Network& Network::setShowNotConnected(bool show) {
-  opts.network.showNotConnected = show;
+  opts.showNotConnected = show;
 
   return *this;
 }
 
 void Network::readConfig(XfceRc* rc) {
   Device::readConfig(rc);
-  setKind(xfce_rc_read_enum_entry(rc, "kind", opts.network.kind));
-  setShowNotConnected(xfce_rc_read_bool_entry(rc, "not_connected",
-                                              opts.network.showNotConnected));
+  setKind(enum_str(xfce_rc_read_enum_entry(rc, "kind", opts.kind)));
+  setShowNotConnected(
+      xfce_rc_read_bool_entry(rc, "not_connected", opts.showNotConnected));
 }
 
 void Network::writeConfig(XfceRc* rc) const {
   Device::writeConfig(rc);
-  xfce_rc_write_enum_entry(rc, "kind", opts.network.kind);
-  xfce_rc_write_bool_entry(rc, "not_connected", opts.network.showNotConnected);
+  xfce_rc_write_enum_entry(rc, "kind", opts.kind);
+  xfce_rc_write_bool_entry(rc, "not_connected", opts.showNotConnected);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Network::getIcon(IconKind iconKind) const {

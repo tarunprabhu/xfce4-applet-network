@@ -12,7 +12,7 @@ DiskTooltip::DiskTooltip(Disk& disk)
   TRACE_FUNC_EXIT;
 }
 
-void DiskTooltip::init() {
+DiskTooltip& DiskTooltip::init() {
   TRACE_FUNC_ENTER;
 
   DeviceTooltip::init();
@@ -20,6 +20,8 @@ void DiskTooltip::init() {
   // TODO: Implement  this
 
   TRACE_FUNC_EXIT;
+
+  return *this;
 }
 
 void DiskTooltip::updateIcon() {

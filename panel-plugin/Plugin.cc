@@ -18,7 +18,7 @@
 // Callbacks
 Plugin::Plugin(XfcePanelPlugin* xfce)
     : xfce(xfce), xfceWidget(Glib::wrap(GTK_WIDGET(xfce))), icons(*this),
-      timer(0) {
+      widget(*this), timer(0) {
   TRACE_FUNC_ENTER;
 
   // Set plugin state variables
@@ -27,15 +27,14 @@ Plugin::Plugin(XfcePanelPlugin* xfce)
       static_cast<Gtk::Orientation>(xfce_panel_plugin_get_orientation(xfce));
 
   opts.period        = Defaults::Plugin::Period;
-  opts.mode          = Defaults::Plugin::Mode;
   opts.border        = Defaults::Plugin::Border;
   opts.spacePlugin   = Defaults::Plugin::SpacePlugin;
   opts.spaceOuter    = Defaults::Plugin::SpaceOuter;
   opts.spaceInner    = Defaults::Plugin::SpaceInner;
   opts.showLabel     = Defaults::Plugin::ShowLabel;
   opts.label         = Defaults::Plugin::Label;
-  opts.labelFgColor  = Defaults::Plugin::LabelBgColor;
-  opts.labelBgColor  = Defaults::Plugin::LabelFgColor;
+  opts.labelFgColor  = Defaults::Plugin::LabelFgColor;
+  opts.labelBgColor  = Defaults::Plugin::LabelBgColor;
   opts.labelPosition = Defaults::Plugin::LabelPos;
   opts.verbosity     = Defaults::Plugin::Verbosity;
 
@@ -44,6 +43,8 @@ Plugin::Plugin(XfcePanelPlugin* xfce)
 
   setCSS();
 
+  widget.init();
+  
   // Get the plugin going
   setTimer();
 
@@ -58,8 +59,8 @@ Gtk::Widget& Plugin::getXfceWidget() {
   return *xfceWidget.get();
 }
 
-PluginWidget& Plugin::getUIWidget() {
-  return *widgetUI.get();
+PluginWidget& Plugin::getWidget() {
+  return widget;
 }
 
 Plugin::Devices& Plugin::getDevices() {
@@ -111,7 +112,7 @@ void Plugin::appendDevice(std::unique_ptr<Device> pDevice) {
 
   Device& device = *pDevice.get();
   devices.push_back(std::move(pDevice));
-  widgetUI->appendDevice(device);
+  widget.appendDevice(device);
 
   TRACE_FUNC_EXIT;
 }
@@ -129,7 +130,7 @@ void Plugin::removeDeviceAt(int pos) {
 
   // iter is guaranteed to be valid because this function will always be
   // called with a valid value for pos
-  widgetUI->removeDeviceAt(pos);
+  widget.removeDeviceAt(pos);
   devices.erase(iter);
 
   TRACE_FUNC_EXIT;
@@ -145,7 +146,7 @@ void Plugin::moveDeviceUp(unsigned pos) {
     iter++;
   }
   devices.splice(prev, devices, iter);
-  widgetUI->moveDeviceUp(pos);
+  widget.moveDeviceUp(pos);
 
   TRACE_FUNC_EXIT;
 }
@@ -160,7 +161,7 @@ void Plugin::moveDeviceDown(unsigned pos) {
     next++;
   }
   devices.splice(iter, devices, next);
-  widgetUI->moveDeviceDown(pos);
+  widget.moveDeviceDown(pos);
 
   TRACE_FUNC_EXIT;
 }
@@ -179,15 +180,14 @@ void Plugin::cbAbout() {
 }
 
 void Plugin::cbConfigure() {
-  PluginConfigDialog dialog(*this);
-
   // Blocking call
-  dialog.run();
+  PluginConfigDialog(*this).init().run();
+
   cbRefresh();
 }
 
 void Plugin::cbRefresh() {
-  widgetUI->cbRefresh();
+  widget.cbRefresh();
   for(auto& pDevice : getDevices())
     pDevice->cbRefresh();
 }
@@ -223,7 +223,7 @@ bool Plugin::cbTimerTick() {
   }
 
   if(refresh)
-    widgetUI->cbRefresh();
+    widget.cbRefresh();
 
   TRACE_TICK_FUNC_EXIT;
 
@@ -246,12 +246,6 @@ void Plugin::writeConfig() const {
 
 Plugin& Plugin::setPeriod(double period) {
   opts.period = period;
-
-  return *this;
-}
-
-Plugin& Plugin::setMode(UnitPrefix mode) {
-  opts.mode = mode;
 
   return *this;
 }
@@ -333,8 +327,7 @@ void Plugin::setCSS() {
                  .addBgColor(getLabelBgColor())
                  .addFgColor(getLabelFgColor())
                  .addFont(getFont())
-                 .endSelector()
-                 .commit();
+                 .commit(true);
 }
 
 unsigned Plugin::getSize() const {
@@ -347,10 +340,6 @@ Gtk::Orientation Plugin::getOrientation() const {
 
 double Plugin::getPeriod() const {
   return opts.period;
-}
-
-UnitPrefix Plugin::getMode() const {
-  return opts.mode;
 }
 
 unsigned Plugin::getBorder() const {
@@ -470,16 +459,17 @@ void Plugin::readConfig(XfceRc* rc) {
 
   unsigned numDevices = xfce_rc_read_int_entry(rc, "devices", 0);
   for(unsigned i = 0; i < numDevices; i++) {
-    unsigned bufsz = digits(Defaults::Plugin::MaxDevices) + 1;
-    char     group[bufsz];
+    constexpr unsigned bufsz = digits(Defaults::Plugin::MaxDevices) + 1;
+    char               group[bufsz];
     g_snprintf(group, bufsz, "%d", i);
     xfce_rc_set_group(rc, group);
-    DeviceClass clss = xfce_rc_read_enum_entry(rc, "class", DeviceClass::Last_);
+    DeviceClass clss =
+        xfce_rc_read_enum_entry(rc, "class", DeviceClass::Invalid);
     std::unique_ptr<Device> pDevice = Device::create(clss, *this);
     pDevice->readConfig(rc);
     appendDevice(std::move(pDevice));
   }
-  widgetUI->cbRefresh();
+  widget.cbRefresh();
 
   TRACE_FUNC_EXIT;
 }

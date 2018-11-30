@@ -29,8 +29,11 @@ libappletnetwork_la_SOURCES =  \
 	DiskStats.cc \
 	DiskTooltip.cc \
 	Formatter.cc \
-	GtkUtils.cc \
+	FrameWidget.cc \
+	GridWidget.cc \
+	GtkmmUtils.cc \
 	Icons.cc \
+	LabelWidget.cc \
 	MetricPrefix.cc \
 	Network.cc \
 	NetworkStats.cc \
@@ -39,6 +42,10 @@ libappletnetwork_la_SOURCES =  \
 	Plugin.cc \
 	PluginConfigDialog.cc \
 	PluginWidget.cc \
+	ToggleButtonWidget.cc \
+	ScaleWidget.cc \
+	Widget.cc \
+	UnitPrefix.cc \
 	Utils.cc \
 	XfceUtils.cc \
 	main.c

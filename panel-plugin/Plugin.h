@@ -35,7 +35,7 @@ private:
   Gtk::Orientation orientation;
 
   // Various widgets that are generally created on demand
-  Glib::RefPtr<PluginWidget> widgetUI;
+  PluginWidget widget;
 
   // "System" state that are needed to actually run things
   guint   timer;
@@ -43,9 +43,8 @@ private:
 
   struct {
     // Explicitly set options for the plugin itself
-    double     period;
-    UnitPrefix mode;
-    unsigned   border;
+    double   period;
+    unsigned border;
     unsigned spacePlugin; // Space between the main plugin label and the devices
     unsigned spaceInner;  // Space between the device dial and its label
     unsigned spaceOuter;  // Space between devices
@@ -80,7 +79,7 @@ public:
   XfcePanelPlugin* getXfcePanelPlugin();
   Gtk::Widget&     getXfceWidget();
 
-  PluginWidget&    getUIWidget();
+  PluginWidget&    getWidget();
   Plugin::Devices& getDevices();
 
   const Icons&           getIcons() const;
@@ -112,7 +111,6 @@ public:
   bool cbTimerTick();
 
   Plugin& setPeriod(double);
-  Plugin& setMode(UnitPrefix);
   Plugin& setBorder(unsigned);
   Plugin& setSpacePlugin(unsigned);
   Plugin& setSpaceOuter(unsigned);
@@ -128,7 +126,6 @@ public:
   unsigned                      getSize() const;
   Gtk::Orientation              getOrientation() const;
   double                        getPeriod() const;
-  UnitPrefix                    getMode() const;
   unsigned                      getBorder() const;
   unsigned                      getSpacePlugin() const;
   unsigned                      getSpaceOuter() const;

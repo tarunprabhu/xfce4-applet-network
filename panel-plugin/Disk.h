@@ -9,15 +9,19 @@
 
 #include <string>
 
-#include "Xfce.h"
-
 class Plugin;
 
 class Disk : public Device {
-private:
+protected:
   DiskStats       stats;
   DiskStatsReader reader;
   DiskTooltip     tooltip;
+
+private:
+  struct {
+    bool     showNotMounted;
+    DiskKind kind;
+  } opts;
 
 public:
   Disk(Plugin&);
@@ -35,7 +39,7 @@ public:
   virtual Glib::RefPtr<Gdk::Pixbuf> getIcon(IconKind) const override;
 
   virtual Disk& setDevice(const std::string&) override;
-  Disk&         setKind(DiskKind);
+  virtual Disk& setKind(const std::string&) override;
   Disk&         setShowNotMounted(bool);
 
   DiskKind getKind() const;

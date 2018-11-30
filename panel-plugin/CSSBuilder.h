@@ -28,15 +28,20 @@ public:
   CSSBuilder&        beginSelector(const std::string&);
   CSSBuilder&        endSelector();
   CSSBuilder&        init();
-  const std::string& commit();
+  const std::string& commit(bool = false);
 
   CSSBuilder& addFont(const Pango::FontDescription&);
+  CSSBuilder& addFontStyle(Pango::Style);
+  CSSBuilder& addFontVariant(Pango::Variant);
+  CSSBuilder& addFontWeight(Pango::Weight);
+  
   CSSBuilder& addFontFamily(const std::string&);
   CSSBuilder& addFontSize(const std::string&);
   CSSBuilder& addFontSize(double, const std::string&);
   CSSBuilder& addFontStyle(const std::string&);
   CSSBuilder& addFontVariant(const std::string&);
   CSSBuilder& addFontWeight(const std::string&);
+
   CSSBuilder& addFontWeight(unsigned);
 
   CSSBuilder& addFgColor(const Gdk::RGBA&);
@@ -53,10 +58,7 @@ public:
   // Add arbitrary text
   CSSBuilder& addText(const std::string&);
 
-  uint64_t           length() const;
-  uint64_t           size() const;
   const std::string& str() const;
-  const char*        c_str() const;
 };
 
 #endif // XFCE_APPLET_SPEED_CSS_BUILDER_H

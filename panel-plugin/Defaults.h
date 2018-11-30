@@ -2,10 +2,7 @@
 #define XFCE_APPLET_SPEED_DEFAULTS_H
 
 #include "Array.h"
-#include "BinaryPrefix.h"
-#include "MetricPrefix.h"
 #include "Types.h"
-#include <net/if.h>
 
 #include <gtkmm.h>
 
@@ -26,14 +23,12 @@ public:
     // useless crawl well before we get to this limit
     static constexpr unsigned      MaxDevices  = 65535;
     static constexpr double        Period      = 1.0; // sec
-    static const UnitPrefix        Mode        = UnitPrefix::Metric;
-    static constexpr unsigned      Border      = 1; // px
-    static constexpr unsigned      SpacePlugin = 1; // px
-    static constexpr unsigned      SpaceOuter  = 1; // px
-    static constexpr unsigned      SpaceInner  = 1; // px
+    static constexpr unsigned      Border      = 1;   // px
+    static constexpr unsigned      SpacePlugin = 1;   // px
+    static constexpr unsigned      SpaceOuter  = 1;   // px
+    static constexpr unsigned      SpaceInner  = 1;   // px
     static constexpr bool          ShowLabel   = true;
     static const std::string       Label;
-    static constexpr unsigned      MaxLabelLength = 32;
     static const Gdk::RGBA         LabelFgColor;
     static const Gdk::RGBA         LabelBgColor;
     static constexpr LabelPosition LabelPos  = LabelPosition::Bottom;
@@ -43,20 +38,18 @@ public:
   // Defauls for all devices that are monitored
   class Device {
   public:
-    static const std::string                 Dev;
-    static constexpr unsigned                MaxDeviceLength = IFNAMSIZ;
-    static const std::string                 Name;
-    static constexpr unsigned                MaxNameLength = 32;
-    static constexpr DialKind                Dial = DialKind::CombinedVertical;
-    static const Array<uint64_t, UnitPrefix> RxMax;
-    static const Array<uint64_t, UnitPrefix> TxMax;
-    static constexpr bool                    ShowNotAvailable = false;
-    static constexpr bool                    ShowLabel        = false;
-    static const std::string                 Label;
-    static constexpr unsigned                MaxLabelLength = 32;
-    static const Gdk::RGBA                   LabelFgColor;
-    static const Gdk::RGBA                   LabelBgColor;
-    static const LabelPosition               LabelPos = LabelPosition::Bottom;
+    static const std::string    Dev;
+    static const std::string    Name;
+    static constexpr DialKind   Dial = DialKind::CombinedVertical;
+    static const UnitPrefixKind Mode = UnitPrefixKind::Metric;
+    static const Array<uint64_t, UnitPrefixKind> RxMax;
+    static const Array<uint64_t, UnitPrefixKind> TxMax;
+    static constexpr bool                        ShowNotAvailable = false;
+    static constexpr bool                        ShowLabel        = false;
+    static const std::string                     Label;
+    static const Gdk::RGBA                       LabelFgColor;
+    static const Gdk::RGBA                       LabelBgColor;
+    static const LabelPosition LabelPos = LabelPosition::Bottom;
 
     // Defaults for the block devices that are monitored
     class Disk {

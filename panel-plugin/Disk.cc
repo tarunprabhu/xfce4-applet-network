@@ -13,8 +13,8 @@ Disk::Disk(Plugin& plugin)
       reader(stats), tooltip(*this) {
   TRACE_FUNC_ENTER;
 
-  opts.disk.showNotMounted = Defaults::Device::Disk::ShowNotMounted;
-  opts.disk.kind           = Defaults::Device::Disk::Kind;
+  opts.showNotMounted = Defaults::Device::Disk::ShowNotMounted;
+  opts.kind           = Defaults::Device::Disk::Kind;
   
   TRACE_FUNC_EXIT;
 }
@@ -40,46 +40,48 @@ const DiskTooltip& Disk::getTooltip() const {
 }
 
 DiskKind Disk::getKind() const {
-  return opts.disk.kind;
+  return opts.kind;
 }
 
 bool Disk::getShowNotMounted() const {
-  return opts.disk.showNotMounted;
+  return opts.showNotMounted;
 }
 
 Disk& Disk::setDevice(const std::string& device) {
-  opts.dev = device;
-  setKind(System::getDeviceKind<DeviceClass::Disk>(device));
+  DiskKind kind = System::getDeviceKind<DeviceClass::Disk>(device);
+  Device::setDeviceBase(device);
+  Device::setKindBase(enum_str(kind));
+  opts.kind = kind;
   stats.reset();
   reader.reset(device);
 
   return *this;
 }
 
-Disk& Disk::setKind(DiskKind kind) {
-  opts.disk.kind = kind;
-  Device::setKind(enum_cstr(kind));
+Disk& Disk::setKind(const std::string& kind) {
+  Device::setKindBase(kind);
+  opts.kind = enum_parse<DiskKind>(kind);
 
   return *this;
 }
 
 Disk& Disk::setShowNotMounted(bool show) {
-  opts.disk.showNotMounted = show;
+  opts.showNotMounted = show;
 
   return *this;
 }
 
 void Disk::readConfig(XfceRc* rc) {
   Device::readConfig(rc);
-  setKind(xfce_rc_read_enum_entry(rc, "kind", opts.disk.kind));
+  setKind(enum_str(xfce_rc_read_enum_entry(rc, "kind", opts.kind)));
   setShowNotMounted(
-      xfce_rc_read_bool_entry(rc, "not_mounted", opts.disk.showNotMounted));
+      xfce_rc_read_bool_entry(rc, "mounted", opts.showNotMounted));
 }
 
 void Disk::writeConfig(XfceRc* rc) const {
   Device::writeConfig(rc);
-  xfce_rc_write_enum_entry(rc, "kind", opts.disk.kind);
-  xfce_rc_write_bool_entry(rc, "not_mounted", opts.disk.showNotMounted);
+  xfce_rc_write_enum_entry(rc, "kind", opts.kind);
+  xfce_rc_write_bool_entry(rc, "not_mounted", opts.showNotMounted);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Disk::getIcon(IconKind iconKind) const {

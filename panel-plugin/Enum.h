@@ -3,95 +3,65 @@
 
 #include <gtkmm.h>
 
+#include <cctype>
 #include <string>
 #include <vector>
 
 namespace enum_impl {
-constexpr static unsigned len(const char* s, unsigned l = 0) {
-  if(*s == '\0')
-    return l;
-  return len(++s, ++l);
-}
+static const std::string UnknownName = "<unknown>";
 
-// Copies everything in the source to the destination except spaces
-constexpr static void copy(char* dst, const char* src) {
-  if(*src == '\0') {
-    *dst = '\0';
-  } else if(*src == ' ') {
-    copy(dst, ++src);
-  } else {
-    *dst = *src;
-    copy(++dst, ++src);
-  }
-}
-
-// Replaces the commas in the buffer with '\0' and save the indices which
-// correspond to the starts of each string. Also keeps track of the greatest
-// distance between commas seen so far
-constexpr static void
-initialize(char* buffer, unsigned i, unsigned* indices, unsigned* longest) {
-  if(buffer[i] == '\0') {
-    *indices = i;
-    return;
-  } else if(buffer[i] == ',') {
-    const unsigned* prev = indices - 1;
-    buffer[i]            = '\0';
-    *longest             = std::max(*longest, i + 1 - *prev);
-    *indices             = (i + 1);
-    ++indices;
-  }
-  initialize(buffer, i + 1, indices, longest);
-}
-
-template <typename Enum, unsigned Length> class EnumNames {
+template <typename Enum> class EnumNames {
 private:
   // The name of the enum. Useful for debugging
-  const char* name;
+  const std::string name;
 
-  // Buffer contains all the names separated by '\0'. This way. just providing
-  // the address of the start of the strings is sufficient
-  // This is obviously an overestimate because there are <Length> includes
-  // spaces, but we don't really care all that much about those few extra
-  // bytes because the init string is obtained from __VA_ARGS__ and it is
-  // unlikely to have too many extra spaces (famous last words)
-  char buffer[Length + 1];
+  // The names of the labels
+  std::vector<std::string> names;
 
-  // These are pointers into the buffer defined above.
-  unsigned indices[static_cast<unsigned>(Enum::Last_) + 1];
+private:
+  size_t populate(const std::string& labels, size_t i) {
+    while(std::isspace(labels[i]))
+      i++;
 
-  // The length of the longest name
-  unsigned longest;
+    unsigned begin = i;
+    while((labels[i] != ',') and (labels[i] != '\0'))
+      i++;
+    names.push_back(labels.substr(begin, i - begin));
+
+    if(labels[i] != '\0')
+      return i + 1;
+    return std::string::npos;
+  }
 
 public:
-  constexpr EnumNames(const char* init, const char* initName)
-      : name(initName), buffer{}, indices{}, longest(0) {
-    copy(buffer, init);
-    indices[0] = 0;
-    initialize(buffer, 1, &indices[1], &longest);
+  EnumNames(const std::string& labels, const std::string& name) : name(name) {
+    size_t i = 0;
+    do {
+      i = populate(labels, i);
+    } while(i != std::string::npos);
+    names.push_back(UnknownName);
   }
 
-  const char* cstr(Enum e) const {
-    if(e == Enum::Last_) {
+  const std::string& str(Enum e) const {
+    if(e == Enum::Last_)
       g_error("Cannot stringify enum value: %d", static_cast<unsigned>(e));
-      return nullptr;
-    }
-    return &buffer[indices[static_cast<unsigned>(e)]];
+    return names.at(static_cast<unsigned>(e));
   }
 
-  Enum parse(const char* s) const {
+  Enum parse(const std::string& s) const {
     for(unsigned i = 0; i < static_cast<unsigned>(Enum::Last_); i++)
-      if(strcmp(s, &buffer[indices[i]]) == 0)
+      if(s == names.at(i))
         return static_cast<Enum>(i);
-    g_error("Cannot parse string %s for enum %s", s, name);
+    g_error("Cannot parse string %s for enum %s", s.c_str(), name.c_str());
     return Enum::Last_;
   }
 
-  constexpr unsigned getLongest() const {
-    return longest;
+  const std::vector<std::string>& get() const {
+    return names;
   }
 };
 
-} // namespace enum_impl_
+} // namespace enum_impl
 
 template <typename DestTy, typename Enum> constexpr DestTy EnumAs(Enum e) {
   return static_cast<DestTy>(e);
@@ -122,44 +92,49 @@ template <typename Enum> unsigned enum_count() {
   return static_cast<unsigned>(Enum::Last_);
 }
 
-template <typename Enum> std::vector<const char*> enum_names() {
-  std::vector<const char*> ret;
-  for(Enum e : Enum())
-    ret.push_back(enum_cstr(e));
-  return ret;
-}
+template <typename Enum> const std::string& enum_str(Enum);
+template <typename Enum> Enum               enum_parse(const std::string&);
+template <typename Enum> const std::vector<std::string>& enum_names();
 
-template <typename Enum> const char* enum_cstr(Enum);
-template <typename Enum> Enum        enum_parse(const char*);
-template <typename Enum> unsigned    enum_name_longest();
+#define ENUM_DEFN_(Name__, ...)                                                \
+  enum class Name__ {                                                          \
+    __VA_ARGS__, /* labels */                                                  \
+    Invalid,                                                                   \
+    Last_  = Invalid,                                                          \
+    First_ = 0,                                                                \
+  }
 
-template <typename Enum> Enum enum_parse(const std::string& s) {
-  return enum_parse<Enum>(s.c_str());
-}
-
-#define ENUM_CREATE(Name, Labels...)                                           \
-  enum class Name {                                                            \
-    Labels,                                                                    \
+#define ENUM_DEFN_PLAIN_(Name__, ...)                                          \
+  enum Name__ {                                                                \
+    __VA_ARGS__, /* labels */                                                  \
     Last_,                                                                     \
     First_ = 0,                                                                \
-  };                                                                           \
-                                                                               \
-  template <> inline const char* enum_cstr(Name e) {                           \
-    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
-                                                                      #Name);  \
-    return gen.cstr(e);                                                        \
-  }                                                                            \
-                                                                               \
-  template <> inline Name enum_parse<Name>(const char* s) {                    \
-    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
-                                                                      #Name);  \
-    return gen.parse(s);                                                       \
-  }                                                                            \
-                                                                               \
-  template <> inline unsigned enum_name_longest<Name>() {                      \
-    constexpr enum_impl::EnumNames<Name, enum_impl::len(#Labels)> gen(#Labels, \
-                                                                      #Name);  \
-    return gen.getLongest();                                                   \
   }
+
+#define ENUM_FN_DEFN_(Name__, ...)                                             \
+  template <> inline const std::string& enum_str(Name__ e) {                   \
+    static const enum_impl::EnumNames<Name__> names(#__VA_ARGS__, #Name__);    \
+    return names.str(e);                                                       \
+  }                                                                            \
+                                                                               \
+  template <> inline Name__ enum_parse(const std::string& s) {                 \
+    static const enum_impl::EnumNames<Name__> names(#__VA_ARGS__, #Name__);    \
+    return names.parse(s);                                                     \
+  }                                                                            \
+                                                                               \
+  template <> inline const std::vector<std::string>& enum_names<Name__>() {    \
+    static const enum_impl::EnumNames<Name__> names(#__VA_ARGS__, #Name__);    \
+    return names.get();                                                        \
+  }
+
+#define ENUM(Name__, ...)                                                      \
+  ENUM_DEFN_(Name__, __VA_ARGS__);                                             \
+  ENUM_FN_DEFN_(Name__, __VA_ARGS__)
+
+#define ENUM_PLAIN(Name__, ...)                                                \
+  ENUM_DEFN_PLAIN_(Name__, __VA_ARGS__);                                       \
+  ENUM_FN_DEFN_(Name__, __VA_ARGS__)
+
+#define ENUM_ITERABLE(Name__, ...) ENUM_DEFN_PLAIN_(Name__, __VA_ARGS__)
 
 #endif // XFCE_APPLET_SPEED_ENUM_H

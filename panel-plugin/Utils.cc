@@ -58,7 +58,7 @@ bool isValidStatus(DeviceStatus status, DeviceClass clss) {
   case DeviceClass::Network:
     return isValidStatus<DeviceClassKind<DeviceClass::Network>::type>(status);
   default:
-    g_error("Unsupported device class: %s", enum_cstr(clss));
+    g_error("Unsupported device class: %s", enum_str(clss).c_str());
     break;
   }
   return false;
