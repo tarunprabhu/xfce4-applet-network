@@ -8,8 +8,8 @@
 #include <sstream>
 
 DeviceTooltip::DeviceTooltip(Device& device)
-    : Widget(Gtk::WINDOW_POPUP), device(device),
-      plugin(device.getPlugin()), icons(plugin.getIcons()), icon(nullptr) {
+    : Widget(Gtk::WINDOW_POPUP), device(device), plugin(device.getPlugin()),
+      icons(plugin.getIcons()), icon(nullptr) {
   TRACE_FUNC_ENTER;
 
   TRACE_FUNC_EXIT;
@@ -33,14 +33,14 @@ void DeviceTooltip::update(bool force) {
 
 DeviceTooltip& DeviceTooltip::init() {
   TRACE_FUNC_ENTER;
-  
+
   auto& grid = *Gtk::make_managed<Gtk::Grid>();
   grid.set_row_spacing(Config::Tooltip::Spacing);
   grid.set_row_homogeneous(false);
   grid.set_column_spacing(Config::Tooltip::Spacing);
   grid.set_column_homogeneous(false);
   grid.set_border_width(Config::Tooltip::Border);
-  
+
   auto& imageDevice = *Gtk::make_managed<Gtk::Image>();
 
   auto& gridText = *Gtk::make_managed<Gtk::Grid>();
@@ -54,7 +54,7 @@ DeviceTooltip& DeviceTooltip::init() {
   // Save widgets
   this->imageDevice = &imageDevice;
   this->labelTitle  = &labelTitle;
-  this->gridText     = &gridText;
+  this->gridText    = &gridText;
 
   // Layout widgets
   grid.attach(imageDevice, 0, 0, 1, 2);
@@ -63,7 +63,7 @@ DeviceTooltip& DeviceTooltip::init() {
 
   // Don't show the widgets until the tooltip should be made visible
   hide();
-  
+
   TRACE_FUNC_EXIT;
 
   return *this;
@@ -77,4 +77,14 @@ void DeviceTooltip::cbRefresh() {
   labelTitle->set_text(markup);
 
   g_free(markup);
+}
+
+void DeviceTooltip::set_css(const std::string&, CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
+}
+
+void DeviceTooltip::set_css(const std::string&,
+                            const std::string&,
+                            CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
 }

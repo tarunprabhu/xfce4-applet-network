@@ -11,16 +11,25 @@ FrameWidget& FrameWidget::init() {
   set_border_width(Config::Dialog::Border);
   set_label_align(Config::Dialog::FrameAlignX, Config::Dialog::FrameAlignY);
   set_halign(Gtk::ALIGN_FILL);
-  set_css(CSSBuilder("label").addFontWeight("bold").commit(true));
+  set_css(CSSBuilder().addFontWeight("bold").commit(), true);
 
   return *this;
 }
 
-void FrameWidget::set_css(const std::string& css) {
-  Glib::RefPtr<Gtk::CssProvider> provider = Gtk::CssProvider::create();
-  provider->load_from_data(css);
+void FrameWidget::set_css(const std::string&   css,
+                          CSSBuilder::Selector selector) {
+  set_css_impl(css, "frame", selector);
+}
 
-  Gtk::Widget*                    widget = get_label_widget();
-  Glib::RefPtr<Gtk::StyleContext> style  = widget->get_style_context();
-  style->add_provider(provider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+void FrameWidget::set_css(const std::string&   css,
+                          const std::string&   arg,
+                          CSSBuilder::Selector selector) {
+  set_css_impl(css, "frame", arg, selector);
+}
+
+void FrameWidget::set_css(const std::string& css, bool child) {
+  if(child)
+    set_css(css, "label", CSSBuilder::Child);
+  else
+    set_css(css, CSSBuilder::Widget);
 }

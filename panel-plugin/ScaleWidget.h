@@ -15,6 +15,12 @@ public:
               Gtk::Orientation = Gtk::ORIENTATION_HORIZONTAL);
 
   virtual ScaleWidget& init() override;
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 };
 
 #endif // XFCE_APPLET_SPEED_SCALE_WIDGET_H

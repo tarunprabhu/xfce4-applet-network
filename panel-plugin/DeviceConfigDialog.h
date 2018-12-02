@@ -3,7 +3,6 @@
 
 #include "Types.h"
 #include "UnitPrefix.h"
-#include "Widget.h"
 #include "Widgets.h"
 
 #include <gtkmm.h>
@@ -66,8 +65,6 @@ private:
 
   uint64_t calculate(const std::string&, const std::string&) const;
 
-  std::string getLabelPreviewCSS();
-
   void cbRadioLabelToggledImpl(LabelPosition);
 
 public:
@@ -104,6 +101,12 @@ public:
   void cbCheckShowLabelToggled();
 
   void cbComboLabelPositionChanged();
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 };
 
 #endif // XFCE_APPLET_SPEED_DEVICE_CONFIG_DIALOG_H

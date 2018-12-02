@@ -1,6 +1,5 @@
 #include "Device.h"
 
-#include "CSSBuilder.h"
 #include "Debug.h"
 #include "Defaults.h"
 #include "DeviceTooltip.h"
@@ -24,7 +23,7 @@ std::unique_ptr<Device> Device::create(DeviceClass clss, Plugin& plugin) {
 Device::Device(Plugin& plugin, DeviceClass clss)
     : clss(clss), plugin(plugin), icons(plugin.getIcons()), widget(*this) {
   TRACE_FUNC_ENTER;
-  
+
   opts.dev              = Defaults::Device::Dev;
   opts.name             = Defaults::Device::Name;
   opts.dial             = Defaults::Device::Dial;
@@ -38,8 +37,6 @@ Device::Device(Plugin& plugin, DeviceClass clss)
   opts.labelBgColor     = Defaults::Device::LabelBgColor;
   opts.labelPosition    = Defaults::Device::LabelPos;
 
-  setCSS();
-  
   TRACE_FUNC_EXIT;
 }
 
@@ -119,10 +116,6 @@ LabelPosition Device::getLabelPosition() const {
   return opts.labelPosition;
 }
 
-const std::string& Device::getCSS() const {
-  return opts.css;
-}
-
 DeviceStatus Device::getStatus() const {
   return getStats().getStatus();
 }
@@ -135,7 +128,7 @@ Device& Device::setDeviceBase(const std::string& dev) {
 
 Device& Device::setKindBase(const std::string& kind) {
   opts.kind = kind;
-  
+
   return *this;
 }
 
@@ -192,14 +185,12 @@ Device& Device::setLabel(const std::string& label) {
 
 Device& Device::setLabelFgColor(const Gdk::RGBA& color) {
   opts.labelFgColor = color;
-  setCSS();
 
   return *this;
 }
 
 Device& Device::setLabelBgColor(const Gdk::RGBA& color) {
   opts.labelBgColor = color;
-  setCSS();
 
   return *this;
 }
@@ -210,30 +201,21 @@ Device& Device::setLabelPosition(LabelPosition pos) {
   return *this;
 }
 
-void Device::setCSS() {
-  opts.css = CSSBuilder("label")
-                 .addBgColor(getLabelBgColor())
-                 .addFgColor(getLabelFgColor())
-                 .addFont(plugin.getFont())
-                 .commit(true);
-}
-
-void Device::readConfig(XfceRc* rc) {
+void Device::readConfig(xfce::Rc& rc) {
   TRACE_FUNC_ENTER;
 
-  setDevice(xfce_rc_read_string_entry(rc, "device", opts.dev));
-  setName(xfce_rc_read_string_entry(rc, "name", opts.name));
-  setDial(xfce_rc_read_enum_entry(rc, "dial", opts.dial));
-  setMode(xfce_rc_read_enum_entry(rc, "mode", opts.mode));
-  setRxMax(xfce_rc_read_double_entry(rc, "rx", opts.rxMax));
-  setTxMax(xfce_rc_read_double_entry(rc, "tx", opts.txMax));
-  setShowNotAvailable(
-      xfce_rc_read_bool_entry(rc, "notavailable", opts.showNotAvailable));
-  setShowLabel(xfce_rc_read_bool_entry(rc, "show", opts.showLabel));
-  setLabel(xfce_rc_read_string_entry(rc, "label", opts.label));
-  setLabelFgColor(xfce_rc_read_color_entry(rc, "labelFg", opts.labelFgColor));
-  setLabelBgColor(xfce_rc_read_color_entry(rc, "labelBg", opts.labelBgColor));
-  setLabelPosition(xfce_rc_read_enum_entry(rc, "labelPos", opts.labelPosition));
+  setDevice(rc.read("device", opts.dev));
+  setName(rc.read("name", opts.name));
+  setDial(rc.read("dial", opts.dial));
+  setMode(rc.read("mode", opts.mode));
+  setRxMax(rc.read("rx", opts.rxMax));
+  setTxMax(rc.read("tx", opts.txMax));
+  setShowNotAvailable(rc.read("notavailable", opts.showNotAvailable));
+  setShowLabel(rc.read("show", opts.showLabel));
+  setLabel(rc.read("label", opts.label));
+  setLabelFgColor(rc.read("labelFg", opts.labelFgColor));
+  setLabelBgColor(rc.read("labelBg", opts.labelBgColor));
+  setLabelPosition(rc.read("labelPos", opts.labelPosition));
 
   TRACE_FUNC_EXIT;
 }
@@ -241,18 +223,18 @@ void Device::readConfig(XfceRc* rc) {
 void Device::writeConfig(XfceRc* rc) const {
   TRACE_FUNC_ENTER;
 
-  xfce_rc_write_string_entry(rc, "device", opts.dev);
-  xfce_rc_write_string_entry(rc, "name", opts.name);
-  xfce_rc_write_enum_entry(rc, "dial", opts.dial);
-  xfce_rc_write_enum_entry(rc, "mode", opts.mode);
-  xfce_rc_write_double_entry(rc, "rx", opts.rxMax);
-  xfce_rc_write_double_entry(rc, "tx", opts.txMax);
-  xfce_rc_write_bool_entry(rc, "notavailable", opts.showNotAvailable);
-  xfce_rc_write_bool_entry(rc, "show", opts.showLabel);
-  xfce_rc_write_string_entry(rc, "label", opts.label);
-  xfce_rc_write_color_entry(rc, "labelFg", opts.labelFgColor);
-  xfce_rc_write_color_entry(rc, "labelBg", opts.labelBgColor);
-  xfce_rc_write_enum_entry(rc, "labelPos", opts.labelPosition);
+  rc.write("device", opts.dev);
+  rc.write("name", opts.name);
+  rc.write("dial", opts.dial);
+  rc.write("mode", opts.mode);
+  rc.write("rx", opts.rxMax);
+  rc.write("tx", opts.txMax);
+  rc.write("notavailable", opts.showNotAvailable);
+  rc.write("show", opts.showLabel);
+  rc.write("label", opts.label);
+  rc.write("labelFg", opts.labelFgColor);
+  rc.write("labelBg", opts.labelBgColor);
+  rc.write("labelPos", opts.labelPosition);
 
   TRACE_FUNC_EXIT;
 }

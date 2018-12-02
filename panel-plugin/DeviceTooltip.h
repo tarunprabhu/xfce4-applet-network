@@ -1,7 +1,7 @@
 #ifndef XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 #define XFCE_APPLET_SPEED_DEVICE_TOOLTIP_H
 
-#include "Widget.h"
+#include "Widgets.h"
 
 #include <gtkmm.h>
 
@@ -52,6 +52,12 @@ public:
   // the title label being changed and anything else that depends on the
   // static device parameters
   virtual void cbRefresh();
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 
   friend class Device;
 };

@@ -9,13 +9,13 @@
 #include <sstream>
 
 Disk::Disk(Plugin& plugin)
-    : Device(plugin, DeviceClass::Disk), stats(*this),
-      reader(stats), tooltip(*this) {
+    : Device(plugin, DeviceClass::Disk), stats(*this), reader(stats),
+      tooltip(*this) {
   TRACE_FUNC_ENTER;
 
   opts.showNotMounted = Defaults::Device::Disk::ShowNotMounted;
   opts.kind           = Defaults::Device::Disk::Kind;
-  
+
   TRACE_FUNC_EXIT;
 }
 
@@ -71,17 +71,16 @@ Disk& Disk::setShowNotMounted(bool show) {
   return *this;
 }
 
-void Disk::readConfig(XfceRc* rc) {
+void Disk::readConfig(xfce::Rc& rc) {
   Device::readConfig(rc);
-  setKind(enum_str(xfce_rc_read_enum_entry(rc, "kind", opts.kind)));
-  setShowNotMounted(
-      xfce_rc_read_bool_entry(rc, "mounted", opts.showNotMounted));
+  setKind(enum_str(rc.read("kind", opts.kind)));
+  setShowNotMounted(rc.read("mounted", opts.showNotMounted));
 }
 
-void Disk::writeConfig(XfceRc* rc) const {
+void Disk::writeConfig(xfce::Rc& rc) const {
   Device::writeConfig(rc);
-  xfce_rc_write_enum_entry(rc, "kind", opts.kind);
-  xfce_rc_write_bool_entry(rc, "not_mounted", opts.showNotMounted);
+  rc.write("kind", opts.kind);
+  rc.write("not_mounted", opts.showNotMounted);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Disk::getIcon(IconKind iconKind) const {

@@ -12,7 +12,13 @@ public:
   FrameWidget(const std::string& name = std::string());
 
   virtual FrameWidget& init() override;
-  virtual void         set_css(const std::string&) override;
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
+  virtual void set_css(const std::string&, bool = false);
 };
 
 #endif // XFCE_APPLET_SPEED_FRAME_WIDGET_H

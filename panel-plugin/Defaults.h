@@ -31,8 +31,9 @@ public:
     static const std::string       Label;
     static const Gdk::RGBA         LabelFgColor;
     static const Gdk::RGBA         LabelBgColor;
-    static constexpr LabelPosition LabelPos  = LabelPosition::Bottom;
-    static constexpr Verbosity     Verbosity = Verbosity::Moderate;
+    static constexpr LabelPosition LabelHorizontal  = LabelPosition::Left;
+    static constexpr LabelPosition LabelVertical    = LabelPosition::Bottom;
+    static constexpr Verbosity     TooltipVerbosity = Verbosity::Moderate;
   };
 
   // Defauls for all devices that are monitored

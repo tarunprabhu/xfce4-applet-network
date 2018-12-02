@@ -14,37 +14,48 @@
       ERROR("Cannot call this function on committed CSS builder object");      \
   } while(0)
 
-CSSBuilder::CSSBuilder() : committed(false) {
+CSSBuilder::CSSBuilder() : committed(false), opened(false) {
   ;
 }
 
-CSSBuilder::CSSBuilder(const std::string& selector) : committed(false) {
-  beginSelector(selector);
+CSSBuilder::CSSBuilder(const std::string& arg0, Selector selector)
+    : committed(false), opened(true) {
+  switch(selector) {
+  case Selector::Widget:
+    ss << arg0 << " {" << std::endl;
+    break;
+  case Selector::Name:
+    ss << "#" << arg0 << " {" << std::endl;
+    break;
+  default:
+    g_error("Insufficient arguments for selector mode: %d", selector);
+    break;
+  }
 }
 
-CSSBuilder& CSSBuilder::beginSelector(const std::string& selector) {
-  ss << selector << " {" << std::endl;
-
-  return *this;
+CSSBuilder::CSSBuilder(const std::string& arg0,
+                       const std::string& arg1,
+                       Selector           selector)
+    : committed(false), opened(true) {
+  switch(selector) {
+  case Selector::State:
+    ss << arg0 << "." << arg1 << " {" << std::endl;
+    break;
+  case Selector::Name:
+    ss << arg0 << "#" << arg1 << " {" << std::endl;
+    break;
+  case Selector::Child:
+    ss << arg0 << " " << arg1 << " {" << std::endl;
+    break;
+  default:
+    g_error("Too many arguments for selector mode: %d", selector);
+    break;
+  }
 }
 
-CSSBuilder& CSSBuilder::endSelector() {
-  ss << "}";
-
-  return *this;
-}
-
-CSSBuilder& CSSBuilder::init() {
-  ss.str("");
-  css       = "";
-  committed = false;
-
-  return *this;
-}
-
-const std::string& CSSBuilder::commit(bool close) {
-  if(close)
-    endSelector();
+const std::string& CSSBuilder::commit() {
+  if(opened)
+    ss << "}";
   css       = ss.str();
   committed = true;
 

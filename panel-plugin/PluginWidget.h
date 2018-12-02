@@ -3,7 +3,6 @@
 
 #include "Array.h"
 #include "Types.h"
-#include "Widget.h"
 #include "Widgets.h"
 
 #include <gtkmm.h>
@@ -11,15 +10,14 @@
 class Device;
 class Plugin;
 
-class PluginWidget : public Widget<Gtk::EventBox> {
+class PluginWidget : public Widget<Gtk::Grid> {
 private:
   Plugin& plugin;
 
   // TODO: The label could be to the left, right, top or bottom of the
   // network monitors
   Array<LabelWidget*, LabelPosition> labels; // Labels displayed with the plugin
-  Gtk::Grid*                         main;   // Main grid
-  Gtk::Grid*                         grid;   // Container for the device dials
+  Gtk::Grid*                         devices; // Container for the device dials
 
 public:
   PluginWidget(Plugin&);
@@ -34,12 +32,18 @@ public:
   void cbReorient(Gtk::Orientation);
   void cbResize(unsigned);
 
-  virtual void cbRefresh();
+  void cbRefresh();
 
   void appendDevice(Device&);
   void removeDeviceAt(unsigned);
   void moveDeviceUp(unsigned);
   void moveDeviceDown(unsigned);
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_WIDGET_H

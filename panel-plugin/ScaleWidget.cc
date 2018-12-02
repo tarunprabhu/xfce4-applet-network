@@ -23,3 +23,13 @@ ScaleWidget& ScaleWidget::init() {
 
   return *this;
 }
+
+void ScaleWidget::set_css(const std::string& css,
+                          CSSBuilder::Selector selector) {
+  set_css_impl(css, "scale", selector);
+}
+
+void ScaleWidget::set_css(const std::string& css, const std::string& arg,
+                          CSSBuilder::Selector selector) {
+  set_css_impl(css, "scale", arg, selector);
+}

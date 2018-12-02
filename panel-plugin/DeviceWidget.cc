@@ -52,7 +52,7 @@ DeviceWidget& DeviceWidget::init() {
   // gtk_widget_set_size_request(canvas, size, size);
 
   // Save widgets
-  this->labels      = labels;
+  this->labels = labels;
   // this->imageDevice = &imageDevice;
   // this->canvas                        = &canvas;
 
@@ -64,6 +64,13 @@ DeviceWidget& DeviceWidget::init() {
   attach_next_to(*labels[LabelPosition::Right], imageDevice, Gtk::POS_RIGHT);
   attach_next_to(*labels[LabelPosition::Bottom], imageDevice, Gtk::POS_BOTTOM);
 
+  // Show widgets
+  show_all();
+  for(LabelWidget* label : labels)
+    label->hide();
+  if(device.getShowLabel())
+    labels[device.getLabelPosition()]->show();
+  
   // Connect signals
   // SIGNAL_CONNECT_METHOD(canvas, draw, this, cbDrawingAreaCanvasDraw);
   // SIGNAL_CONNECT_METHOD(this, query_tooltip, device.getTooltip(),
@@ -80,8 +87,7 @@ void DeviceWidget::cbRefresh() {
   // Hide everything before showing only those widgets that we should
   hide();
   for(LabelWidget* label : labels)
-    if(label)
-      label->hide();
+    label->hide();
 
   bool showDial = false;
   switch(device.getStatus()) {
@@ -110,7 +116,8 @@ void DeviceWidget::cbRefresh() {
     if(device.getShowLabel()) {
       LabelWidget& label = *labels[device.getLabelPosition()];
       label.set_text(device.getLabel());
-      label.set_css(device.getCSS());
+      label.set_css(plugin.getFont(), device.getLabelFgColor(),
+                    device.getLabelBgColor());
       label.show();
     }
   }
@@ -118,3 +125,12 @@ void DeviceWidget::cbRefresh() {
   TRACE_FUNC_EXIT;
 }
 
+void DeviceWidget::set_css(const std::string&, CSSBuilder::Selector) {
+  g_warning("set_css() not implemented for %s", typeid(decltype(*this)).name());
+}
+
+void DeviceWidget::set_css(const std::string&,
+                           const std::string&,
+                           CSSBuilder::Selector) {
+  g_warning("set_css() not implemented for %s", typeid(decltype(*this)).name());
+}

@@ -4,10 +4,10 @@
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
-#include "CSSBuilder.h"
 #include "Debug.h"
 #include "Defaults.h"
 #include "Devices.h"
+#include "Dict2.h"
 #include "Utils.h"
 #include "XfceUtils.h"
 
@@ -16,35 +16,35 @@
 #include <sstream>
 
 // Callbacks
-Plugin::Plugin(XfcePanelPlugin* xfce)
-    : xfce(xfce), xfceWidget(Glib::wrap(GTK_WIDGET(xfce))), icons(*this),
+Plugin::Plugin(xfce::PanelPlugin::CType* xfce)
+    : xfce::PanelPlugin(xfce), evt(new Gtk::EventBox()), icons(*this),
       widget(*this), timer(0) {
   TRACE_FUNC_ENTER;
 
   // Set plugin state variables
-  size = xfce_panel_plugin_get_size(xfce);
-  orientation =
-      static_cast<Gtk::Orientation>(xfce_panel_plugin_get_orientation(xfce));
+  size        = get_size(xfce);
+  orientation = get_orientation(xfce);
 
-  opts.period        = Defaults::Plugin::Period;
-  opts.border        = Defaults::Plugin::Border;
-  opts.spacePlugin   = Defaults::Plugin::SpacePlugin;
-  opts.spaceOuter    = Defaults::Plugin::SpaceOuter;
-  opts.spaceInner    = Defaults::Plugin::SpaceInner;
-  opts.showLabel     = Defaults::Plugin::ShowLabel;
-  opts.label         = Defaults::Plugin::Label;
-  opts.labelFgColor  = Defaults::Plugin::LabelFgColor;
-  opts.labelBgColor  = Defaults::Plugin::LabelBgColor;
-  opts.labelPosition = Defaults::Plugin::LabelPos;
-  opts.verbosity     = Defaults::Plugin::Verbosity;
+  opts.period       = Defaults::Plugin::Period;
+  opts.border       = Defaults::Plugin::Border;
+  opts.spacePlugin  = Defaults::Plugin::SpacePlugin;
+  opts.spaceOuter   = Defaults::Plugin::SpaceOuter;
+  opts.spaceInner   = Defaults::Plugin::SpaceInner;
+  opts.showLabel    = Defaults::Plugin::ShowLabel;
+  opts.label        = Defaults::Plugin::Label;
+  opts.labelFgColor = Defaults::Plugin::LabelFgColor;
+  opts.labelBgColor = Defaults::Plugin::LabelBgColor;
+  if(orientation == Gtk::ORIENTATION_HORIZONTAL)
+    opts.labelPosition = Defaults::Plugin::LabelHorizontal;
+  else
+    opts.labelPosition = Defaults::Plugin::LabelVertical;
+  opts.verbosity = Defaults::Plugin::TooltipVerbosity;
 
   Glib::RefPtr<Gtk::StyleContext> style = xfceWidget->get_style_context();
   opts.font = style->get_font(Gtk::STATE_FLAG_NORMAL);
 
-  setCSS();
-
   widget.init();
-  
+
   // Get the plugin going
   setTimer();
 
@@ -166,7 +166,7 @@ void Plugin::moveDeviceDown(unsigned pos) {
   TRACE_FUNC_EXIT;
 }
 
-void Plugin::cbAbout() {
+void Plugin::on_about() {
   Glib::RefPtr<Gdk::Pixbuf> icon = icons.getIcon();
 
   const gchar* auth[] = {"Tarun Prabhu <tarun.prabhu@gmail.com>", NULL};
@@ -179,31 +179,68 @@ void Plugin::cbAbout() {
       "Copyright \xc2\xa9 2018 Tarun Prabhu\n", "authors", auth, NULL);
 }
 
-void Plugin::cbConfigure() {
+void Plugin::on_configure_plugin() {
+  TRACE_FUNC_ENTER;
+
   // Blocking call
   PluginConfigDialog(*this).init().run();
 
   cbRefresh();
+
+  TRACE_FUNC_EXIT;
+}
+
+void Plugin::on_orientation_changed(Gtk::Orientation orientation) {
+  TRACE_FUNC_ENTER;
+
+  static const Dict2<LabelPosition, LabelPosition> hvPositionMap = {
+      {LabelPosition::Left, LabelPosition::Top},
+      {LabelPosition::Right, LabelPosition::Bottom},
+  };
+
+  this->orientation = orientation;
+  setLabelPosition(hvPositionMap.at(getLabelPosition()));
+
+  cbRefresh();
+
+  TRACE_FUNC_EXIT;
+}
+
+void Plugin::on_size_changed(unsigned size) {
+  TRACE_FUNC_ENTER;
+
+  this->size = size;
+
+  cbRefresh();
+
+  TRACE_FUNC_EXIT;
+}
+
+void Plugin::on_save() const {
+  TRACE_FUNC_ENTER;
+
+  writeConfig();
+
+  TRACE_FUNC_EXIT;
+}
+
+void Plugin::on_free_data() const {
+  TRACE_FUNC_ENTER;
+
+  writeConfig();
+  delete this;
+  
+  TRACE_FUNC_EXIT;
 }
 
 void Plugin::cbRefresh() {
+  TRACE_FUNC_ENTER;
+
   widget.cbRefresh();
   for(auto& pDevice : getDevices())
     pDevice->cbRefresh();
-}
 
-void Plugin::cbReorient(Gtk::Orientation orientation) {
-  this->orientation = orientation;
-  cbRefresh();
-}
-
-void Plugin::cbResize(unsigned size) {
-  this->size = size;
-  cbRefresh();
-}
-
-void Plugin::cbSave() const {
-  writeConfig();
+  TRACE_FUNC_EXIT;
 }
 
 bool Plugin::cbTimerTick() {
@@ -228,20 +265,6 @@ bool Plugin::cbTimerTick() {
   TRACE_TICK_FUNC_EXIT;
 
   return true;
-}
-
-void Plugin::writeConfig() const {
-  TRACE_FUNC_ENTER;
-
-  if(gchar* file = xfce_panel_plugin_save_location(xfce, TRUE)) {
-    if(XfceRc* rc = xfce_rc_simple_open(file, FALSE)) {
-      writeConfig(rc);
-      xfce_rc_close(rc);
-    }
-    g_free(file);
-  }
-
-  TRACE_FUNC_EXIT;
 }
 
 Plugin& Plugin::setPeriod(double period) {
@@ -288,14 +311,12 @@ Plugin& Plugin::setLabel(const std::string& label) {
 
 Plugin& Plugin::setLabelFgColor(const Gdk::RGBA& color) {
   opts.labelFgColor = color;
-  setCSS();
 
   return *this;
 }
 
 Plugin& Plugin::setLabelBgColor(const Gdk::RGBA& color) {
   opts.labelBgColor = color;
-  setCSS();
 
   return *this;
 }
@@ -309,10 +330,6 @@ Plugin& Plugin::setLabelPosition(LabelPosition position) {
 Plugin& Plugin::setFont(const Pango::FontDescription& font) {
   opts.font = font;
 
-  setCSS();
-  for(auto& pDevice : getDevices())
-    pDevice->setCSS();
-
   return *this;
 }
 
@@ -320,14 +337,6 @@ Plugin& Plugin::setVerbosity(Verbosity verbosity) {
   opts.verbosity = verbosity;
 
   return *this;
-}
-
-void Plugin::setCSS() {
-  opts.css = CSSBuilder("label")
-                 .addBgColor(getLabelBgColor())
-                 .addFgColor(getLabelFgColor())
-                 .addFont(getFont())
-                 .commit(true);
 }
 
 unsigned Plugin::getSize() const {
@@ -386,34 +395,41 @@ Verbosity Plugin::getVerbosity() const {
   return opts.verbosity;
 }
 
-const std::string& Plugin::getCSS() const {
-  return opts.css;
-}
-
-void Plugin::writeConfig(XfceRc* rc) const {
+void Plugin::writeConfig() const {
   TRACE_FUNC_ENTER;
 
-  xfce_rc_set_group(rc, NULL);
-  xfce_rc_write_double_entry(rc, "period", opts.period);
-  xfce_rc_write_int_entry(rc, "border", opts.border);
-  xfce_rc_write_int_entry(rc, "space-plugin", opts.spacePlugin);
-  xfce_rc_write_int_entry(rc, "space-outer", opts.spaceOuter);
-  xfce_rc_write_int_entry(rc, "space-inner", opts.spaceInner);
-  xfce_rc_write_font_entry(rc, "font", opts.font);
-  xfce_rc_write_bool_entry(rc, "showLabel", opts.showLabel);
-  xfce_rc_write_string_entry(rc, "label", opts.label);
-  xfce_rc_write_color_entry(rc, "fg", opts.labelFgColor);
-  xfce_rc_write_color_entry(rc, "bg", opts.labelBgColor);
-  xfce_rc_write_enum_entry(rc, "position", opts.labelPosition);
-  xfce_rc_write_enum_entry(rc, "verbosity", opts.verbosity);
-  xfce_rc_write_int_entry(rc, "devices", devices.size());
+  Glib::RefPtr<xfce::Rc> rc = xfce::Rc::simple_open(save_location(true), false);
+  if(not rc->is_error())
+    writeConfig(*rc.get());
+  rc->close();
+
+  TRACE_FUNC_EXIT;
+}
+
+void Plugin::writeConfig(xfce::Rc& rc) const {
+  TRACE_FUNC_ENTER;
+
+  rc.set_group();
+  rc.write("period", opts.period);
+  rc.write("border", opts.border);
+  rc.write("space-plugin", opts.spacePlugin);
+  rc.write("space-outer", opts.spaceOuter);
+  rc.write("space-inner", opts.spaceInner);
+  rc.write("font", opts.font);
+  rc.write("showLabel", opts.showLabel);
+  rc.write("label", opts.label);
+  rc.write("fg", opts.labelFgColor);
+  rc.write("bg", opts.labelBgColor);
+  rc.write("position", opts.labelPosition);
+  rc.write("verbosity", opts.verbosity);
+  rc.write("devices", devices.size());
   unsigned i = 0;
   for(const auto& device : getDevices()) {
     constexpr unsigned bufsz = digits(Defaults::Plugin::MaxDevices) + 1;
     char               group[bufsz];
     g_snprintf(group, bufsz, "%d", i);
-    xfce_rc_set_group(rc, group);
-    xfce_rc_write_enum_entry(rc, "class", device->getClass());
+    rc.set_group(group);
+    rc.write("class", device->getClass());
     device->writeConfig(rc);
     i += 1;
   }
@@ -425,46 +441,43 @@ void Plugin::readConfig() {
   TRACE_FUNC_ENTER;
 
   clearTimer();
-  if(gchar* file = xfce_panel_plugin_lookup_rc_file(xfce)) {
-    if(XfceRc* rc = xfce_rc_simple_open(file, TRUE)) {
-      readConfig(rc);
-      xfce_rc_close(rc);
-    }
-    g_free(file);
-  }
+  Glib::RefPtr<xfce::Rc> rc = xfce::Rc::simple_open(lookup_rc_file(), true);
+  if(not rc->is_error())
+    readConfig(*rc.get());
+  rc->close();
+
   setTimer();
 
   TRACE_FUNC_EXIT;
 }
 
-void Plugin::readConfig(XfceRc* rc) {
+void Plugin::readConfig(xfce::Rc& rc) {
   TRACE_FUNC_ENTER;
 
   // This will be called once the plugin has been initialized with default
   // values, so just use those
   //
-  xfce_rc_set_group(rc, NULL);
-  setPeriod(xfce_rc_read_double_entry(rc, "period", opts.period));
-  setBorder(xfce_rc_read_int_entry(rc, "border", opts.border));
-  setSpacePlugin(xfce_rc_read_int_entry(rc, "space_plugin", opts.spacePlugin));
-  setSpaceOuter(xfce_rc_read_int_entry(rc, "space_outer", opts.spaceOuter));
-  setSpaceInner(xfce_rc_read_int_entry(rc, "space_inner", opts.spaceInner));
-  setShowLabel(xfce_rc_read_bool_entry(rc, "showLabel", opts.showLabel));
-  setLabel(xfce_rc_read_string_entry(rc, "label", opts.label));
-  setLabelFgColor(xfce_rc_read_color_entry(rc, "fg", opts.labelFgColor));
-  setLabelBgColor(xfce_rc_read_color_entry(rc, "bg", opts.labelBgColor));
-  setLabelPosition(xfce_rc_read_enum_entry(rc, "position", opts.labelPosition));
-  setFont(xfce_rc_read_font_entry(rc, "font", opts.font));
-  setVerbosity(xfce_rc_read_enum_entry(rc, "verbosity", opts.verbosity));
+  rc.set_group();
+  setPeriod(rc.read("period", opts.period));
+  setBorder(rc.read("border", opts.border));
+  setSpacePlugin(rc.read("space_plugin", opts.spacePlugin));
+  setSpaceOuter(rc.read("space_outer", opts.spaceOuter));
+  setSpaceInner(rc.read("space_inner", opts.spaceInner));
+  setShowLabel(rc.read("showLabel", opts.showLabel));
+  setLabel(rc.read("label", opts.label));
+  setLabelFgColor(rc.read("fg", opts.labelFgColor));
+  setLabelBgColor(rc.read("bg", opts.labelBgColor));
+  setLabelPosition(rc.read("position", opts.labelPosition));
+  setFont(rc.read("font", opts.font));
+  setVerbosity(rc.read("verbosity", opts.verbosity));
 
-  unsigned numDevices = xfce_rc_read_int_entry(rc, "devices", 0);
+  unsigned numDevices = rc.read("devices", 0);
   for(unsigned i = 0; i < numDevices; i++) {
     constexpr unsigned bufsz = digits(Defaults::Plugin::MaxDevices) + 1;
     char               group[bufsz];
     g_snprintf(group, bufsz, "%d", i);
-    xfce_rc_set_group(rc, group);
-    DeviceClass clss =
-        xfce_rc_read_enum_entry(rc, "class", DeviceClass::Invalid);
+    rc.set_group(group);
+    DeviceClass             clss    = rc.read("class", DeviceClass::Invalid);
     std::unique_ptr<Device> pDevice = Device::create(clss, *this);
     pDevice->readConfig(rc);
     appendDevice(std::move(pDevice));

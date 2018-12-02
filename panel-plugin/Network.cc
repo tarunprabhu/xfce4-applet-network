@@ -73,17 +73,16 @@ Network& Network::setShowNotConnected(bool show) {
   return *this;
 }
 
-void Network::readConfig(XfceRc* rc) {
+void Network::readConfig(xfce::Rc& rc) {
   Device::readConfig(rc);
-  setKind(enum_str(xfce_rc_read_enum_entry(rc, "kind", opts.kind)));
-  setShowNotConnected(
-      xfce_rc_read_bool_entry(rc, "not_connected", opts.showNotConnected));
+  setKind(enum_str(rc.read("kind", opts.kind)));
+  setShowNotConnected(rc.read("not_connected", opts.showNotConnected));
 }
 
-void Network::writeConfig(XfceRc* rc) const {
+void Network::writeConfig(xfce::Rc& rc) const {
   Device::writeConfig(rc);
-  xfce_rc_write_enum_entry(rc, "kind", opts.kind);
-  xfce_rc_write_bool_entry(rc, "not_connected", opts.showNotConnected);
+  rc.write("kind", opts.kind);
+  rc.write("not_connected", opts.showNotConnected);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Network::getIcon(IconKind iconKind) const {

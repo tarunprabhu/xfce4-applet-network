@@ -45,8 +45,8 @@ public:
   DiskKind getKind() const;
   bool     getShowNotMounted() const;
 
-  virtual void readConfig(XfceRc*) override;
-  virtual void writeConfig(XfceRc*) const override;
+  virtual void readConfig(xfce::Rc&) override;
+  virtual void writeConfig(xfce::Rc&) const override;
 
 public:
   static bool classof(const Device*);

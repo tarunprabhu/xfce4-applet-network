@@ -2,7 +2,6 @@
 #define XFCE_APPLET_SPEED_PLUGIN_CONFIG_DIALOG_H
 
 #include "Types.h"
-#include "Widget.h"
 #include "Widgets.h"
 
 #include <gtkmm.h>
@@ -64,7 +63,6 @@ private:
   Gtk::Container& createDevicesPage();
 
   void appendDevice(const Device&);
-  std::string getLabelPreviewCSS();
 
   void cbRadioLabelToggledImpl(LabelPosition);
   int  cbAddDeviceImpl(DeviceClass);
@@ -108,6 +106,12 @@ public:
   void cbToolItemConfigClicked();
   bool
   cbTreeViewQueryTooltip(int, int, bool, const Glib::RefPtr<Gtk::Tooltip>&);
+
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_CONFIG_DIALOG_H

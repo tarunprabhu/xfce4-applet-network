@@ -14,8 +14,6 @@
 #include <iomanip>
 #include <sstream>
 
-#include "Xfce.h"
-
 // Local types
 class DeviceListColumns : public Gtk::TreeModel::ColumnRecord {
 public:
@@ -78,14 +76,6 @@ void PluginConfigDialog::appendDevice(const Device& device) {
   (*iter)[deviceListColumns.status]     = status;
 }
 
-std::string PluginConfigDialog::getLabelPreviewCSS() {
-  return CSSBuilder("label")
-      .addFont(plugin.getFont())
-      .addFgColor(plugin.getLabelFgColor())
-      .addBgColor(plugin.getLabelBgColor())
-      .commit(true);
-}
-
 void PluginConfigDialog::cbDialogResponse(int resp) {
   TRACE_FUNC_ENTER;
 
@@ -102,7 +92,7 @@ void PluginConfigDialog::cbDialogResponse(int resp) {
             enum_str(response).c_str());
     break;
   }
-  xfce_panel_plugin_unblock_menu(plugin.getXfcePanelPlugin());
+  plugin.getXfcePanelPlugin().unblock_menu();
 
   TRACE_FUNC_EXIT;
 }
@@ -141,9 +131,10 @@ void PluginConfigDialog::cbEntryLabelChanged() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
   labelPreview->set_text(label);
-  
+
   TRACE_FUNC_EXIT;
 }
 
@@ -156,7 +147,8 @@ void PluginConfigDialog::cbColorLabelFgSet() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
 
   TRACE_FUNC_EXIT;
 }
@@ -170,7 +162,8 @@ void PluginConfigDialog::cbColorLabelBgSet() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
 
   TRACE_FUNC_EXIT;
 }
@@ -296,7 +289,8 @@ void PluginConfigDialog::cbFontButtonFontSet() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
 
   TRACE_FUNC_EXIT;
 }
@@ -314,9 +308,9 @@ void PluginConfigDialog::cbToggleBoldToggled() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
-  toggleBold->set_css(
-      CSSBuilder("button").addFontWeight(font.get_weight()).commit(true));
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
+  toggleBold->set_css(CSSBuilder().addFontWeight(font.get_weight()).commit());
 
   TRACE_FUNC_EXIT;
 }
@@ -334,9 +328,9 @@ void PluginConfigDialog::cbToggleCapsToggled() {
   plugin.cbRefresh();
 
   // Update other gui elements
-  labelPreview->set_css(getLabelPreviewCSS());
-  toggleCaps->set_css(
-      CSSBuilder("button").addFontVariant(font.get_variant()).commit(true));
+  labelPreview->set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                        plugin.getLabelBgColor());
+  toggleCaps->set_css(CSSBuilder().addFontVariant(font.get_variant()).commit());
 
   TRACE_FUNC_EXIT;
 }
@@ -673,11 +667,8 @@ Gtk::Container& PluginConfigDialog::createLabelFrame() {
   labelPreview.set_valign(Gtk::ALIGN_CENTER);
   labelPreview.set_margin_top(Config::Dialog::Border);
   labelPreview.set_margin_bottom(Config::Dialog::Border);
-  labelPreview.set_css(CSSBuilder("label")
-                           .addFont(plugin.getFont())
-                           .addFgColor(plugin.getLabelFgColor())
-                           .addBgColor(plugin.getLabelBgColor())
-                           .commit(true));
+  labelPreview.set_css(plugin.getFont(), plugin.getLabelFgColor(),
+                       plugin.getLabelBgColor());
 
   // Label
   Gtk::Label& labelLabel =
@@ -759,10 +750,9 @@ Gtk::Container& PluginConfigDialog::createLabelFrame() {
 
   row += 1;
   gridSensitive.attach(labelLabelPosition, 0, row);
-  gridPosition.attach(*radioLabelPositions[LabelPosition::Left], 0, 0);
-  gridPosition.attach(*radioLabelPositions[LabelPosition::Top], 1, 0);
-  gridPosition.attach(*radioLabelPositions[LabelPosition::Right], 2, 0);
-  gridPosition.attach(*radioLabelPositions[LabelPosition::Bottom], 3, 0);
+  for(auto pos : LabelPosition())
+    gridPosition.attach(*radioLabelPositions[pos], static_cast<unsigned>(pos),
+                        0);
   gridSensitive.attach(gridPosition, 1, row);
 
   grid.attach(gridSensitive, 0, 0);
@@ -772,13 +762,12 @@ Gtk::Container& PluginConfigDialog::createLabelFrame() {
 
   // Show widgets
   frame.show_all();
-  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL) {
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
     for(LabelPosition pos : {LabelPosition::Top, LabelPosition::Bottom})
       radioLabelPositions[pos]->hide();
-  } else {
+  else
     for(LabelPosition pos : {LabelPosition::Left, LabelPosition::Right})
       radioLabelPositions[pos]->hide();
-  }
 
   // Connect signals
   SIGNAL_CONNECT_METHOD(entryLabel, changed, this, cbEntryLabelChanged);
@@ -956,16 +945,16 @@ Gtk::Container& PluginConfigDialog::createFontFrame() {
   auto& toggleBold = *Gtk::make_managed<ToggleButtonWidget>("Bo_ld", true);
   toggleBold.set_active(isBold);
   toggleBold.set_tooltip_text("Use bold font");
-  toggleBold.set_css(
-      CSSBuilder("button").addFontWeight(font.get_weight()).commit(true));
+  toggleBold.set_css(CSSBuilder().addFontWeight(font.get_weight()).commit(),
+                     "active", CSSBuilder::State);
 
   // Variant
   bool  isSmallCaps = font.get_variant() == Pango::VARIANT_SMALL_CAPS;
   auto& toggleCaps  = *Gtk::make_managed<ToggleButtonWidget>("_Caps", true);
   toggleCaps.set_active(isSmallCaps);
   toggleCaps.set_tooltip_text("Use small caps");
-  toggleCaps.set_css(
-      CSSBuilder("button").addFontVariant(font.get_variant()).commit(true));
+  toggleCaps.set_css(CSSBuilder().addFontVariant(font.get_variant()).commit(),
+                     "active", CSSBuilder::State);
 
   // Save widgets
   this->buttonFont = &buttonFont;
@@ -1179,8 +1168,8 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
 PluginConfigDialog& PluginConfigDialog::init() {
   TRACE_FUNC_ENTER;
 
-  XfcePanelPlugin* xfce       = plugin.getXfcePanelPlugin();
-  Gtk::Widget&     xfceWidget = plugin.getXfceWidget();
+  xfce::PanelPlugin& xfce       = plugin.getXfcePanelPlugin();
+  Gtk::Widget&       xfceWidget = xfce.get_widget();
 
   Gtk::Notebook& notebook = *Gtk::make_managed<Gtk::Notebook>();
   notebook.set_show_border(true);
@@ -1208,7 +1197,7 @@ PluginConfigDialog& PluginConfigDialog::init() {
   // Show widgets
   notebook.show();
 
-  xfce_panel_plugin_block_menu(xfce);
+  xfce.block_menu();
 
   // GtkWidget* xfceDialog = xfce_titled_dialog_new();
   // xfce_titled_dialog_set_subtitle(XFCE_TITLED_DIALOG(xfceDialog),
@@ -1233,4 +1222,14 @@ PluginConfigDialog& PluginConfigDialog::init() {
   TRACE_FUNC_EXIT;
 
   return *this;
+}
+
+void PluginConfigDialog::set_css(const std::string&, CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
+}
+
+void PluginConfigDialog::set_css(const std::string&,
+                                 const std::string&,
+                                 CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
 }

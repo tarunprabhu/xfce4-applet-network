@@ -44,10 +44,10 @@ libappletnetwork_la_SOURCES =  \
 	PluginWidget.cc \
 	ToggleButtonWidget.cc \
 	ScaleWidget.cc \
-	Widget.cc \
 	UnitPrefix.cc \
 	Utils.cc \
-	XfceUtils.cc \
+	XfcePanelPlugin.cc \
+	XfceRc.cc \
 	main.c
 
 # Common sys files

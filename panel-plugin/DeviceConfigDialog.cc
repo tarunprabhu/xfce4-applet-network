@@ -20,8 +20,6 @@
 #include <tuple>
 #include <vector>
 
-#include "Xfce.h"
-
 DeviceConfigDialog::DeviceConfigDialog(Device&                  device,
                                        PluginConfigDialog&      parent,
                                        DeviceConfigDialog::Mode mode)
@@ -235,6 +233,11 @@ void DeviceConfigDialog::cbEntryLabelChanged() {
 
     // Update other fields
     buttonSave->set_sensitive(true);
+
+    // Update other gui elements
+    labelPreview->set_css(plugin.getFont(), device.getLabelFgColor(),
+                          device.getLabelBgColor());
+    labelPreview->set_text(device.getLabel());
   } else {
     buttonSave->set_sensitive(false);
   }
@@ -247,6 +250,10 @@ void DeviceConfigDialog::cbColorLabelFgSet() {
 
   device.setLabelFgColor(colorLabelFg->get_rgba());
 
+  // Update other gui elements
+  labelPreview->set_css(plugin.getFont(), device.getLabelFgColor(),
+                        device.getLabelBgColor());
+
   TRACE_FUNC_EXIT;
 }
 
@@ -255,19 +262,51 @@ void DeviceConfigDialog::cbColorLabelBgSet() {
 
   device.setLabelBgColor(colorLabelBg->get_rgba());
 
+  // Update other gui elements
+  labelPreview->set_css(plugin.getFont(), device.getLabelFgColor(),
+                        device.getLabelBgColor());
+
   TRACE_FUNC_EXIT;
 }
 
-// void DeviceConfigDialog::cbComboLabelPositionChanged() {
-//   TRACE_FUNC_ENTER;
+void DeviceConfigDialog::cbRadioLabelToggledImpl(LabelPosition pos) {
+  bool active = radioLabelPositions[pos]->get_active();
 
-//   const char* id  = comboLabelPosition->get_active_id().c_str();
-//   auto        pos = enum_parse<LabelPosition>(id);
+  if(active)
+    plugin.setLabelPosition(pos);
+}
 
-//   device.setLabelPosition(pos);
+void DeviceConfigDialog::cbRadioLabelLeftToggled() {
+  TRACE_FUNC_ENTER;
 
-//   TRACE_FUNC_EXIT;
-// }
+  cbRadioLabelToggledImpl(LabelPosition::Left);
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfigDialog::cbRadioLabelTopToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Top);
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfigDialog::cbRadioLabelRightToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Right);
+
+  TRACE_FUNC_EXIT;
+}
+
+void DeviceConfigDialog::cbRadioLabelBottomToggled() {
+  TRACE_FUNC_ENTER;
+
+  cbRadioLabelToggledImpl(LabelPosition::Bottom);
+
+  TRACE_FUNC_EXIT;
+}
 
 Gtk::Container& DeviceConfigDialog::addDeviceOptions() {
   TRACE_FUNC_ENTER;
@@ -449,7 +488,7 @@ Gtk::Container& DeviceConfigDialog::addDialOptions() {
 
   // Determine when the dial should be shown
   Gtk::Label& labelVisibility =
-      Gtk::make_managed<LabelWidget>("_Visibility")->init();
+      Gtk::make_managed<LabelWidget>("_Visibility", true)->init();
 
   // Show the dial even when the device is unavailable
   auto& gridVisibility = *Gtk::make_managed<Gtk::Grid>();
@@ -498,30 +537,30 @@ Gtk::Container& DeviceConfigDialog::addDialOptions() {
 
   row += 1;
   grid.attach(labelDial, 0, row);
-  grid.attach_next_to(comboDial, labelDial, Gtk::POS_RIGHT);
+  grid.attach(comboDial, 1, row);
 
   row += 1;
   grid.attach(labelMode, 0, row);
-  grid.attach_next_to(comboMode, labelMode, Gtk::POS_RIGHT);
+  grid.attach(comboMode, 1, row);
 
   row += 1;
   grid.attach(labelRxLabel, 0, row);
-  gridRx.attach_next_to(comboRxRate, Gtk::POS_LEFT);
-  gridRx.attach_next_to(comboRxMultiplier, comboRxRate, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridRx, labelRxLabel, Gtk::POS_RIGHT);
+  gridRx.attach(comboRxRate, 0, 0);
+  gridRx.attach(comboRxMultiplier, 1, 0);
+  grid.attach(gridRx, 1, row);
 
   row += 1;
   grid.attach(labelTxLabel, 0, row);
-  gridTx.attach_next_to(comboTxRate, Gtk::POS_LEFT);
-  gridTx.attach_next_to(comboTxMultiplier, comboTxRate, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridTx, labelTxLabel, Gtk::POS_RIGHT);
+  gridTx.attach(comboTxRate, 0, 0);
+  gridTx.attach(comboTxMultiplier, 1, 0);
+  grid.attach(gridTx, 1, row);
 
   row += 1;
   grid.attach(labelVisibility, 0, row);
-  gridVisibility.attach(checkShowNotAvailable, 0, 1);
-  gridVisibility.attach(checkShowNotMounted, 0, 2);
-  gridVisibility.attach(checkShowNotConnected, 0, 3);
-  grid.attach_next_to(gridVisibility, labelVisibility, Gtk::POS_RIGHT);
+  gridVisibility.attach(checkShowNotAvailable, 0, 0);
+  gridVisibility.attach(checkShowNotMounted, 0, 1);
+  gridVisibility.attach(checkShowNotConnected, 0, 2);
+  grid.attach(gridVisibility, 1, row);
 
   frame.add(grid);
 
@@ -566,8 +605,7 @@ Gtk::Container& DeviceConfigDialog::addLabelOptions() {
 
   Gtk::Frame& frame = Gtk::make_managed<FrameWidget>("Label")->init();
 
-  auto& grid = *Gtk::make_managed<Gtk::Grid>();
-  grid.set_column_spacing(Config::Dialog::Spacing);
+  auto& grid = Gtk::make_managed<GridWidget>()->init();
   grid.set_column_homogeneous(false);
 
   // Grid containing widgets that will be disabled if the show label check
@@ -577,7 +615,7 @@ Gtk::Container& DeviceConfigDialog::addLabelOptions() {
   gridSensitive.set_column_spacing(Config::Dialog::Spacing);
   gridSensitive.set_row_homogeneous(false);
   gridSensitive.set_column_homogeneous(false);
-  gridSensitive.set_sensitive(plugin.getShowLabel());
+  gridSensitive.set_sensitive(device.getShowLabel());
 
   // Label preview
   Gtk::Label& labelPreviewLabel =
@@ -586,17 +624,14 @@ Gtk::Container& DeviceConfigDialog::addLabelOptions() {
   auto& framePreview = *Gtk::make_managed<Gtk::Frame>();
 
   LabelWidget& labelPreview = *Gtk::make_managed<LabelWidget>();
-  labelPreview.set_text(plugin.getLabel());
+  labelPreview.set_text(device.getLabel());
   labelPreview.set_max_width_chars(Config::Plugin::LabelLengthMax);
   labelPreview.set_halign(Gtk::ALIGN_CENTER);
   labelPreview.set_valign(Gtk::ALIGN_CENTER);
   labelPreview.set_margin_top(Config::Dialog::Border);
   labelPreview.set_margin_bottom(Config::Dialog::Border);
-  labelPreview.set_css(CSSBuilder("label")
-                           .addFont(plugin.getFont())
-                           .addFgColor(plugin.getLabelFgColor())
-                           .addBgColor(plugin.getLabelBgColor())
-                           .commit(true));
+  labelPreview.set_css(plugin.getFont(), device.getLabelFgColor(),
+                       device.getLabelBgColor());
 
   // Label
   Gtk::Label& labelLabel = Gtk::make_managed<LabelWidget>(
@@ -643,33 +678,58 @@ Gtk::Container& DeviceConfigDialog::addLabelOptions() {
   }
 
   // Whether or not to show the label
-  auto& checkShowLabel = *Gtk::make_managed<Gtk::CheckButton>("_Label", true);
+  auto& checkShowLabel =
+      *Gtk::make_managed<Gtk::CheckButton>("Sho_w label", true);
   checkShowLabel.set_active(device.getShowLabel());
   checkShowLabel.set_tooltip_text("The label to be displayed with the dial");
   checkShowLabel.set_margin_top(Config::Dialog::Spacing);
 
   // Save widgets
-  this->checkShowLabel      = &checkShowLabel;
+  this->labelPreview        = &labelPreview;
   this->entryLabel          = &entryLabel;
   this->colorLabelFg        = &colorFg;
   this->colorLabelBg        = &colorBg;
   this->radioLabelPositions = radioLabelPositions;
   this->gridSensitive       = &gridSensitive;
+  this->checkShowLabel      = &checkShowLabel;
 
   // Associate label mnemonics
 
   // Layout widgets
-  grid.attach_next_to(checkShowLabel, Gtk::POS_RIGHT);
-  gridLabel.attach_next_to(entryLabel, Gtk::POS_RIGHT);
-  gridLabel.attach_next_to(colorFg, entryLabel, Gtk::POS_RIGHT);
-  gridLabel.attach_next_to(colorBg, colorFg, Gtk::POS_RIGHT);
-  // gridLabel.attach_next_to(comboPosition, colorBg, Gtk::POS_RIGHT);
-  grid.attach_next_to(gridLabel, checkShowLabel, Gtk::POS_RIGHT);
+  int row = -1;
+
+  row += 1;
+  gridSensitive.attach(labelPreviewLabel, 0, row);
+  framePreview.add(labelPreview);
+  gridSensitive.attach(framePreview, 1, row);
+
+  row += 1;
+  gridSensitive.attach(labelLabel, 0, row);
+  gridLabel.attach(entryLabel, 0, 0);
+  gridLabel.attach(colorFg, 1, 0);
+  gridLabel.attach(colorBg, 2, 0);
+  gridSensitive.attach(gridLabel, 1, row);
+
+  row += 1;
+  gridSensitive.attach(labelLabelPosition, 0, row);
+  for(auto pos : LabelPosition())
+    gridPosition.attach(*radioLabelPositions[pos], static_cast<unsigned>(pos),
+                        0);
+  gridSensitive.attach(gridPosition, 1, row);
+
+  grid.attach(gridSensitive, 0, 0);
+  grid.attach(checkShowLabel, 0, 1);
 
   frame.add(grid);
 
   // Show widgets
   frame.show_all();
+  if(plugin.getOrientation() == Gtk::ORIENTATION_HORIZONTAL)
+    for(LabelPosition pos : {LabelPosition::Top, LabelPosition::Bottom})
+      radioLabelPositions[pos]->hide();
+  else
+    for(LabelPosition pos : {LabelPosition::Left, LabelPosition::Right})
+      radioLabelPositions[pos]->hide();
 
   // Connect signals
   SIGNAL_CONNECT_METHOD(entryLabel, changed, this, cbEntryLabelChanged);
@@ -695,7 +755,6 @@ DeviceConfigDialog& DeviceConfigDialog::init() {
 
   auto& grid = *Gtk::make_managed<Gtk::Grid>();
   grid.set_row_homogeneous(false);
-  grid.set_border_width(Config::Dialog::Border);
 
   Gtk::Container& frameDeviceOptions = addDeviceOptions();
   Gtk::Container& frameDialOptions   = addDialOptions();
@@ -721,9 +780,9 @@ DeviceConfigDialog& DeviceConfigDialog::init() {
   // Associate label mnemonics
 
   // Layout widgets
-  grid.attach_next_to(frameDeviceOptions, Gtk::POS_TOP);
-  grid.attach_next_to(frameDialOptions, frameDeviceOptions, Gtk::POS_BOTTOM);
-  grid.attach_next_to(frameLabelOptions, frameDialOptions, Gtk::POS_BOTTOM);
+  grid.attach(frameDeviceOptions, 0, 0);
+  grid.attach(frameDialOptions, 0, 1);
+  grid.attach(frameLabelOptions, 0, 2);
   get_content_area()->pack_start(grid);
 
   // Show widgets
@@ -739,4 +798,14 @@ DeviceConfigDialog& DeviceConfigDialog::init() {
   TRACE_FUNC_EXIT;
 
   return *this;
+}
+
+void DeviceConfigDialog::set_css(const std::string&, CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
+}
+
+void DeviceConfigDialog::set_css(const std::string&,
+                                 const std::string&,
+                                 CSSBuilder::Selector) {
+  g_warning("set_css() not implemented in %s", typeid(decltype(*this)).name());
 }

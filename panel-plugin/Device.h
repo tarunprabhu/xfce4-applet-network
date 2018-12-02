@@ -4,13 +4,12 @@
 #include "DeviceWidget.h"
 #include "Types.h"
 #include "UniqueID.h"
+#include "XfceRc.h"
 
 #include <gtkmm.h>
 
 #include <memory>
 #include <string>
-
-#include "Xfce.h"
 
 class DeviceStats;
 class DeviceTooltip;
@@ -45,7 +44,6 @@ private:
     LabelPosition labelPosition; // Position of the label relative to the dial
 
     // Derived options
-    std::string css;
   } opts;
 
 protected:
@@ -85,7 +83,6 @@ public:
   Device&         setLabelFgColor(const Gdk::RGBA&);
   Device&         setLabelBgColor(const Gdk::RGBA&);
   Device&         setLabelPosition(LabelPosition);
-  void            setCSS();
 
   DeviceClass        getClass() const;
   const std::string& getDevice() const;
@@ -101,12 +98,11 @@ public:
   const Gdk::RGBA&   getLabelFgColor() const;
   const Gdk::RGBA&   getLabelBgColor() const;
   LabelPosition      getLabelPosition() const;
-  const std::string& getCSS() const;
 
   DeviceStatus getStatus() const;
 
-  virtual void                      readConfig(XfceRc*);
-  virtual void                      writeConfig(XfceRc*) const;
+  virtual void                      readConfig(xfce::Rc&);
+  virtual void                      writeConfig(xfce::Rc&) const;
   virtual Glib::RefPtr<Gdk::Pixbuf> getIcon(IconKind) const = 0;
 
   void cbRefresh();

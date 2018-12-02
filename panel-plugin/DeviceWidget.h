@@ -3,7 +3,6 @@
 
 #include "Array.h"
 #include "Types.h"
-#include "Widget.h"
 #include "Widgets.h"
 
 #include <gtkmm.h>
@@ -46,7 +45,11 @@ public:
   bool cbDrawingAreaCanvasDraw(cairo_t*);
   void cbRefresh();
 
-  using Gtk::Widget::get_style_context;
+  virtual void set_css(const std::string&,
+                       CSSBuilder::Selector = CSSBuilder::Widget) override;
+  virtual void set_css(const std::string&,
+                       const std::string&,
+                       CSSBuilder::Selector) override;
 };
 
 #endif // XFCE_APPLET_SPEED_DEVICE_WIDGET_H

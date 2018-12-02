@@ -6,15 +6,14 @@
 #include "Icons.h"
 #include "PluginConfigDialog.h"
 #include "PluginWidget.h"
+#include "XfcePanelPlugin.h"
 
 #include <gtkmm.h>
 
 #include <list>
 #include <string>
 
-#include "Xfce.h"
-
-class Plugin {
+class Plugin : public xfce::PanelPlugin {
 public:
   using Devices = std::list<std::unique_ptr<Device>>;
 
@@ -22,8 +21,7 @@ private:
   // The order of these objects is important. The XFCE parameters are part
   // of the plugin and are needed to set up the icons and must be initialized
   // before anytihing else
-  XfcePanelPlugin*          xfce;
-  Glib::RefPtr<Gtk::Widget> xfceWidget;
+  Glib::RefPtr<Gtk::EventBox> evt;
 
   // The icon container is used by most other objects and must be
   // initialized first. But it may be dependent on the XfcePanelPlugin object
@@ -58,18 +56,16 @@ private:
 
     // Derived options obtained from a combination of the plugin state and
     // explicitly set options
-    std::string css;
   } opts;
 
 private:
-  void readConfig(XfceRc*);
-  void writeConfig(XfceRc*) const;
+  void readConfig(xfce::Rc&);
+  void writeConfig(xfce::Rc&) const;
 
   Glib::RefPtr<Gdk::Pixbuf> getIcon(const std::string&, unsigned);
-  void                      setCSS();
 
 public:
-  Plugin(XfcePanelPlugin*);
+  Plugin(xfce::PanelPlugin::CType*);
   Plugin(const Plugin&)  = delete;
   Plugin(const Plugin&&) = delete;
   ~Plugin()              = default;
@@ -100,14 +96,15 @@ public:
   void     removeDeviceAt(int);
   void     moveDeviceUp(unsigned);
   void     moveDeviceDown(unsigned);
+  
+  virtual void on_about() override;
+  virtual void on_configure_plugin() override;
+  virtual void on_orientation_changed(Gtk::Orientation) override;
+  virtual void on_size_changed(unsigned) override;
+  virtual void on_save() override;
+  virtual void on_free_data() override;
 
-  void cbAbout();
-  void cbConfigure();
-  void cbReadConfig();
   void cbRefresh();
-  void cbReorient(Gtk::Orientation);
-  void cbResize(unsigned);
-  void cbSave() const;
   bool cbTimerTick();
 
   Plugin& setPeriod(double);
@@ -137,7 +134,6 @@ public:
   LabelPosition                 getLabelPosition() const;
   const Pango::FontDescription& getFont() const;
   Verbosity                     getVerbosity() const;
-  const std::string&            getCSS() const;
 };
 
 #endif // XFCE_APPLET_SPEED_PLUGIN_H

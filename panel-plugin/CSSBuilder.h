@@ -8,10 +8,19 @@
 #include <string>
 
 class CSSBuilder {
+public:
+  enum Selector {
+    Widget, // Just the selector with nothing else
+    State,  // A pseudo-class for various widget states
+    Name,   // A pseudo-class for a widget with a specific identifier
+    Child,  // A widget contained within a parent
+  };
+
 private:
   std::stringstream ss;
   std::string       css;
   bool              committed;
+  bool              opened;
 
 private:
   CSSBuilder& addBeginDeclaration(const std::string&);
@@ -23,12 +32,10 @@ private:
 
 public:
   CSSBuilder();
-  CSSBuilder(const std::string&);
+  CSSBuilder(const std::string&, Selector = Selector::Widget);
+  CSSBuilder(const std::string&, const std::string&, Selector);
 
-  CSSBuilder&        beginSelector(const std::string&);
-  CSSBuilder&        endSelector();
-  CSSBuilder&        init();
-  const std::string& commit(bool = false);
+  const std::string& commit();
 
   CSSBuilder& addFont(const Pango::FontDescription&);
   CSSBuilder& addFontStyle(Pango::Style);
