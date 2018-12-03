@@ -92,7 +92,7 @@ void PluginConfigDialog::cbDialogResponse(int resp) {
             enum_str(response).c_str());
     break;
   }
-  plugin.getXfcePanelPlugin().unblock_menu();
+  plugin.unblock_menu();
 
   TRACE_FUNC_EXIT;
 }
@@ -1168,8 +1168,7 @@ Gtk::Container& PluginConfigDialog::createDevicesPage() {
 PluginConfigDialog& PluginConfigDialog::init() {
   TRACE_FUNC_ENTER;
 
-  xfce::PanelPlugin& xfce       = plugin.getXfcePanelPlugin();
-  Gtk::Widget&       xfceWidget = xfce.get_widget();
+  Gtk::Widget& xfceWidget = plugin.get_widget();
 
   Gtk::Notebook& notebook = *Gtk::make_managed<Gtk::Notebook>();
   notebook.set_show_border(true);
@@ -1197,7 +1196,7 @@ PluginConfigDialog& PluginConfigDialog::init() {
   // Show widgets
   notebook.show();
 
-  xfce.block_menu();
+  plugin.block_menu();
 
   // GtkWidget* xfceDialog = xfce_titled_dialog_new();
   // xfce_titled_dialog_set_subtitle(XFCE_TITLED_DIALOG(xfceDialog),

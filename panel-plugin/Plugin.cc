@@ -22,8 +22,8 @@ Plugin::Plugin(xfce::PanelPlugin::CType* xfce)
   TRACE_FUNC_ENTER;
 
   // Set plugin state variables
-  size        = get_size(xfce);
-  orientation = get_orientation(xfce);
+  size        = get_size();
+  orientation = get_orientation();
 
   opts.period       = Defaults::Plugin::Period;
   opts.border       = Defaults::Plugin::Border;
@@ -40,7 +40,7 @@ Plugin::Plugin(xfce::PanelPlugin::CType* xfce)
     opts.labelPosition = Defaults::Plugin::LabelVertical;
   opts.verbosity = Defaults::Plugin::TooltipVerbosity;
 
-  Glib::RefPtr<Gtk::StyleContext> style = xfceWidget->get_style_context();
+  Glib::RefPtr<Gtk::StyleContext> style = get_widget().get_style_context();
   opts.font = style->get_font(Gtk::STATE_FLAG_NORMAL);
 
   widget.init();
@@ -51,13 +51,13 @@ Plugin::Plugin(xfce::PanelPlugin::CType* xfce)
   TRACE_FUNC_EXIT;
 }
 
-XfcePanelPlugin* Plugin::getXfcePanelPlugin() {
-  return xfce;
-}
+// XfcePanelPlugin* Plugin::getXfcePanelPlugin() {
+//   return xfce;
+// }
 
-Gtk::Widget& Plugin::getXfceWidget() {
-  return *xfceWidget.get();
-}
+// Gtk::Widget& Plugin::getXfceWidget() {
+//   return *xfceWidget.get();
+// }
 
 PluginWidget& Plugin::getWidget() {
   return widget;
@@ -216,7 +216,7 @@ void Plugin::on_size_changed(unsigned size) {
   TRACE_FUNC_EXIT;
 }
 
-void Plugin::on_save() const {
+void Plugin::on_save() {
   TRACE_FUNC_ENTER;
 
   writeConfig();
@@ -224,7 +224,7 @@ void Plugin::on_save() const {
   TRACE_FUNC_EXIT;
 }
 
-void Plugin::on_free_data() const {
+void Plugin::on_free_data() {
   TRACE_FUNC_ENTER;
 
   writeConfig();
@@ -398,10 +398,10 @@ Verbosity Plugin::getVerbosity() const {
 void Plugin::writeConfig() const {
   TRACE_FUNC_ENTER;
 
-  Glib::RefPtr<xfce::Rc> rc = xfce::Rc::simple_open(save_location(true), false);
-  if(not rc->is_error())
-    writeConfig(*rc.get());
-  rc->close();
+  xfce::Rc& rc = xfce::Rc::simple_open(save_location(true), false);
+  if(not rc.is_error())
+    writeConfig(rc);
+  rc.close();
 
   TRACE_FUNC_EXIT;
 }
@@ -441,10 +441,10 @@ void Plugin::readConfig() {
   TRACE_FUNC_ENTER;
 
   clearTimer();
-  Glib::RefPtr<xfce::Rc> rc = xfce::Rc::simple_open(lookup_rc_file(), true);
-  if(not rc->is_error())
-    readConfig(*rc.get());
-  rc->close();
+  xfce::Rc& rc = xfce::Rc::simple_open(lookup_rc_file(), true);
+  if(not rc.is_error())
+    readConfig(rc);
+  rc.close();
 
   setTimer();
 

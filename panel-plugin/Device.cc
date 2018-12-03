@@ -220,7 +220,7 @@ void Device::readConfig(xfce::Rc& rc) {
   TRACE_FUNC_EXIT;
 }
 
-void Device::writeConfig(XfceRc* rc) const {
+void Device::writeConfig(xfce::Rc& rc) const {
   TRACE_FUNC_ENTER;
 
   rc.write("device", opts.dev);

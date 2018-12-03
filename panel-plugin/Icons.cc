@@ -61,7 +61,7 @@ void Icons::create(const std::map<IconKind, unsigned>& inp) {
 Icons::Icons(Plugin& plugin) : theme(nullptr) {
   TRACE_FUNC_ENTER;
 
-  Gtk::Widget&              xfce   = plugin.getXfceWidget();
+  Gtk::Widget&              xfce   = plugin.get_widget();
   Glib::RefPtr<Gdk::Screen> screen = xfce.get_screen();
   theme                            = Gtk::IconTheme::get_for_screen(screen);
   

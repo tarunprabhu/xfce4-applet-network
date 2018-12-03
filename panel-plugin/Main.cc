@@ -1,4 +1,4 @@
-#include "main.h"
+#include "Main.h"
 
 #include "Debug.h"
 #include "Plugin.h"

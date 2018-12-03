@@ -8,11 +8,13 @@
 #include <string>
 #include <vector>
 
+// Forward declaration from libxfce4panel/xfce-panel-plugin.h
+struct _XfcePanelPlugin;
+
 namespace xfce {
 
 class PanelPlugin {
 public:
-  // typedefs from libxfce4panel/xfce-panel-plugin.h
   using CType = struct _XfcePanelPlugin;
 
 private:
@@ -24,10 +26,10 @@ public:
 
   Gtk::Widget& get_widget();
 
-  const std::string&             get_name() const;
-  const std::string&             get_display_name() const;
-  const std::string&             get_comment() const;
-  const std::string&             get_property_base() const;
+  std::string                    get_name() const;
+  std::string                    get_display_name() const;
+  std::string                    get_comment() const;
+  std::string                    get_property_base() const;
   std::vector<const std::string> get_arguments() const;
   int                            get_size() const;
   bool                           get_expand() const;
@@ -60,20 +62,20 @@ public:
 
   // Signals.
   // FIXME: These are currently not implemented
-  Glib::SignalProxy<void()> signal_construct();
-  Glib::SignalProxy<void(xfce::ScreenPosition)>
-                                            signal_screen_position_changed();
-  Glib::SignalProxy<void(unsigned)>         signal_size_changed();
-  Glib::SignalProxy<void(Gtk::Orientation)> signal_orientation_changed();
-  Glib::SignalProxy<void()>                 signal_free_data();
-  Glib::SignalProxy<void()>                 signal_save();
-  Glib::SignalProxy<void()>                 signal_about();
-  Glib::SignalProxy<void()>                 signal_configure_plugin();
-  Glib::SignalProxy<void()>                 signal_removed();
-  Glib::SignalProxy<bool(const std::string&, const Glib::ValueBase&)>
-                                                 signal_remote_event();
+  Glib::SignalProxy<void()>                      signal_about();
+  Glib::SignalProxy<void()>                      signal_configure_plugin();
+  Glib::SignalProxy<void()>                      signal_construct();
+  Glib::SignalProxy<void()>                      signal_free_data();
   Glib::SignalProxy<void(xfce::PanelPluginMode)> signal_mode_changed();
   Glib::SignalProxy<void(unsigned)>              signal_nrows_changed();
+  Glib::SignalProxy<void(Gtk::Orientation)>      signal_orientation_changed();
+  Glib::SignalProxy<bool(const std::string&, const Glib::ValueBase&)>
+                            signal_remote_event();
+  Glib::SignalProxy<void()> signal_removed();
+  Glib::SignalProxy<void()> signal_save();
+  Glib::SignalProxy<void(xfce::ScreenPosition)>
+                                    signal_screen_position_changed();
+  Glib::SignalProxy<void(unsigned)> signal_size_changed();
 
   // Default signal handlers
   // FIXME: These should be protected functions and not exposed because

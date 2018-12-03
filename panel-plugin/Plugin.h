@@ -32,7 +32,8 @@ private:
   unsigned         size;
   Gtk::Orientation orientation;
 
-  // Various widgets that are generally created on demand
+  // The UI widget that will actually be displayed. This is added into the
+  // xfce::PanelPlugin widget 
   PluginWidget widget;
 
   // "System" state that are needed to actually run things
@@ -71,9 +72,6 @@ public:
   ~Plugin()              = default;
 
   Plugin& operator=(const Plugin&) = delete;
-
-  XfcePanelPlugin* getXfcePanelPlugin();
-  Gtk::Widget&     getXfceWidget();
 
   PluginWidget&    getWidget();
   Plugin::Devices& getDevices();

@@ -4,8 +4,8 @@
 #include <map>
 #include <stdint.h>
 
-template <typename KeyT, typename ValT> class Dict2 {
-private:
+template <typename KeyT, typename ValT> class Dict2Impl {
+protected:
   std::map<KeyT, ValT> fwd;
   std::map<ValT, KeyT> rev;
 
@@ -23,96 +23,138 @@ public:
   using const_iterator  = typename decltype(fwd)::const_iterator;
 
 public:
-  Dict2() { ; }
+  Dict2Impl() {
+    ;
+  }
 
-  Dict2(const Dict2<KeyT, ValT>& other) {
+  Dict2Impl(const Dict2Impl<KeyT, ValT>& other) {
     for(const auto& i : other)
       update(i.first, i.second);
   }
-  
-  Dict2(std::initializer_list<value_type> ilist) {
+
+  Dict2Impl(std::initializer_list<value_type> ilist) {
     *this = ilist;
   }
-  
-  Dict2<KeyT, ValT>& operator=(std::initializer_list<value_type> ilist) {
-    for(const auto &i : ilist)
+
+  Dict2Impl<KeyT, ValT>&
+  operator=(std::initializer_list<value_type> ilist) noexcept {
+    for(const auto& i : ilist)
       update(i.first, i.second);
     return *this;
   }
 
-  constexpr Dict2<KeyT, ValT>& operator=(const Dict2<KeyT, ValT>& other) {
+  Dict2Impl<KeyT, ValT>&
+  operator=(const Dict2Impl<KeyT, ValT>& other) noexcept {
     for(const auto& i : other)
       update(i.first, i.second);
     return *this;
   }
 
-  void update(const KeyT& key, const ValT& val) {
+  void update(const KeyT& key, const ValT& val) noexcept {
     fwd[key] = val;
     rev[val] = key;
   }
 
-  constexpr const ValT& at(const KeyT& key) const {
-    return fwd.at(key);
-  }
-
-  constexpr const KeyT& at(const ValT& val) const {
-    return rev.at(val);
-  }
-  
-  constexpr const ValT& operator[](const KeyT& key) const {
-    return fwd.at(key);
-  }
-
-  constexpr const KeyT& operator[](const ValT& val) const {
-    return rev.at(val);
-  }
-  
-  constexpr bool empty() const noexcept {
+  bool empty() const noexcept {
     return fwd.empty();
   }
-  
-  constexpr size_type size() const noexcept {
+
+  size_type size() const noexcept {
     return fwd.size();
   }
 
-  constexpr iterator begin() noexcept {
-    return fwd.begin();
-  }
-
-  constexpr const_iterator begin() const noexcept {
-    return fwd.begin();
-  }
-
-  constexpr iterator end() noexcept {
-    return fwd.end();
-  }
-
-  constexpr const_iterator end() const noexcept {
-    return fwd.end();
-  }
-  
-  constexpr bool operator==(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator==(const Dict2Impl<KeyT, ValT>& o) const {
     return (fwd == o.fwd);
   }
 
-  constexpr bool operator!=(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator!=(const Dict2Impl<KeyT, ValT>& o) const {
     return fwd != o.fwd;
   }
 
-  constexpr bool operator<(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator<(const Dict2Impl<KeyT, ValT>& o) const {
     return fwd < o.fwd;
   }
 
-  constexpr bool operator<=(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator<=(const Dict2Impl<KeyT, ValT>& o) const {
     return fwd <= o.fwd;
   }
 
-  constexpr bool operator>(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator>(const Dict2Impl<KeyT, ValT>& o) const {
     return fwd > o.fwd;
   }
 
-  constexpr bool operator>=(const Dict2<KeyT, ValT>& o) const {
+  constexpr bool operator>=(const Dict2Impl<KeyT, ValT>& o) const {
     return fwd >= o.fwd;
+  }
+};
+
+template <typename KeyT, typename ValT, typename Enable = void> class Dict2;
+
+template <typename KeyT, typename ValT>
+class Dict2<KeyT,
+            ValT,
+            typename std::enable_if<!std::is_same<KeyT, ValT>::value>::type>
+    : public Dict2Impl<KeyT, ValT> {
+public:
+  using Dict2Impl<KeyT, ValT>::Dict2Impl;
+  
+  const ValT& at(const KeyT& key) const {
+    return this->fwd.at(key);
+  }
+
+  const KeyT& at(const ValT& val) const {
+    return this->rev.at(val);
+  }
+
+  const ValT& operator[](const KeyT& key) const {
+    return this->fwd.at(key);
+  }
+
+  const KeyT& operator[](const ValT& val) const {
+    return this->rev.at(val);
+  }
+
+  bool contains(const KeyT& key) const {
+    if(this->fwd.find(key) != this->fwd.end())
+      return true;
+    return false;
+  }
+
+  bool contains(const ValT& val) const {
+    if(this->rev.find(val) != this->rev.end())
+      return true;
+    return false;
+  }
+};
+
+template <typename KeyT, typename ValT>
+class Dict2<KeyT,
+            ValT,
+            typename std::enable_if<std::is_same<KeyT, ValT>::value>::type>
+    : public Dict2Impl<KeyT, ValT> {
+public:
+  using Dict2Impl<KeyT, ValT>::Dict2Impl;
+  
+  const ValT& at(const KeyT& key) const {
+    if(this->fwd.find(key) != this->fwd.end())
+      return this->fwd.at(key);
+    else
+      return this->rev.at(key);
+  }
+
+  const ValT& operator[](const KeyT& key) const {
+    if(this->fwd.find(key) != this->fwd.end())
+      return this->fwd[key];
+    else
+      return this->rev[key];
+  }
+
+  bool contains(const KeyT& key) const {
+    if(this->fwd.find(key) != this->fwd.end())
+      return true;
+    if(this->rev.find(key) != this->rev.end())
+      return true;
+    return false;
   }
 };
 

@@ -2,60 +2,227 @@
 
 #include <libxfce4panel/xfce-panel-plugin.h>
 
-// FIXME: These static callbacks should all go away when I figure out how
-// to use the Glib::SignalProxy objects correctly
-static void cb_contruct(xfce::PanelPlugin::CType*, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_construct();
+// static void Entry_signal_insert_at_cursor_callback(GtkEntry*    self,
+//                                                    const gchar* p0,
+//                                                    void*        data) {
+//   using SlotType = sigc::slot<void, const Glib::ustring&>;
+
+//   auto obj = dynamic_cast<Entry*>(
+//       Glib::ObjectBase::_get_current_wrapper((GObject*)self));
+//   // Do not try to call a signal on a disassociated wrapper.
+//   if(obj) {
+//     try {
+//       if(const auto* slot = Glib::SignalProxyNormal::data_to_slot(data))
+//         (*static_cast<SlotType*>(slot))(
+//             Glib::convert_const_gchar_ptr_to_ustring(p0));
+//     } catch(...) {
+//       Glib::exception_handlers_invoke();
+//     }
+//   }
+// }
+
+template <typename RetT, typename... ArgsT>
+static RetT callback_generic(xfce::PanelPlugin::CType*, ArgsT..., void*);
+
+template <typename RetT,
+          typename... ArgsT,
+          typename std::enable_if_t<std::is_void<RetT>::value, int> = 0>
+static RetT
+slotn_callback(xfce::PanelPlugin::CType* self, ArgsT... args, void* data) {
+  using SlotType = sigc::slot<RetT, ArgsT...>;
+
+  xfce::PanelPlugin* obj = nullptr;
+  if(obj) {
+    try {
+      if(const auto* slot = Glib::SignalProxyNormal::data_to_slot(data))
+        (*static_cast<const SlotType*>(slot))(args...);
+    } catch(...) {
+      Glib::exception_handlers_invoke();
+    }
+  }
 }
 
-static void cb_screen_position_changed(xfce::PanelPlugin::CType*,
-                                       XfceScreenPosition pos,
-                                       gpointer           data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_screen_position_changed(
-      static_cast<xfce::ScreenPosition>(pos), data);
+template <typename RetT,
+          typename... ArgsT,
+          typename std::enable_if_t<!std::is_void<RetT>::value, int> = 0>
+static RetT
+slotn_callback(xfce::PanelPlugin::CType* self, ArgsT... args, void* data) {
+  using SlotType = sigc::slot<RetT, ArgsT...>;
+
+  xfce::PanelPlugin* obj = nullptr;
+  if(obj) {
+    try {
+      if(const auto* slot = Glib::SignalProxyNormal::data_to_slot(data))
+        return (*static_cast<const SlotType*>(slot))(args...);
+    } catch(...) {
+      Glib::exception_handlers_invoke();
+    }
+  }
 }
 
-static void
-cb_size_changed(xfce::PanelPlugin::CType*, unsigned size, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_size_changed(size);
+static void cb_mode_changed(xfce::PanelPlugin::CType* self,
+                            XfcePanelPluginMode       mode,
+                            void*                     data) {
+  using SlotType = sigc::slot<void, xfce::PanelPluginMode>;
+
+  xfce::PanelPlugin* obj = nullptr;
+  if(obj) {
+    try {
+      if(const auto slot = Glib::SignalProxyNormal::data_to_slot(data))
+        (*static_cast<const SlotType*>(slot))(
+            static_cast<xfce::PanelPluginMode>(mode));
+    } catch(...) {
+      Glib::exception_handlers_invoke();
+    }
+  }
 }
 
-static void cb_orientation_changed(xfce::PanelPlugin::CType*,
+// static void cb_nrows_changed(Xfce::PanelPlugin::CType* self,
+//                              unsigned nrows) {
+//   using SlotType = sigc::slot<void, unsigned>;
+
+//   if(obj) {
+//     try {
+//       if(const auto slot = Glib::SignalProxyNormal::data_to_slot(data))
+//         (*static_cast<SlotType>(slot))(nrows);
+//     } catch(...) {
+//       Glib::exception_handlers_invoke();
+//     }
+//   }
+// }
+
+static void cb_orientation_changed(xfce::PanelPlugin::CType* self,
                                    GtkOrientation orientation,
                                    gpointer       data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_orientation_changed(
-      static_cast<Gtk::Orientation>(orientation));
+  using SlotType = sigc::slot<void, Gtk::Orientation>;
+
+  xfce::PanelPlugin* obj = nullptr;
+  if(obj) {
+    try {
+      if(const auto slot = Glib::SignalProxyNormal::data_to_slot(data))
+        (*static_cast<const SlotType*>(slot))(
+            static_cast<Gtk::Orientation>(orientation));
+    } catch(...) {
+      Glib::exception_handlers_invoke();
+    }
+  }
 }
 
-static void cb_free_data(xfce::PanelPlugin::CType*, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_free_data();
+static void cb_screen_position_changed(xfce::PanelPlugin::CType* self,
+                                       XfceScreenPosition pos,
+                                       gpointer           data) {
+  using SlotType = sigc::slot<void, xfce::ScreenPosition>;
+
+  xfce::PanelPlugin* obj = nullptr;
+  if(obj) {
+    try {
+      if(const auto slot = Glib::SignalProxyNormal::data_to_slot(data))
+        (*static_cast<const SlotType*>(slot))(
+            static_cast<xfce::ScreenPosition>(pos));
+    } catch(...) {
+      Glib::exception_handlers_invoke();
+    }
+  }
 }
 
-static void cb_about(xfce::PanelPlugin::CType*, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_about();
-}
+// static void
+// cb_size_changed(xfce::PanelPlugin::CType*, unsigned size, gpointer data) {
+//   reinterpret_cast<xfce::PanelPlugin*>(data)->on_size_changed(size);
+// }
 
-static void cb_configure_plugin(xfce::PanelPlugin::CType*, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_configure_plugin();
-}
 
-static void cb_removed(xfce::PanelPlugin::CType*, gpointer data) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_removed();
-}
+// static bool cb_remote_event(xfce::PanelPlugin::CType*,
+//                             const gchar*  key,
+//                             const GValue* val,
+//                             gpointer      data) {
+//   return reinterpret_cast<xfce::PanelPlugin*>(data)->on_signal_remote_event(
+//       key, val);
+// }
 
-static bool cb_remote_event(xfce::PanelPlugin::CType*,
-                            const gchar*  key,
-                            const GValue* val,
-                            gpointer      data) {
-  return reinterpret_cast<xfce::PanelPlugin*>(data)->on_signal_remote_event(
-      key, val);
-}
 
-static void cb_mode_changed(xfce::PanelPlugin::CType*,
-                            XfcePanelPluginMode mode) {
-  reinterpret_cast<xfce::PanelPlugin*>(data)->on_mode_changed(
-      static_cast<xfce::PanelPluginMode>(mode));
-}
+static const Glib::SignalProxyInfo signal_about_info = {
+    "about",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_configure_plugin_info = {
+    "configure-plugin",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_construct_info = {
+    "construct",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_free_data_info = {
+    "free-data",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_mode_changed_info = {
+    "mode-changed",
+    (GCallback)&cb_mode_changed,
+    (GCallback)&cb_mode_changed,
+    // (GCallback)&slotn_callback<void, XfcePanelPluginMode>,
+    // (GCallback)&slotn_callback<void, XfcePanelPluginMode>,
+};
+
+static const Glib::SignalProxyInfo signal_nrows_changed_info = {
+    "nrows-changed",
+    // (GCallback)&cb_nrows_changed,
+    // (GCallback)&cb_nrows_changed,
+    (GCallback)&slotn_callback<void, unsigned>,
+    (GCallback)&slotn_callback<void, unsigned>,
+};
+
+static const Glib::SignalProxyInfo signal_orientation_changed_info = {
+    "orientation-changed",
+    (GCallback)&cb_orientation_changed,
+    (GCallback)&cb_orientation_changed,
+};
+
+// static const Glib::SignalProxyInfo signal_remote_event_info = {
+//     "remote-event",
+//     (GCallback)&cb_remote_event,
+//     (GCallback)&cb_remote_event,
+// };
+
+static const Glib::SignalProxyInfo signal_removed_info = {
+    "removed",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_save_info = {
+    "save",
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+    (GCallback)&Glib::SignalProxyNormal::slot0_void_callback,
+};
+
+static const Glib::SignalProxyInfo signal_screen_position_changed_info = {
+    "screen-position-changed",
+    (GCallback)&cb_screen_position_changed,
+    (GCallback)&cb_screen_position_changed,
+    // (GCallback)&slotn_callback<void, XfceScreenPosition>,
+    // (GCallback)&slotn_callback<void, XfceScreenPosition>,
+};
+
+static const Glib::SignalProxyInfo signal_size_changed_info = {
+    "size-changed",
+    // (GCallback)&cb_size_changed,
+    // (GCallback)&cb_size_changed,
+    (GCallback)&slotn_callback<void, unsigned>,
+    (GCallback)&slotn_callback<void, unsigned>,
+};
+
+// FIXME: These static callbacks should all go away when I figure out how
+// to use the Glib::SignalProxy objects correctly
+
 
 static void
 cb_nrows_changed(xfce::PanelPlugin::CType*, unsigned nrows, gpointer data) {
@@ -67,41 +234,41 @@ namespace xfce {
 
 PanelPlugin::PanelPlugin(CType* xfce)
     : xfce(xfce), widget(Glib::wrap(GTK_WIDGET(xfce))) {
-  // FIXME: It would be better to use the signal proxies the way it is done
-  // in Gtkmm but I don't know how to wire them up correctly.
-  g_signal_connect(xfce, "construct", G_CALLBACK(cb_about), this);
-  g_signal_connect(xfce, "screen-position-changed",
-                   G_CALLBACK(cb_screen_position_changed), this);
-  g_signal_connect(xfce, "size-changed", G_CALLBACK(cb_resize), this);
-  g_signal_connect(xfce, "orientation-changed", G_CALLBACK(cb_reorient),
-                   plugin);
-  g_signal_connect(xfce, "free-data", G_CALLBACK(cb_free), this);
-  g_signal_connect(xfce, "save", G_CALLBACK(cb_save), plugin);
-  g_signal_connect(xfce, "about", G_CALLBACK(cb_about), this);
-  g_signal_connect(xfce, "configure-plugin", G_CALLBACK(cb_configure), this);
-  g_signal_connect(xfce, "removed", G_CALLBACK(cb_remove), this);
-  g_signal_connect(xfce, "remote-event", G_CALLBACK(cb_remote_event), this);
-  g_signal_connect(xfce, "mode-changed", G_CALLBACK(cb_mode_changed), this);
-  g_signal_connect(xfce, "nrows-changed", G_CALLBACK(cb_nrows_changed), this);
+  // // FIXME: It would be better to use the signal proxies the way it is done
+  // // in Gtkmm but I don't know how to wire them up correctly.
+  // g_signal_connect(xfce, "construct", G_CALLBACK(cb_about), this);
+  // g_signal_connect(xfce, "screen-position-changed",
+  //                  G_CALLBACK(cb_screen_position_changed), this);
+  // g_signal_connect(xfce, "size-changed", G_CALLBACK(cb_resize), this);
+  // g_signal_connect(xfce, "orientation-changed", G_CALLBACK(cb_reorient),
+  //                  plugin);
+  // g_signal_connect(xfce, "free-data", G_CALLBACK(cb_free), this);
+  // g_signal_connect(xfce, "save", G_CALLBACK(cb_save), plugin);
+  // g_signal_connect(xfce, "about", G_CALLBACK(cb_about), this);
+  // g_signal_connect(xfce, "configure-plugin", G_CALLBACK(cb_configure), this);
+  // g_signal_connect(xfce, "removed", G_CALLBACK(cb_remove), this);
+  // g_signal_connect(xfce, "remote-event", G_CALLBACK(cb_remote_event), this);
+  // g_signal_connect(xfce, "mode-changed", G_CALLBACK(cb_mode_changed), this);
+  // g_signal_connect(xfce, "nrows-changed", G_CALLBACK(cb_nrows_changed), this);
 }
 
 Gtk::Widget& PanelPlugin::get_widget() {
   return *widget.get();
 }
 
-const std::string& PanelPlugin::get_name() const {
+std::string PanelPlugin::get_name() const {
   return xfce_panel_plugin_get_name(xfce);
 }
 
-const std::string& PanelPlugin::get_display_name() const {
+std::string PanelPlugin::get_display_name() const {
   return xfce_panel_plugin_get_display_name(xfce);
 }
 
-const std::string& PanelPlugin::get_comment() const {
+std::string PanelPlugin::get_comment() const {
   return xfce_panel_plugin_get_comment(xfce);
 }
 
-const std::string& PanelPlugin::get_property_base() const {
+std::string PanelPlugin::get_property_base() const {
   return xfce_panel_plugin_get_property_base(xfce);
 }
 
@@ -130,7 +297,8 @@ Gtk::Orientation PanelPlugin::get_orientation() const {
 }
 
 ScreenPosition PanelPlugin::get_screen_position() const {
-  return xfce_panel_plugin_get_screen_position(xfce);
+  return static_cast<ScreenPosition>(
+      xfce_panel_plugin_get_screen_position(xfce));
 }
 
 bool PanelPlugin::get_locked() const {
@@ -188,7 +356,7 @@ void PanelPlugin::register_menu(Gtk::Menu& menu) {
 std::string PanelPlugin::lookup_rc_file() const {
   std::string ret;
 
-  if(const gchar* file = xfce_panel_plugin_lookup_rc_file()) {
+  if(gchar* file = xfce_panel_plugin_lookup_rc_file(xfce)) {
     ret = file;
     g_free(file);
   }
@@ -198,7 +366,7 @@ std::string PanelPlugin::lookup_rc_file() const {
 std::string PanelPlugin::save_location(bool create) const {
   std::string ret;
 
-  if(const gchar* file = xfce_panel_plugin_save_location(xfce, create)) {
+  if(gchar* file = xfce_panel_plugin_save_location(xfce, create)) {
     ret = file;
     g_free(file);
   }

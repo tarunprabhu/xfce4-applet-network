@@ -38,7 +38,7 @@ libappletnetwork_la_SOURCES =  \
 	Network.cc \
 	NetworkStats.cc \
 	NetworkTooltip.cc \
-	PanelPlugin.cc \
+	Main.cc \
 	Plugin.cc \
 	PluginConfigDialog.cc \
 	PluginWidget.cc \
